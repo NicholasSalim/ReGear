@@ -31,10 +31,9 @@ A marketplace for pre-owned electronics (phones, laptops, tablets, cameras, PC c
 Requires Node.js 22 or newer and PostgreSQL (tested with 17).
 
 ```bash
-psql -U postgres -c "CREATE DATABASE regear;"
-psql -U postgres -c "CREATE DATABASE regear_test;"
 npm install                  # also runs `prisma generate`
 cp .env.example .env         # then set DATABASE_URL, TEST_DATABASE_URL and CRON_SECRET
+                             # (`npm run db:migrate` and `npm test` create the databases if missing)
 npm run setup                # migrate + generate + seed demo data
 npm run dev                  # http://localhost:3000
 ```

@@ -66,6 +66,10 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  async redirects() {
+    // Wearables became Smartwatches; keep old links and bookmarks working.
+    return [{ source: "/c/wearables", destination: "/c/smartwatches", permanent: true }];
+  },
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },

@@ -48,9 +48,10 @@ describe("listing validation", () => {
     expect(res.error?.issues.some((i) => i.path.join(".") === "specs.storage")).toBe(true);
   });
 
-  it("requires every checklist item to be rated", () => {
-    const res = listingSchema.safeParse({ ...validListing, checks: phoneChecks.slice(1) });
-    expect(res.success).toBe(false);
+  it("keeps only the checks the seller included, in catalogue order", () => {
+    const res = listingSchema.safeParse({ ...validListing, checks: [phoneChecks[2], phoneChecks[0]] });
+    expect(res.success && res.data.checks.map((c) => c.key)).toEqual([phoneChecks[0].key, phoneChecks[2].key]);
+    expect(listingSchema.safeParse({ ...validListing, checks: [] }).success).toBe(false);
   });
 
   it("blocks Like New grading when a check failed", () => {

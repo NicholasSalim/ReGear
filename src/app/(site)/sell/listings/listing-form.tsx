@@ -36,7 +36,9 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
     () => applicable.map((c) => v.checks.find((x) => x.key === c.key) ?? { key: c.key, status: "PASS" as CheckStatus, note: "" }),
     [applicable, v.checks],
   );
-  const score = functionalScore(checks);
+  // Sellers untick checks they can't show; those stay out of the report.
+  const included = checks.filter((c) => !v.excludedChecks.includes(c.key));
+  const score = functionalScore(included);
   const hasBattery = needsBattery(category, v.specs);
   const typeField = category.specFields.find((f) => f.key === "type" || f.key === "componentType");
   const typeMissing = typeField !== undefined && !v.specs[typeField.key];
@@ -48,6 +50,11 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
     setV((prev) => ({
       ...prev,
       checks: [...prev.checks.filter((c) => c.key !== key), { ...checks.find((c) => c.key === key)!, ...patch }],
+    }));
+  const toggleCheck = (key: string, include: boolean) =>
+    setV((prev) => ({
+      ...prev,
+      excludedChecks: include ? prev.excludedChecks.filter((k) => k !== key) : [...prev.excludedChecks, key],
     }));
 
   async function uploadFiles(files: FileList | null) {
@@ -108,7 +115,7 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
       specs: Object.fromEntries(category.specFields.map((f) => [f.key, v.specs[f.key] ?? ""])),
       batteryHealth: hasBattery && v.batteryHealth ? v.batteryHealth : null,
       cosmeticScore: v.cosmeticScore,
-      checks: checks.map((c) => ({ key: c.key, status: c.status, note: c.note || undefined })),
+      checks: included.map((c) => ({ key: c.key, status: c.status, note: c.note || undefined })),
       includedAccessories: v.includedAccessories.split(",").map((s) => s.trim()).filter(Boolean),
       knownIssues: v.knownIssues,
       serialVerified: v.serialVerified,
@@ -287,10 +294,18 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
             Choose a {typeField.label.toLowerCase()} under {category.singular.toLowerCase()} specifications to see its full checklist.
           </p>
         )}
+        <p className="text-sm text-slate-600">
+          Untick checks you can&apos;t show for this item. They are left out of the report buyers see.{" "}
+          <span className="text-slate-500">({included.length} of {checks.length} included)</span>
+        </p>
+        {err("checks") && <p className="text-xs font-medium text-rose-600">{err("checks")}</p>}
         <div className="overflow-hidden rounded-xl border border-slate-200">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-left text-xs text-slate-500">
               <tr>
+                <th className="w-10 p-3 font-medium">
+                  <span className="sr-only">Include</span>
+                </th>
                 <th className="p-3 font-medium">Check</th>
                 <th className="p-3 font-medium">Result</th>
                 <th className="hidden p-3 font-medium sm:table-cell">Notes</th>
@@ -299,14 +314,25 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
             <tbody className="divide-y divide-slate-100">
               {applicable.map((c) => {
                 const entry = checks.find((x) => x.key === c.key)!;
+                const isIncluded = !v.excludedChecks.includes(c.key);
                 return (
-                  <tr key={c.key} className="align-top">
+                  <tr key={c.key} className={`align-top ${isIncluded ? "" : "bg-slate-50 text-slate-400"}`}>
+                    <td className="p-3">
+                      <input
+                        type="checkbox"
+                        aria-label={`Include ${c.label}`}
+                        className="mt-1 size-4 accent-brand-600"
+                        checked={isIncluded}
+                        onChange={(e) => toggleCheck(c.key, e.target.checked)}
+                      />
+                    </td>
                     <td className="p-3">
                       <span className="font-medium">{c.label}</span>
                       {c.hint && <span className="block text-xs text-slate-500">{c.hint}</span>}
+                      {!isIncluded && <span className="block text-xs">Not included in the report</span>}
                     </td>
                     <td className="p-3">
-                      <select aria-label={`${c.label} result`} className="input py-1" value={entry.status} onChange={(e) => setCheck(c.key, { status: e.target.value as CheckStatus })}>
+                      <select aria-label={`${c.label} result`} className="input py-1" value={entry.status} disabled={!isIncluded} onChange={(e) => setCheck(c.key, { status: e.target.value as CheckStatus })}>
                         {CHECK_STATUSES.map((s) => <option key={s} value={s}>{CHECK_STATUS_INFO[s].label}</option>)}
                       </select>
                     </td>
@@ -317,6 +343,7 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
                         placeholder={entry.status === "MINOR" || entry.status === "FAIL" ? "Describe the issue (required)" : "Optional"}
                         value={entry.note ?? ""}
                         maxLength={200}
+                        disabled={!isIncluded}
                         onChange={(e) => setCheck(c.key, { note: e.target.value })}
                         aria-invalid={!!err(`checks.${c.key}`)}
                       />

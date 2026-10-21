@@ -5,18 +5,9 @@ import { listingSchema } from "@/lib/validation";
 const keys = (slug: string, specs: Specs) => applicableChecks(getCategory(slug)!, specs).map((c) => c.key);
 
 describe("checklist by device type and features", () => {
-  it("drops screen and crown checks for a smart ring", () => {
-    const ring = keys("wearables", { type: "Smart ring" });
-    expect(ring).toEqual(expect.arrayContaining(["sensors", "charging", "body"]));
-    expect(ring).not.toContain("screen");
-    expect(ring).not.toContain("crown");
-  });
-
-  it("adds a cellular check only for cellular smartwatches", () => {
-    expect(keys("wearables", { type: "Smartwatch", connectivity: "GPS" })).not.toContain("cellular");
-    expect(keys("wearables", { type: "Smartwatch", connectivity: "GPS + Cellular" })).toEqual(
-      expect.arrayContaining(["screen", "crown", "cellular"]),
-    );
+  it("checks every smartwatch's display and crown, and cellular only when it has it", () => {
+    expect(keys("smartwatches", { connectivity: "GPS" })).toEqual(["screen", "sensors", "crown", "charging", "body"]);
+    expect(keys("smartwatches", { connectivity: "GPS + Cellular" })).toContain("cellular");
   });
 
   it("gives lenses lens checks instead of body checks", () => {
@@ -46,7 +37,7 @@ describe("checklist by device type and features", () => {
   });
 
   it("shows no type-specific checks until a type is chosen", () => {
-    expect(keys("wearables", {})).not.toContain("screen");
+    expect(keys("cameras", {})).not.toContain("shutter");
   });
 });
 
@@ -84,8 +75,12 @@ describe("listing validation with type-specific checklists", () => {
     expect(res.success && res.data.checks.map((c) => c.key)).toEqual(dacChecks.map((c) => c.key));
   });
 
-  it("still requires every applicable check", () => {
-    expect(listingSchema.safeParse({ ...dacListing, checks: dacChecks.slice(1) }).success).toBe(false);
+  it("lets the seller leave checks out, but not all of them", () => {
+    const res = listingSchema.safeParse({ ...dacListing, checks: dacChecks.slice(1) });
+    expect(res.success && res.data.checks.map((c) => c.key)).toEqual(dacChecks.slice(1).map((c) => c.key));
+    const empty = listingSchema.safeParse({ ...dacListing, checks: [] });
+    expect(empty.success).toBe(false);
+    expect(empty.error?.issues.some((i) => i.path[0] === "checks")).toBe(true);
   });
 
   it("drops ratings for checks that do not apply", () => {

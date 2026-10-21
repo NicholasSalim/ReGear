@@ -1,6 +1,6 @@
 # ReGear
 
-A marketplace for pre-owned electronics (phones, laptops, tablets, cameras, PC components, audio, gaming, wearables) built around **structured condition reports** instead of free-text seller descriptions.
+A marketplace for pre-owned electronics (phones, laptops, tablets, cameras, PC components, audio, gaming, smartwatches) built around **structured condition reports** instead of free-text seller descriptions.
 
 ## Features
 

@@ -164,16 +164,14 @@ export const listingSchema = listingBaseSchema.superRefine((data, ctx) => {
   }
   data.specs = cleanSpecs;
 
-  // Only the checks that apply to this device are required; ratings for others are dropped.
-  const required = applicableChecks(category, cleanSpecs);
-  const allowed = new Set(required.map((c) => c.key));
-  const provided = new Map(data.checks.filter((c) => allowed.has(c.key)).map((c) => [c.key, c]));
-  for (const check of required) {
-    if (!provided.has(check.key)) {
-      ctx.addIssue({ code: "custom", path: ["checks", check.key], message: `Rate "${check.label}"` });
-    }
+  // Sellers choose which of the checks that apply to this device to include.
+  // Ratings for checks that don't apply are dropped; at least one must remain.
+  const applicable = applicableChecks(category, cleanSpecs);
+  const provided = new Map(data.checks.map((c) => [c.key, c]));
+  data.checks = applicable.flatMap((c) => provided.get(c.key) ?? []);
+  if (data.checks.length === 0) {
+    ctx.addIssue({ code: "custom", path: ["checks"], message: "Include at least one check in the condition report" });
   }
-  data.checks = required.map((c) => provided.get(c.key)!).filter(Boolean);
 
   const hasBattery = needsBattery(category, cleanSpecs);
   if (hasBattery && data.conditionGrade !== "FOR_PARTS" && !data.batteryHealth) {

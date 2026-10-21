@@ -22,6 +22,8 @@ export type ListingFormValues = {
   batteryHealth: string;
   cosmeticScore: string;
   checks: ConditionCheckEntry[];
+  /** Checks the seller has unticked; they are left out of the report. */
+  excludedChecks: string[];
   includedAccessories: string;
   knownIssues: string;
   serialVerified: boolean;
@@ -48,6 +50,7 @@ export const EMPTY_LISTING: ListingFormValues = {
   batteryHealth: "",
   cosmeticScore: "8",
   checks: [],
+  excludedChecks: [],
   includedAccessories: "",
   knownIssues: "",
   serialVerified: false,

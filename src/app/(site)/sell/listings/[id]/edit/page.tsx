@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { requireSeller } from "@/lib/auth/dal";
 import { mediaUrl } from "@/lib/media";
+import { applicableChecks, getCategory } from "@/lib/catalog";
 import type { ConditionCheckEntry } from "@/lib/condition";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { ListingForm } from "../../listing-form";
@@ -28,6 +29,12 @@ export default async function EditListingPage({ params }: PageProps<"/sell/listi
   }
 
   const report = listing.conditionReport;
+  const specs = JSON.parse(listing.specs || "{}");
+  const checks = report ? (JSON.parse(report.checks) as ConditionCheckEntry[]) : [];
+  // Checks that fit the item but are missing from the saved report were left out on purpose.
+  const category = getCategory(listing.category);
+  const reported = new Set(checks.map((c) => c.key));
+  const excludedChecks = report && category ? applicableChecks(category, specs).flatMap((c) => (reported.has(c.key) ? [] : [c.key])) : [];
   const initial: ListingFormValues = {
     title: listing.title,
     category: listing.category,
@@ -43,10 +50,11 @@ export default async function EditListingPage({ params }: PageProps<"/sell/listi
     warrantyMonths: String(listing.warrantyMonths),
     warrantyTerms: listing.warrantyTerms,
     returnWindowDays: String(listing.returnWindowDays),
-    specs: JSON.parse(listing.specs || "{}"),
+    specs,
     batteryHealth: report?.batteryHealth != null ? String(report.batteryHealth) : "",
     cosmeticScore: String(report?.cosmeticScore ?? 8),
-    checks: report ? (JSON.parse(report.checks) as ConditionCheckEntry[]) : [],
+    checks,
+    excludedChecks,
     includedAccessories: report ? (JSON.parse(report.includedAccessories) as string[]).join(", ") : "",
     knownIssues: report?.knownIssues ?? "",
     serialVerified: report?.serialVerified ?? false,

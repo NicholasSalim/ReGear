@@ -1,0 +1,135 @@
+"use client";
+
+import Link from "next/link";
+import { useSyncExternalStore } from "react";
+import { GitCompareArrows, X } from "lucide-react";
+import { MAX_COMPARE } from "@/lib/constants";
+
+// Comparison list kept in localStorage (no server state needed) and shared
+// between every card on the page through a tiny external store.
+type Item = { id: string; title: string; category: string };
+const KEY = "regear:compare";
+const listeners = new Set<() => void>();
+let cache: Item[] | null = null;
+const EMPTY: Item[] = [];
+
+function read(): Item[] {
+  if (cache) return cache;
+  try {
+    const parsed = JSON.parse(localStorage.getItem(KEY) ?? "[]");
+    cache = Array.isArray(parsed)
+      ? parsed
+          .filter((i) => i && typeof i.id === "string" && /^[a-z0-9]{20,32}$/i.test(i.id))
+          .slice(0, MAX_COMPARE)
+          .map((i) => ({ id: i.id, title: String(i.title).slice(0, 120), category: String(i.category).slice(0, 40) }))
+      : [];
+  } catch {
+    cache = [];
+  }
+  return cache!;
+}
+
+function write(items: Item[]) {
+  cache = items;
+  try {
+    localStorage.setItem(KEY, JSON.stringify(items));
+  } catch {
+    /* storage unavailable */
+  }
+  listeners.forEach((l) => l());
+}
+
+function subscribe(cb: () => void) {
+  listeners.add(cb);
+  const onStorage = (e: StorageEvent) => {
+    if (e.key === KEY) {
+      cache = null;
+      cb();
+    }
+  };
+  window.addEventListener("storage", onStorage);
+  return () => {
+    listeners.delete(cb);
+    window.removeEventListener("storage", onStorage);
+  };
+}
+
+function useCompare() {
+  return useSyncExternalStore(subscribe, read, () => EMPTY);
+}
+
+export function CompareToggle({ id, title, category }: Item) {
+  const items = useCompare();
+  const selected = items.some((i) => i.id === id);
+  const full = items.length >= MAX_COMPARE;
+
+  return (
+    <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-slate-600 select-none">
+      <input
+        type="checkbox"
+        className="size-4 rounded border-slate-300 accent-brand-600"
+        checked={selected}
+        disabled={!selected && full}
+        onChange={() => write(selected ? items.filter((i) => i.id !== id) : [...items, { id, title, category }])}
+      />
+      {selected ? "Added to compare" : full ? `Compare full (${MAX_COMPARE})` : "Compare"}
+    </label>
+  );
+}
+
+export function CompareTray() {
+  const items = useCompare();
+  if (items.length === 0) return null;
+  const mixed = new Set(items.map((i) => i.category)).size > 1;
+
+  return (
+    <div className="fixed inset-x-0 bottom-4 z-40 px-4" role="region" aria-label="Comparison">
+      <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-3 rounded-2xl bg-ink px-4 py-3 text-white shadow-2xl">
+        <GitCompareArrows className="size-5 shrink-0 text-brand-200" aria-hidden />
+        <ul className="flex min-w-0 flex-1 flex-wrap gap-2">
+          {items.map((i) => (
+            <li key={i.id} className="flex max-w-[12rem] items-center gap-1 rounded-full bg-white/10 py-1 pr-1 pl-3 text-xs">
+              <span className="truncate">{i.title}</span>
+              <button
+                type="button"
+                onClick={() => write(items.filter((x) => x.id !== i.id))}
+                className="rounded-full p-0.5 hover:bg-white/20"
+                aria-label={`Remove ${i.title} from comparison`}
+              >
+                <X className="size-3" />
+              </button>
+            </li>
+          ))}
+        </ul>
+        {mixed && <span className="text-xs text-amber-300">Mixed categories</span>}
+        <button type="button" onClick={() => write([])} className="text-xs text-slate-300 hover:text-white">
+          Clear
+        </button>
+        <Link
+          href={`/compare?ids=${items.map((i) => i.id).join(",")}`}
+          className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${items.length < 2 ? "pointer-events-none bg-white/20 text-white/60" : "bg-brand-500 hover:bg-brand-600"}`}
+          aria-disabled={items.length < 2}
+        >
+          Compare {items.length}
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+export function RemoveFromCompare({ id }: { id: string }) {
+  const items = useCompare();
+  return (
+    <button
+      type="button"
+      className="text-xs text-slate-500 underline hover:text-rose-600"
+      onClick={() => {
+        const next = items.filter((i) => i.id !== id);
+        write(next);
+        window.location.assign(next.length ? `/compare?ids=${next.map((i) => i.id).join(",")}` : "/compare");
+      }}
+    >
+      Remove
+    </button>
+  );
+}

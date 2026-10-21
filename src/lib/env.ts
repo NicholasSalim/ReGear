@@ -1,0 +1,34 @@
+import "server-only";
+import { z } from "zod";
+
+// Validate configuration once at boot; fail fast on misconfiguration.
+const schema = z.object({
+  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  DATABASE_URL: z.string().min(1).default("file:./prisma/dev.db"),
+  NEXT_PUBLIC_SITE_URL: z.url().default("http://localhost:3000"),
+  STORAGE_DIR: z.string().min(1).default("./storage"),
+  CRON_SECRET: z.string().min(32).optional(),
+  // Google sign-in is enabled only when both values are present.
+  GOOGLE_CLIENT_ID: z.string().min(10).optional(),
+  GOOGLE_CLIENT_SECRET: z.string().min(10).optional(),
+  TRUST_PROXY: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
+});
+
+const raw = Object.fromEntries(Object.entries(process.env).filter(([, v]) => v !== ""));
+const parsed = schema.safeParse(raw);
+if (!parsed.success) {
+  console.error("Invalid environment configuration", z.treeifyError(parsed.error));
+  throw new Error("Invalid environment configuration");
+}
+
+export const env = parsed.data;
+export const isProd = env.NODE_ENV === "production";
+/** Secure-only cookies & HSTS require the site to be served over HTTPS. */
+export const isHttps = env.NEXT_PUBLIC_SITE_URL.startsWith("https://");
+
+if (isProd && !isHttps && env.NEXT_PUBLIC_SITE_URL !== "http://localhost:3000") {
+  console.warn("[regear] NEXT_PUBLIC_SITE_URL is not HTTPS: secure cookies and HSTS are disabled.");
+}

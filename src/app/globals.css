@@ -1,26 +1,105 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+ * ReGear visual system — "the inspection bench".
+ * One family (Archivo) used at two widths: expanded for labels/headlines
+ * like printing on equipment, normal for reading. Cobalt is reserved for
+ * actions; pass/minor/fail/na are signal colours used only for condition data.
+ */
+@theme {
+  --font-sans: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+
+  --color-brand-50: #eef1fe;
+  --color-brand-100: #dde3fd;
+  --color-brand-200: #b9c5fa;
+  --color-brand-500: #3d5af0;
+  --color-brand-600: #2340d9;
+  --color-brand-700: #1a31b0;
+  --color-brand-800: #172a8c;
+  --color-brand-900: #14246e;
+
+  --color-ink: #1a2233;
+  --color-paper: #f4f5f7;
+  --color-rule: #dfe2e8;
+  --color-plate: #eceef2;
+
+  --color-pass: #17885c;
+  --color-minor: #c98a00;
+  --color-fail: #cf3b33;
+  --color-na: #cbd0d8;
+
+  --radius-tag: 5px;
+  --radius-panel: 10px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  html {
+    color-scheme: light;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-paper text-ink antialiased;
+    font-size: 15px;
+    line-height: 1.55;
+  }
+  h1,
+  h2,
+  h3 {
+    font-stretch: 112%;
+    letter-spacing: -0.015em;
+    line-height: 1.15;
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand-600;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  .input {
+    @apply block w-full rounded-lg border border-rule bg-white px-3 py-2 text-sm text-ink placeholder:text-slate-400 focus:border-brand-600 focus:ring-3 focus:ring-brand-600/15 focus:outline-none disabled:bg-plate aria-invalid:border-fail;
+  }
+  .label {
+    @apply mb-1 block text-sm font-medium text-slate-700;
+  }
+  /* Flat panels: hairline border, no drop shadow. Hierarchy comes from spacing and type. */
+  .card {
+    @apply rounded-[var(--radius-panel)] border border-rule bg-white;
+  }
+  .container-page {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+  .wide {
+    font-stretch: 118%;
+  }
+}
+
+/* The hero's single orchestrated moment: the condition strip fills in segment by segment. */
+@keyframes strip-in {
+  from {
+    transform: scaleY(0.2);
+    opacity: 0;
+  }
+  to {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+.strip-animate > span {
+  animation: strip-in 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  transform-origin: bottom;
 }

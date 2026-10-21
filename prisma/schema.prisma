@@ -1,0 +1,342 @@
+// ReGear data model.
+//
+// Status-like columns are plain strings validated by the application layer
+// (see src/lib/constants.ts) so the schema stays portable between SQLite
+// (local / single node) and PostgreSQL (switch `provider` and re-run migrate).
+// Money is always stored as integer minor units (cents).
+// Structured blobs (specs, checks, addresses, snapshots) are JSON strings
+// validated with zod on read and write.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  name              String
+  passwordHash      String? // null for accounts that only sign in with Google
+  role              String    @default("USER") // USER | ADMIN
+  failedLoginCount  Int       @default(0)
+  lockedUntil       DateTime?
+  passwordChangedAt DateTime  @default(now())
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  sessions        Session[]
+  oauthAccounts   OAuthAccount[]
+  sellerProfile   SellerProfile?
+  purchases       Order[]          @relation("BuyerOrders")
+  favorites       Favorite[]
+  uploads         Upload[]
+  reviewsWritten  Review[]         @relation("ReviewBuyer")
+  disputeMessages DisputeMessage[]
+  disputesOpened  Dispute[]        @relation("DisputeOpener")
+  auditLogs       AuditLog[]
+}
+
+// External identities linked to a user (currently Google via OpenID Connect).
+model OAuthAccount {
+  provider          String // "google"
+  providerAccountId String // the provider's stable subject id ("sub")
+  userId            String
+  email             String
+  createdAt         DateTime @default(now())
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  // sha256 of the opaque token stored in the cookie; the raw token never touches the DB.
+  id        String   @id
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  userAgent String?
+  ip        String?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model SellerProfile {
+  id                 String    @id @default(cuid())
+  userId             String    @unique
+  slug               String    @unique
+  displayName        String
+  bio                String    @default("")
+  location           String    @default("")
+  verificationStatus String    @default("UNVERIFIED") // UNVERIFIED | PENDING | VERIFIED | REJECTED
+  verifiedAt         DateTime?
+  ratingAvg          Float     @default(0)
+  ratingCount        Int       @default(0)
+  salesCount         Int       @default(0)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listings      Listing[]
+  sales         Order[]               @relation("SellerOrders")
+  verifications VerificationRequest[]
+  reviews       Review[]
+}
+
+model VerificationRequest {
+  id            String    @id @default(cuid())
+  sellerId      String
+  legalName     String
+  phone         String
+  address       String
+  idType        String // NATIONAL_ID | PASSPORT | DRIVERS_LICENSE | BUSINESS_REG
+  idNumberLast4 String // full document numbers are never stored
+  documentKey   String // private storage key, served only to admins
+  status        String    @default("PENDING") // PENDING | APPROVED | REJECTED
+  reviewNote    String?
+  reviewerId    String?
+  createdAt     DateTime  @default(now())
+  reviewedAt    DateTime?
+
+  seller SellerProfile @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([sellerId])
+}
+
+model Listing {
+  id                 String    @id @default(cuid())
+  slug               String    @unique
+  sellerId           String
+  title              String
+  category           String
+  brand              String
+  model              String
+  description        String
+  priceCents         Int
+  originalPriceCents Int?
+  shippingCents      Int       @default(0)
+  conditionGrade     String // LIKE_NEW | EXCELLENT | GOOD | FAIR | FOR_PARTS
+  gradeRank          Int       @default(2) // 0 = LIKE_NEW ... 4 = FOR_PARTS, for sorting
+  specs              String    @default("{}") // JSON: Record<specKey, string|number|boolean>
+  warrantyType       String    @default("NONE") // NONE | SELLER | MANUFACTURER
+  warrantyMonths     Int       @default(0)
+  warrantyTerms      String    @default("")
+  returnWindowDays   Int       @default(7)
+  location           String    @default("")
+  status             String    @default("DRAFT") // DRAFT | ACTIVE | RESERVED | SOLD | REMOVED
+  searchText         String    @default("") // lower-cased denormalised search column
+  viewCount          Int       @default(0)
+  publishedAt        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  seller          SellerProfile    @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  images          Upload[]
+  conditionReport ConditionReport?
+  orders          Order[]
+  favorites       Favorite[]
+
+  @@index([status, category, publishedAt])
+  @@index([status, priceCents])
+  @@index([status, gradeRank])
+  @@index([status, brand])
+  @@index([sellerId, status])
+}
+
+model ConditionReport {
+  id                  String   @id @default(cuid())
+  listingId           String   @unique
+  batteryHealth       Int? // percent, for battery powered devices
+  cosmeticScore       Int // 1-10
+  functionalScore     Int // 0-100, derived from checks
+  checks              String // JSON: [{ key, status: PASS|MINOR|FAIL|NA, note }]
+  includedAccessories String   @default("[]") // JSON string[]
+  knownIssues         String   @default("")
+  serialVerified      Boolean  @default(false)
+  originalBox         Boolean  @default(false)
+  inspectedBy         String   @default("SELLER") // SELLER | REGEAR
+  updatedAt           DateTime @updatedAt
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+}
+
+model Upload {
+  id        String   @id @default(cuid())
+  ownerId   String
+  listingId String?
+  key       String   @unique // storage key, e.g. "ab/abcdef.webp"
+  width     Int
+  height    Int
+  bytes     Int
+  position  Int      @default(0)
+  alt       String   @default("")
+  createdAt DateTime @default(now())
+
+  owner   User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  listing Listing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
+
+  @@index([listingId, position])
+  @@index([ownerId, listingId])
+}
+
+model Order {
+  id                 String    @id @default(cuid())
+  number             String    @unique
+  buyerId            String
+  sellerId           String
+  listingId          String
+  priceCents         Int
+  shippingCents      Int
+  platformFeeCents   Int
+  totalCents         Int
+  status             String    @default("PENDING_PAYMENT")
+  shippingAddress    String // JSON snapshot
+  listingSnapshot    String // JSON snapshot of title/grade/image at purchase time
+  carrier            String?
+  trackingNumber     String?
+  paymentRef         String?
+  returnWindowDays   Int
+  paidAt             DateTime?
+  shippedAt          DateTime?
+  deliveredAt        DateTime?
+  completedAt        DateTime?
+  cancelledAt        DateTime?
+  refundedAt         DateTime?
+  refundCents        Int       @default(0)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  buyer         User           @relation("BuyerOrders", fields: [buyerId], references: [id])
+  seller        SellerProfile  @relation("SellerOrders", fields: [sellerId], references: [id])
+  listing       Listing        @relation(fields: [listingId], references: [id])
+  events        OrderEvent[]
+  returnRequest ReturnRequest?
+  dispute       Dispute?
+  review        Review?
+
+  @@index([buyerId, createdAt])
+  @@index([sellerId, createdAt])
+  @@index([status, updatedAt])
+  @@index([listingId])
+}
+
+model OrderEvent {
+  id        String   @id @default(cuid())
+  orderId   String
+  type      String
+  message   String
+  actorId   String?
+  createdAt DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, createdAt])
+}
+
+model ReturnRequest {
+  id             String   @id @default(cuid())
+  orderId        String   @unique
+  reason         String // NOT_AS_DESCRIBED | DAMAGED | CHANGED_MIND | DEFECTIVE | OTHER
+  details        String
+  status         String   @default("REQUESTED") // REQUESTED | APPROVED | REJECTED | SHIPPED_BACK | RECEIVED | REFUNDED
+  sellerNote     String?
+  returnCarrier  String?
+  returnTracking String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model Dispute {
+  id           String    @id @default(cuid())
+  orderId      String    @unique
+  openedById   String
+  reason       String // NOT_RECEIVED | NOT_AS_DESCRIBED | DAMAGED | COUNTERFEIT | RETURN_ISSUE | OTHER
+  description  String
+  status       String    @default("OPEN") // OPEN | UNDER_REVIEW | RESOLVED
+  resolution   String? // REFUND_BUYER | PARTIAL_REFUND | RELEASE_TO_SELLER
+  resolutionNote String?
+  refundCents  Int       @default(0)
+  resolvedById String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  resolvedAt   DateTime?
+
+  order    Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  openedBy User             @relation("DisputeOpener", fields: [openedById], references: [id])
+  messages DisputeMessage[]
+
+  @@index([status, createdAt])
+}
+
+model DisputeMessage {
+  id        String   @id @default(cuid())
+  disputeId String
+  authorId  String
+  authorRole String // BUYER | SELLER | ADMIN
+  body      String
+  createdAt DateTime @default(now())
+
+  dispute Dispute @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+  author  User    @relation(fields: [authorId], references: [id])
+
+  @@index([disputeId, createdAt])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  orderId   String   @unique
+  sellerId  String
+  buyerId   String
+  rating    Int
+  comment   String   @default("")
+  createdAt DateTime @default(now())
+
+  order  Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  seller SellerProfile @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  buyer  User          @relation("ReviewBuyer", fields: [buyerId], references: [id], onDelete: Cascade)
+
+  @@index([sellerId, createdAt])
+}
+
+model Favorite {
+  userId    String
+  listingId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@id([userId, listingId])
+  @@index([listingId])
+}
+
+model RateLimit {
+  key     String   @id
+  count   Int
+  resetAt DateTime
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  action    String
+  entity    String
+  entityId  String
+  meta      String   @default("{}")
+  ip        String?
+  createdAt DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+}

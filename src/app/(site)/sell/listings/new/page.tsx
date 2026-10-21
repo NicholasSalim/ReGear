@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { requireSeller } from "@/lib/auth/dal";
 import { PageHeader } from "@/components/ui";
-import { EMPTY_LISTING, ListingForm } from "../listing-form";
+import { ListingForm } from "../listing-form";
+import { EMPTY_LISTING } from "../listing-form-values";
 
 export const metadata: Metadata = { title: "New listing" };
 

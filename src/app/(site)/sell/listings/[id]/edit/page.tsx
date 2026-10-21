@@ -5,7 +5,8 @@ import { requireSeller } from "@/lib/auth/dal";
 import { mediaUrl } from "@/lib/media";
 import type { ConditionCheckEntry } from "@/lib/condition";
 import { EmptyState, PageHeader } from "@/components/ui";
-import { ListingForm, type ListingFormValues } from "../../listing-form";
+import { ListingForm } from "../../listing-form";
+import type { ListingFormValues } from "../../listing-form-values";
 
 export const metadata: Metadata = { title: "Edit listing" };
 

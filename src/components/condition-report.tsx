@@ -1,6 +1,6 @@
 import { BatteryMedium, PackageOpen, ScanLine } from "lucide-react";
 import { getCategory, formatSpecValue } from "@/lib/catalog";
-import { batteryLabel, countIssues } from "@/lib/condition";
+import { batteryLabel, countIssues, isCustomCheck } from "@/lib/condition";
 import { CHECK_STATUS_INFO, GRADE_INFO, type CheckStatus, type ConditionGrade } from "@/lib/constants";
 import type { ListingDetail } from "@/lib/data/catalog";
 import { GradeBadge } from "@/components/badges";
@@ -31,7 +31,7 @@ export function ConditionReportView({ listing }: { listing: ListingDetail }) {
         <GradeBadge grade={listing.conditionGrade} className="px-2 py-1 text-sm" />
       </div>
       <div className="mt-5">
-        <ConditionStrip checks={report.checks.map((c) => ({ ...c, label: labelFor.get(c.key) }))} size="md" />
+        <ConditionStrip checks={report.checks.map((c) => ({ ...c, label: c.label ?? labelFor.get(c.key) }))} size="md" />
         <p className="mt-2 text-sm text-slate-600">{stripLabel(report.checks)}</p>
       </div>
 
@@ -59,7 +59,10 @@ export function ConditionReportView({ listing }: { listing: ListingDetail }) {
           <li key={c.key} className="flex items-start gap-3 px-4 py-2.5 text-sm">
             <span className="mt-1.5">{STATUS_ICON[c.status]}</span>
             <span className="flex-1">
-              <span className="font-medium text-ink">{labelFor.get(c.key) ?? c.key}</span>
+              <span className="font-medium text-ink">{c.label ?? labelFor.get(c.key) ?? c.key}</span>
+              {isCustomCheck(c.key) && (
+                <span className="ml-2 rounded-[var(--radius-tag)] bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600">Added by seller</span>
+              )}
               {c.note && <span className="block text-slate-600">{c.note}</span>}
             </span>
             <span className={`text-xs font-medium ${CHECK_STATUS_INFO[c.status].tone}`}>{CHECK_STATUS_INFO[c.status].label}</span>

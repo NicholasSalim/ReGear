@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { applicableChecks, getCategory, needsBattery, CATEGORY_SLUGS } from "@/lib/catalog";
+import { isCustomCheck, MAX_CUSTOM_CHECKS } from "@/lib/condition";
 import {
   CARRIERS,
   CHECK_STATUSES,
@@ -96,6 +97,7 @@ export const conditionCheckSchema = z.object({
   key: z.string().max(40),
   status: z.enum(CHECK_STATUSES),
   note: text(0, 200).optional(),
+  label: text(0, 60).optional(),
 });
 
 export const listingBaseSchema = z.object({
@@ -164,11 +166,25 @@ export const listingSchema = listingBaseSchema.superRefine((data, ctx) => {
   }
   data.specs = cleanSpecs;
 
-  // Sellers choose which of the checks that apply to this device to include.
+  // Sellers choose which of the checks that apply to this device to include,
+  // and may add up to MAX_CUSTOM_CHECKS of their own (named) checks after them.
   // Ratings for checks that don't apply are dropped; at least one must remain.
   const applicable = applicableChecks(category, cleanSpecs);
   const provided = new Map(data.checks.map((c) => [c.key, c]));
-  data.checks = applicable.flatMap((c) => provided.get(c.key) ?? []);
+  const standard = applicable.flatMap((c) => {
+    const entry = provided.get(c.key);
+    return entry ? [{ key: entry.key, status: entry.status, ...(entry.note ? { note: entry.note } : {}) }] : [];
+  });
+  const custom = [...provided.values()].filter((c) => isCustomCheck(c.key));
+  if (custom.length > MAX_CUSTOM_CHECKS) {
+    ctx.addIssue({ code: "custom", path: ["checks"], message: `Add at most ${MAX_CUSTOM_CHECKS} checks of your own` });
+  }
+  for (const c of custom) {
+    if (!c.label || c.label.length < 3) {
+      ctx.addIssue({ code: "custom", path: ["checks", c.key], message: "Name this check (at least 3 characters)" });
+    }
+  }
+  data.checks = [...standard, ...custom];
   if (data.checks.length === 0) {
     ctx.addIssue({ code: "custom", path: ["checks"], message: "Include at least one check in the condition report" });
   }

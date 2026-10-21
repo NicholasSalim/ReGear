@@ -1,6 +1,10 @@
 import type { CheckStatus } from "@/lib/constants";
 
-export type ConditionCheckEntry = { key: string; status: CheckStatus; note?: string };
+/** A rated check. Seller-added checks have a "custom-" key and carry their own label. */
+export type ConditionCheckEntry = { key: string; status: CheckStatus; note?: string; label?: string };
+
+export const MAX_CUSTOM_CHECKS = 5;
+export const isCustomCheck = (key: string) => key.startsWith("custom-");
 
 /**
  * Functional score (0-100) derived from the checklist so buyers can compare

@@ -118,7 +118,7 @@ function InspectionSheet({ listing }: { listing: ListingDetail }) {
   const report = listing.conditionReport!;
   const category = getCategory(listing.category);
   const labels = new Map(category?.checks.map((c) => [c.key, c.label]));
-  const checks = report.checks.map((c) => ({ ...c, label: labels.get(c.key) ?? c.key }));
+  const checks = report.checks.map((c) => ({ ...c, label: c.label ?? labels.get(c.key) ?? c.key }));
   const s = summarizeChecks(checks);
   const flagged = checks.filter((c) => c.status === "MINOR" || c.status === "FAIL");
   const shown = [...flagged, ...checks.filter((c) => c.status === "PASS")].slice(0, 5);

@@ -6,7 +6,7 @@ import { useMemo, useRef, useState, useTransition } from "react";
 import { ArrowLeft, ArrowRight, ImagePlus, Loader2, X } from "lucide-react";
 import { saveListingAction } from "@/actions/listings";
 import { applicableChecks, CATEGORIES, getCategory, needsBattery } from "@/lib/catalog";
-import { functionalScore, type ConditionCheckEntry } from "@/lib/condition";
+import { functionalScore, isCustomCheck, MAX_CUSTOM_CHECKS, type ConditionCheckEntry } from "@/lib/condition";
 import {
   CHECK_STATUS_INFO,
   CHECK_STATUSES,
@@ -37,7 +37,10 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
     [applicable, v.checks],
   );
   // Sellers untick checks they can't show; those stay out of the report.
-  const included = checks.filter((c) => !v.excludedChecks.includes(c.key));
+  // They can also add their own named checks, which always go in.
+  const standardIncluded = checks.filter((c) => !v.excludedChecks.includes(c.key));
+  const custom = v.checks.filter((c) => isCustomCheck(c.key));
+  const included = [...standardIncluded, ...custom];
   const score = functionalScore(included);
   const hasBattery = needsBattery(category, v.specs);
   const typeField = category.specFields.find((f) => f.key === "type" || f.key === "componentType");
@@ -47,10 +50,14 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
   const setSpec = (key: string, value: string | boolean) => setV((prev) => ({ ...prev, specs: { ...prev.specs, [key]: value } }));
   // Keep ratings of checks that are currently hidden, in case the seller switches back.
   const setCheck = (key: string, patch: Partial<ConditionCheckEntry>) =>
-    setV((prev) => ({
-      ...prev,
-      checks: [...prev.checks.filter((c) => c.key !== key), { ...checks.find((c) => c.key === key)!, ...patch }],
-    }));
+    setV((prev) => {
+      const existing = prev.checks.find((c) => c.key === key);
+      if (existing) return { ...prev, checks: prev.checks.map((c) => (c.key === key ? { ...c, ...patch } : c)) };
+      return { ...prev, checks: [...prev.checks, { ...checks.find((c) => c.key === key)!, ...patch }] };
+    });
+  const addCustomCheck = () =>
+    setV((prev) => ({ ...prev, checks: [...prev.checks, { key: `custom-${Date.now().toString(36)}`, label: "", status: "PASS", note: "" }] }));
+  const removeCustomCheck = (key: string) => setV((prev) => ({ ...prev, checks: prev.checks.filter((c) => c.key !== key) }));
   const toggleCheck = (key: string, include: boolean) =>
     setV((prev) => ({
       ...prev,
@@ -115,7 +122,7 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
       specs: Object.fromEntries(category.specFields.map((f) => [f.key, v.specs[f.key] ?? ""])),
       batteryHealth: hasBattery && v.batteryHealth ? v.batteryHealth : null,
       cosmeticScore: v.cosmeticScore,
-      checks: included.map((c) => ({ key: c.key, status: c.status, note: c.note || undefined })),
+      checks: included.map((c) => ({ key: c.key, status: c.status, note: c.note || undefined, label: c.label?.trim() || undefined })),
       includedAccessories: v.includedAccessories.split(",").map((s) => s.trim()).filter(Boolean),
       knownIssues: v.knownIssues,
       serialVerified: v.serialVerified,
@@ -296,7 +303,7 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
         )}
         <p className="text-sm text-slate-600">
           Untick checks you can&apos;t show for this item. They are left out of the report buyers see.{" "}
-          <span className="text-slate-500">({included.length} of {checks.length} included)</span>
+          <span className="text-slate-500">({standardIncluded.length} of {checks.length} included)</span>
         </p>
         {err("checks") && <p className="text-xs font-medium text-rose-600">{err("checks")}</p>}
         <div className="overflow-hidden rounded-xl border border-slate-200">
@@ -352,8 +359,53 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
                   </tr>
                 );
               })}
+              {custom.map((c, i) => (
+                <tr key={c.key} className="align-top">
+                  <td className="p-3">
+                    <button type="button" aria-label={`Remove your check ${i + 1}`} className="mt-0.5 text-slate-400 hover:text-rose-600" onClick={() => removeCustomCheck(c.key)}>
+                      <X className="size-4" aria-hidden />
+                    </button>
+                  </td>
+                  <td className="p-3">
+                    <input
+                      aria-label={`Your check ${i + 1} name`}
+                      className="input py-1"
+                      placeholder="What did you check? e.g. Rotating bezel"
+                      value={c.label ?? ""}
+                      maxLength={60}
+                      onChange={(e) => setCheck(c.key, { label: e.target.value })}
+                    />
+                    <span className="mt-1 block text-xs text-slate-500">Added by you</span>
+                  </td>
+                  <td className="p-3">
+                    <select aria-label={`Your check ${i + 1} result`} className="input py-1" value={c.status} onChange={(e) => setCheck(c.key, { status: e.target.value as CheckStatus })}>
+                      {CHECK_STATUSES.map((s) => <option key={s} value={s}>{CHECK_STATUS_INFO[s].label}</option>)}
+                    </select>
+                  </td>
+                  <td className="p-3 sm:table-cell">
+                    <input
+                      aria-label={`Your check ${i + 1} notes`}
+                      className="input py-1"
+                      placeholder={c.status === "MINOR" || c.status === "FAIL" ? "Describe the issue (required)" : "Optional"}
+                      value={c.note ?? ""}
+                      maxLength={200}
+                      onChange={(e) => setCheck(c.key, { note: e.target.value })}
+                      aria-invalid={!!err(`checks.${c.key}`)}
+                    />
+                    {err(`checks.${c.key}`) && <p className="mt-1 text-xs text-rose-600">{err(`checks.${c.key}`)}</p>}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button type="button" variant="secondary" disabled={custom.length >= MAX_CUSTOM_CHECKS} onClick={addCustomCheck}>
+            Add your own check
+          </Button>
+          <span className="text-xs text-slate-500">
+            For anything the list above doesn&apos;t cover, up to {MAX_CUSTOM_CHECKS}. Buyers see these marked as added by the seller.
+          </span>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">

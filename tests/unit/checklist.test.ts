@@ -88,3 +88,54 @@ describe("listing validation with type-specific checklists", () => {
     expect(res.success && res.data.checks.some((c) => c.key === "pairing")).toBe(false);
   });
 });
+
+describe("seller-added checks", () => {
+  const base = getCategory("audio")!;
+  const dacChecks = applicableChecks(base, { type: "DAC / Amp" }).map((c) => ({ key: c.key, status: "PASS" as const }));
+  const listing = {
+    title: "FiiO K7 desktop DAC and amp",
+    category: "audio",
+    brand: "FiiO",
+    model: "K7",
+    description: "Desktop DAC and headphone amp, used on a desk at home for a year. Works perfectly.",
+    priceCents: "120",
+    shippingCents: "0",
+    location: "Jakarta",
+    conditionGrade: "EXCELLENT",
+    warrantyType: "NONE",
+    warrantyMonths: "0",
+    warrantyTerms: "",
+    returnWindowDays: "7",
+    specs: { type: "DAC / Amp", wireless: false },
+    batteryHealth: null,
+    cosmeticScore: "9",
+    includedAccessories: [],
+    knownIssues: "",
+    serialVerified: false,
+    originalBox: false,
+    imageIds: ["clx0000000000000000000000"],
+    publish: true,
+  };
+  const custom = (n: number, label = `Own check ${n}`) => ({ key: `custom-${n}`, label, status: "PASS" as const });
+
+  it("keeps named seller checks after the standard ones", () => {
+    const res = listingSchema.safeParse({ ...listing, checks: [custom(1, "Volume knob"), ...dacChecks] });
+    expect(res.success && res.data.checks.map((c) => c.key)).toEqual([...dacChecks.map((c) => c.key), "custom-1"]);
+    expect(res.success && res.data.checks.at(-1)?.label).toBe("Volume knob");
+  });
+
+  it("counts as the one required check on its own", () => {
+    expect(listingSchema.safeParse({ ...listing, checks: [custom(1)] }).success).toBe(true);
+  });
+
+  it("requires a name, allows at most five, and needs a note on issues", () => {
+    expect(listingSchema.safeParse({ ...listing, checks: [custom(1, "")] }).success).toBe(false);
+    expect(listingSchema.safeParse({ ...listing, checks: [1, 2, 3, 4, 5, 6].map((n) => custom(n)) }).success).toBe(false);
+    expect(listingSchema.safeParse({ ...listing, checks: [{ ...custom(1), status: "MINOR" }] }).success).toBe(false);
+  });
+
+  it("ignores labels sent for standard checks", () => {
+    const res = listingSchema.safeParse({ ...listing, checks: dacChecks.map((c) => ({ ...c, label: "Renamed" })) });
+    expect(res.success && res.data.checks.some((c) => "label" in c)).toBe(false);
+  });
+});

@@ -1,6 +1,10 @@
 // Category catalogue: each category defines the structured specification
 // fields sellers must fill in and the condition checklist an item is graded on.
 // Keeping this in code gives us type-safety and zero DB round-trips.
+// A check can apply only to some devices in a category (a lens has no shutter,
+// a wired DAC has no pairing); `when` decides that from the listing's specs.
+
+export type Specs = Readonly<Record<string, string | number | boolean | undefined>>;
 
 export type SpecField = {
   key: string;
@@ -12,14 +16,14 @@ export type SpecField = {
   placeholder?: string;
 };
 
-export type ConditionCheck = { key: string; label: string; hint?: string };
+export type ConditionCheck = { key: string; label: string; hint?: string; when?: (s: Specs) => boolean };
 
 export type Category = {
   slug: string;
   name: string;
   singular: string;
   description: string;
-  hasBattery: boolean;
+  hasBattery: boolean | ((s: Specs) => boolean);
   specFields: readonly SpecField[];
   checks: readonly ConditionCheck[];
 };
@@ -27,6 +31,16 @@ export type Category = {
 const COMMON_COSMETIC: ConditionCheck[] = [
   { key: "body", label: "Body / housing", hint: "Dents, cracks, scratches" },
 ];
+
+const isType =
+  (field: string, ...values: string[]) =>
+  (s: Specs) =>
+    values.includes(String(s[field] ?? ""));
+const isNotType =
+  (field: string, ...values: string[]) =>
+  (s: Specs) =>
+    s[field] !== undefined && s[field] !== "" && !values.includes(String(s[field]));
+const hasFeature = (field: string) => (s: Specs) => s[field] === true;
 
 export const CATEGORIES: readonly Category[] = [
   {
@@ -95,6 +109,7 @@ export const CATEGORIES: readonly Category[] = [
     description: "Used tablets and e-readers, graded with battery health and display checks.",
     hasBattery: true,
     specFields: [
+      { key: "type", label: "Type", type: "select", options: ["Tablet", "E-reader"], required: true },
       { key: "storage", label: "Storage", type: "number", unit: "GB", required: true },
       { key: "screenSize", label: "Screen size", type: "number", unit: "in" },
       { key: "chipset", label: "Chipset", type: "text" },
@@ -105,11 +120,12 @@ export const CATEGORIES: readonly Category[] = [
     checks: [
       { key: "screen", label: "Display & touch" },
       ...COMMON_COSMETIC,
-      { key: "cameras", label: "Cameras" },
-      { key: "audio", label: "Speakers & microphone" },
+      { key: "cameras", label: "Cameras", when: isType("type", "Tablet") },
+      { key: "audio", label: "Speakers & microphone", when: isType("type", "Tablet") },
       { key: "charging", label: "Charging port" },
       { key: "buttons", label: "Buttons" },
       { key: "connectivity", label: "Wi-Fi & Bluetooth" },
+      { key: "cellular", label: "Cellular", when: isType("connectivity", "Wi-Fi + Cellular") },
     ],
   },
   {
@@ -128,13 +144,15 @@ export const CATEGORIES: readonly Category[] = [
     ],
     checks: [
       { key: "sensor", label: "Sensor / optics", hint: "Dust, fungus, haze, scratches" },
-      { key: "shutter", label: "Shutter / aperture" },
-      { key: "autofocus", label: "Autofocus & stabilisation" },
-      { key: "mount", label: "Lens mount & contacts" },
-      { key: "screen", label: "LCD / viewfinder" },
-      { key: "controls", label: "Dials & buttons" },
+      { key: "shutter", label: "Shutter", when: isType("type", "Mirrorless", "DSLR", "Compact", "Film") },
+      { key: "aperture", label: "Aperture blades", hint: "Clean, dry, close smoothly", when: isType("type", "Lens") },
+      { key: "autofocus", label: "Autofocus & stabilisation", when: isNotType("type", "Action") },
+      { key: "mount", label: "Lens mount & contacts", when: isType("type", "Mirrorless", "DSLR", "Lens", "Film") },
+      { key: "rings", label: "Focus & zoom rings", when: isType("type", "Lens") },
+      { key: "screen", label: "LCD / viewfinder", when: isNotType("type", "Lens") },
+      { key: "controls", label: "Dials & buttons", when: isNotType("type", "Lens") },
       ...COMMON_COSMETIC,
-      { key: "battery", label: "Battery & door" },
+      { key: "battery", label: "Battery & door", when: isNotType("type", "Lens") },
     ],
   },
   {
@@ -154,10 +172,11 @@ export const CATEGORIES: readonly Category[] = [
     checks: [
       { key: "physical", label: "Physical condition", hint: "PCB, bent pins, damaged traces" },
       { key: "connectors", label: "Connectors / pins" },
-      { key: "fans", label: "Fans & cooling" },
-      { key: "stressTest", label: "Stress test (30 min+)" },
-      { key: "thermals", label: "Temperatures within spec" },
-      { key: "artifacts", label: "Errors / artifacting" },
+      { key: "fans", label: "Fans & cooling", when: isType("componentType", "GPU", "PSU", "Cooling", "Case") },
+      { key: "stressTest", label: "Stress test (30 min+)", when: isType("componentType", "GPU", "CPU", "RAM", "Motherboard", "PSU") },
+      { key: "thermals", label: "Temperatures within spec", when: isType("componentType", "GPU", "CPU", "Cooling") },
+      { key: "artifacts", label: "Errors / artifacting", when: isType("componentType", "GPU", "RAM") },
+      { key: "driveHealth", label: "Drive health (SMART)", hint: "Health %, reallocated sectors, hours", when: isType("componentType", "Storage") },
     ],
   },
   {
@@ -165,7 +184,7 @@ export const CATEGORIES: readonly Category[] = [
     name: "Audio",
     singular: "Audio device",
     description: "Headphones, earbuds, speakers and DACs with driver, battery and pairing checks.",
-    hasBattery: true,
+    hasBattery: hasFeature("wireless"),
     specFields: [
       { key: "type", label: "Type", type: "select", options: ["Over-ear", "On-ear", "In-ear", "Speaker", "DAC / Amp", "Other"], required: true },
       { key: "wireless", label: "Wireless", type: "boolean" },
@@ -173,11 +192,11 @@ export const CATEGORIES: readonly Category[] = [
       { key: "color", label: "Color", type: "text" },
     ],
     checks: [
-      { key: "drivers", label: "Drivers (left / right)" },
-      { key: "anc", label: "Noise cancelling" },
-      { key: "pairing", label: "Pairing & connectivity" },
-      { key: "charging", label: "Charging / case" },
-      { key: "padding", label: "Ear pads / tips" },
+      { key: "drivers", label: "Sound output (left / right)" },
+      { key: "anc", label: "Noise cancelling", when: hasFeature("anc") },
+      { key: "pairing", label: "Pairing & connectivity", when: hasFeature("wireless") },
+      { key: "charging", label: "Charging / case", when: hasFeature("wireless") },
+      { key: "padding", label: "Ear pads / tips", when: isType("type", "Over-ear", "On-ear", "In-ear") },
       ...COMMON_COSMETIC,
     ],
   },
@@ -188,17 +207,19 @@ export const CATEGORIES: readonly Category[] = [
     description: "Pre-owned consoles, handhelds and controllers — tested for drift, disc drives and storage.",
     hasBattery: false,
     specFields: [
+      { key: "type", label: "Type", type: "select", options: ["Home console", "Handheld / hybrid", "Controller"], required: true },
       { key: "platform", label: "Platform", type: "text", required: true, placeholder: "e.g. PlayStation 5" },
       { key: "edition", label: "Edition", type: "text", placeholder: "e.g. Digital / Disc" },
       { key: "storage", label: "Storage", type: "number", unit: "GB" },
       { key: "controllers", label: "Controllers included", type: "number" },
     ],
     checks: [
-      { key: "boots", label: "Powers on & boots" },
-      { key: "video", label: "Video output" },
-      { key: "drive", label: "Disc drive / cartridge slot" },
+      { key: "boots", label: "Powers on & boots", when: isNotType("type", "Controller") },
+      { key: "screen", label: "Display & touch", when: isType("type", "Handheld / hybrid") },
+      { key: "video", label: "Video output", when: isNotType("type", "Controller") },
+      { key: "drive", label: "Disc drive / cartridge slot", hint: "N/A for digital editions", when: isNotType("type", "Controller") },
       { key: "controllers", label: "Controllers (drift, buttons)" },
-      { key: "fans", label: "Fan noise" },
+      { key: "fans", label: "Fan noise", when: isNotType("type", "Controller") },
       { key: "ports", label: "Ports" },
       ...COMMON_COSMETIC,
     ],
@@ -207,23 +228,35 @@ export const CATEGORIES: readonly Category[] = [
     slug: "wearables",
     name: "Wearables",
     singular: "Wearable",
-    description: "Smartwatches and fitness trackers with battery health and sensor checks.",
+    description: "Smartwatches, fitness trackers and smart rings with battery health and sensor checks.",
     hasBattery: true,
     specFields: [
+      { key: "type", label: "Type", type: "select", options: ["Smartwatch", "Fitness tracker", "Smart ring"], required: true },
       { key: "caseSize", label: "Case size", type: "number", unit: "mm" },
       { key: "connectivity", label: "Connectivity", type: "select", options: ["GPS", "GPS + Cellular"] },
       { key: "material", label: "Case material", type: "text" },
       { key: "band", label: "Band included", type: "text" },
     ],
     checks: [
-      { key: "screen", label: "Display & touch" },
+      { key: "screen", label: "Display & touch", when: isNotType("type", "Smart ring") },
       { key: "sensors", label: "Heart-rate & health sensors" },
-      { key: "crown", label: "Crown & buttons" },
+      { key: "crown", label: "Crown & buttons", when: isNotType("type", "Smart ring") },
       { key: "charging", label: "Charging" },
+      { key: "cellular", label: "Cellular", when: isType("connectivity", "GPS + Cellular") },
       ...COMMON_COSMETIC,
     ],
   },
 ];
+
+/** The checks that apply to an item, given its specs (type, features). */
+export function applicableChecks(category: Category, specs: Specs): ConditionCheck[] {
+  return category.checks.filter((c) => !c.when || c.when(specs));
+}
+
+/** Whether battery health must be reported for this item. */
+export function needsBattery(category: Category, specs: Specs): boolean {
+  return typeof category.hasBattery === "function" ? category.hasBattery(specs) : category.hasBattery;
+}
 
 const BY_SLUG = new Map(CATEGORIES.map((c) => [c.slug, c]));
 

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { getCategory, CATEGORY_SLUGS } from "@/lib/catalog";
+import { applicableChecks, getCategory, needsBattery, CATEGORY_SLUGS } from "@/lib/catalog";
 import {
   CARRIERS,
   CHECK_STATUSES,
@@ -164,19 +164,22 @@ export const listingSchema = listingBaseSchema.superRefine((data, ctx) => {
   }
   data.specs = cleanSpecs;
 
-  const allowed = new Set(category.checks.map((c) => c.key));
+  // Only the checks that apply to this device are required; ratings for others are dropped.
+  const required = applicableChecks(category, cleanSpecs);
+  const allowed = new Set(required.map((c) => c.key));
   const provided = new Map(data.checks.filter((c) => allowed.has(c.key)).map((c) => [c.key, c]));
-  for (const check of category.checks) {
+  for (const check of required) {
     if (!provided.has(check.key)) {
       ctx.addIssue({ code: "custom", path: ["checks", check.key], message: `Rate "${check.label}"` });
     }
   }
-  data.checks = category.checks.map((c) => provided.get(c.key)!).filter(Boolean);
+  data.checks = required.map((c) => provided.get(c.key)!).filter(Boolean);
 
-  if (category.hasBattery && data.conditionGrade !== "FOR_PARTS" && !data.batteryHealth) {
-    ctx.addIssue({ code: "custom", path: ["batteryHealth"], message: "Battery health is required for this category" });
+  const hasBattery = needsBattery(category, cleanSpecs);
+  if (hasBattery && data.conditionGrade !== "FOR_PARTS" && !data.batteryHealth) {
+    ctx.addIssue({ code: "custom", path: ["batteryHealth"], message: "Battery health is required for this item" });
   }
-  if (!category.hasBattery) data.batteryHealth = null;
+  if (!hasBattery) data.batteryHealth = null;
 
   if (data.warrantyType === "NONE") {
     data.warrantyMonths = 0;

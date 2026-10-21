@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState, useTransition } from "react";
 import { ArrowLeft, ArrowRight, ImagePlus, Loader2, X } from "lucide-react";
 import { saveListingAction } from "@/actions/listings";
-import { CATEGORIES, getCategory } from "@/lib/catalog";
+import { applicableChecks, CATEGORIES, getCategory, needsBattery } from "@/lib/catalog";
 import { functionalScore, type ConditionCheckEntry } from "@/lib/condition";
 import {
   CHECK_STATUS_INFO,
@@ -30,16 +30,25 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
   const fileInput = useRef<HTMLInputElement>(null);
 
   const category = getCategory(v.category)!;
+  // The checklist follows the device type and features chosen in the specs.
+  const applicable = useMemo(() => applicableChecks(category, v.specs), [category, v.specs]);
   const checks = useMemo(
-    () => category.checks.map((c) => v.checks.find((x) => x.key === c.key) ?? { key: c.key, status: "PASS" as CheckStatus, note: "" }),
-    [category, v.checks],
+    () => applicable.map((c) => v.checks.find((x) => x.key === c.key) ?? { key: c.key, status: "PASS" as CheckStatus, note: "" }),
+    [applicable, v.checks],
   );
   const score = functionalScore(checks);
+  const hasBattery = needsBattery(category, v.specs);
+  const typeField = category.specFields.find((f) => f.key === "type" || f.key === "componentType");
+  const typeMissing = typeField !== undefined && !v.specs[typeField.key];
 
   const set = <K extends keyof ListingFormValues>(key: K, value: ListingFormValues[K]) => setV((prev) => ({ ...prev, [key]: value }));
   const setSpec = (key: string, value: string | boolean) => setV((prev) => ({ ...prev, specs: { ...prev.specs, [key]: value } }));
+  // Keep ratings of checks that are currently hidden, in case the seller switches back.
   const setCheck = (key: string, patch: Partial<ConditionCheckEntry>) =>
-    setV((prev) => ({ ...prev, checks: checks.map((c) => (c.key === key ? { ...c, ...patch } : c)) }));
+    setV((prev) => ({
+      ...prev,
+      checks: [...prev.checks.filter((c) => c.key !== key), { ...checks.find((c) => c.key === key)!, ...patch }],
+    }));
 
   async function uploadFiles(files: FileList | null) {
     if (!files) return;
@@ -97,7 +106,7 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
       warrantyTerms: v.warrantyTerms,
       returnWindowDays: v.returnWindowDays || "0",
       specs: Object.fromEntries(category.specFields.map((f) => [f.key, v.specs[f.key] ?? ""])),
-      batteryHealth: category.hasBattery && v.batteryHealth ? v.batteryHealth : null,
+      batteryHealth: hasBattery && v.batteryHealth ? v.batteryHealth : null,
       cosmeticScore: v.cosmeticScore,
       checks: checks.map((c) => ({ key: c.key, status: c.status, note: c.note || undefined })),
       includedAccessories: v.includedAccessories.split(",").map((s) => s.trim()).filter(Boolean),
@@ -259,7 +268,7 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
         </fieldset>
 
         <div className="grid gap-4 sm:grid-cols-3">
-          {category.hasBattery && (
+          {hasBattery && (
             <Field label="Battery health (%)" name="batteryHealth" error={err("batteryHealth")} hint="From Settings → Battery or a diagnostic tool.">
               <input id="batteryHealth" type="number" min={1} max={100} className="input" value={v.batteryHealth} onChange={(e) => set("batteryHealth", e.target.value)} />
             </Field>
@@ -273,6 +282,11 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
           </div>
         </div>
 
+        {typeMissing && (
+          <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
+            Choose a {typeField.label.toLowerCase()} under {category.singular.toLowerCase()} specifications to see its full checklist.
+          </p>
+        )}
         <div className="overflow-hidden rounded-xl border border-slate-200">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-left text-xs text-slate-500">
@@ -283,7 +297,7 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {category.checks.map((c) => {
+              {applicable.map((c) => {
                 const entry = checks.find((x) => x.key === c.key)!;
                 return (
                   <tr key={c.key} className="align-top">

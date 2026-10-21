@@ -82,17 +82,17 @@ export async function createOrder(buyerId: string, listingId: string, address: A
     const reserved = await tx.listing.updateMany({ where: { id: listingId, status: "ACTIVE" }, data: { status: "RESERVED" } });
     if (reserved.count !== 1) throw new DomainError("Someone just reserved this item.");
 
-    const fees = calculateFees(listing.priceCents, listing.shippingCents, PLATFORM_FEE_BPS);
+    const fees = calculateFees(listing.priceIdr, listing.shippingIdr, PLATFORM_FEE_BPS);
     const order = await tx.order.create({
       data: {
         number: generateOrderNumber(),
         buyerId,
         sellerId: listing.sellerId,
         listingId,
-        priceCents: listing.priceCents,
-        shippingCents: listing.shippingCents,
-        platformFeeCents: fees.platformFeeCents,
-        totalCents: fees.totalCents,
+        priceIdr: listing.priceIdr,
+        shippingIdr: listing.shippingIdr,
+        platformFeeIdr: fees.platformFeeIdr,
+        totalIdr: fees.totalIdr,
         returnWindowDays: listing.returnWindowDays,
         shippingAddress: JSON.stringify(address),
         listingSnapshot: JSON.stringify({
@@ -121,7 +121,7 @@ export async function payOrder(orderId: string, buyerId: string): Promise<Result
     throw new DomainError("The payment window expired and the item was released.");
   }
 
-  const charge = await payments.charge({ orderId, amountCents: order.totalCents, currency: currencyCode });
+  const charge = await payments.charge({ orderId, amountIdr: order.totalIdr, currency: currencyCode });
   return db.$transaction(async (tx) => {
     await setStatus(tx, orderId, "PENDING_PAYMENT", "PAID", { paidAt: new Date(), paymentRef: charge.ref });
     await addEvent(tx, orderId, "PAID", "Payment received and held securely by ReGear until you confirm the item.", buyerId);
@@ -143,12 +143,12 @@ export async function cancelOrder(orderId: string, userId: string, reason: strin
 
   let refundRef: string | null = null;
   if (order.status === "PAID" && order.paymentRef) {
-    refundRef = (await payments.refund({ ref: order.paymentRef, amountCents: order.totalCents })).ref;
+    refundRef = (await payments.refund({ ref: order.paymentRef, amountIdr: order.totalIdr })).ref;
   }
   return db.$transaction(async (tx) => {
     await setStatus(tx, orderId, order.status, "CANCELLED", {
       cancelledAt: new Date(),
-      ...(refundRef ? { refundCents: order.totalCents, refundedAt: new Date() } : {}),
+      ...(refundRef ? { refundIdr: order.totalIdr, refundedAt: new Date() } : {}),
     });
     await tx.listing.updateMany({ where: { id: order.listingId, status: "RESERVED" }, data: { status: "ACTIVE" } });
     const who = isBuyer ? "buyer" : "seller";
@@ -202,7 +202,7 @@ export async function confirmDelivery(orderId: string, buyerId: string | null): 
   });
 }
 
-async function completeInTx(tx: Tx, order: { id: string; status: string; listingId: string; sellerId: string; paymentRef: string | null; totalCents: number; platformFeeCents: number; refundCents: number }, actorId: string | null, message: string) {
+async function completeInTx(tx: Tx, order: { id: string; status: string; listingId: string; sellerId: string; paymentRef: string | null; totalIdr: number; platformFeeIdr: number; refundIdr: number }, actorId: string | null, message: string) {
   await setStatus(tx, order.id, order.status, "COMPLETED", { completedAt: new Date() });
   await tx.listing.update({ where: { id: order.listingId }, data: { status: "SOLD" } });
   await tx.sellerProfile.update({ where: { id: order.sellerId }, data: { salesCount: { increment: 1 } } });
@@ -219,7 +219,7 @@ export async function acceptOrder(orderId: string, buyerId: string): Promise<Res
   await payments.payout({
     orderId,
     sellerId: result.order.sellerId,
-    amountCents: result.order.totalCents - result.order.platformFeeCents,
+    amountIdr: result.order.totalIdr - result.order.platformFeeIdr,
   });
   return result.result;
 }
@@ -232,7 +232,7 @@ export async function autoCompleteOrder(orderId: string) {
     return o;
   });
   if (order) {
-    await payments.payout({ orderId, sellerId: order.sellerId, amountCents: order.totalCents - order.platformFeeCents });
+    await payments.payout({ orderId, sellerId: order.sellerId, amountIdr: order.totalIdr - order.platformFeeIdr });
   }
   return order ? tagsFor(order) : [];
 }
@@ -292,10 +292,10 @@ export async function receiveReturn(orderId: string, sellerUserId: string): Prom
   if (order.status !== "RETURN_IN_PROGRESS" || order.returnRequest?.status !== "SHIPPED_BACK") {
     throw new DomainError("This return has not been shipped back yet.");
   }
-  if (order.paymentRef) await payments.refund({ ref: order.paymentRef, amountCents: order.totalCents });
+  if (order.paymentRef) await payments.refund({ ref: order.paymentRef, amountIdr: order.totalIdr });
   return db.$transaction(async (tx) => {
     await tx.returnRequest.update({ where: { orderId }, data: { status: "REFUNDED" } });
-    await setStatus(tx, orderId, "RETURN_IN_PROGRESS", "REFUNDED", { refundedAt: new Date(), refundCents: order.totalCents });
+    await setStatus(tx, orderId, "RETURN_IN_PROGRESS", "REFUNDED", { refundedAt: new Date(), refundIdr: order.totalIdr });
     // Item is back with the seller; they must review it before relisting.
     await tx.listing.update({ where: { id: order.listingId }, data: { status: "DRAFT" } });
     await addEvent(tx, orderId, "REFUNDED", "Seller received the returned item. Full refund issued to the buyer.", sellerUserId);
@@ -335,7 +335,7 @@ export async function resolveDispute(
   adminId: string,
   resolution: "REFUND_BUYER" | "PARTIAL_REFUND" | "RELEASE_TO_SELLER",
   note: string,
-  partialCents = 0,
+  partialIdr = 0,
 ): Promise<Result> {
   const dispute = await db.dispute.findUnique({ where: { id: disputeId }, include: { order: true } });
   if (!dispute) throw new DomainError("Dispute not found");
@@ -343,35 +343,35 @@ export async function resolveDispute(
   const order = dispute.order;
   if (order.status !== "DISPUTED") throw new DomainError("Order is not in dispute");
 
-  let refundCents = 0;
-  if (resolution === "REFUND_BUYER") refundCents = order.totalCents;
+  let refundIdr = 0;
+  if (resolution === "REFUND_BUYER") refundIdr = order.totalIdr;
   if (resolution === "PARTIAL_REFUND") {
-    if (partialCents <= 0 || partialCents >= order.totalCents) {
+    if (partialIdr <= 0 || partialIdr >= order.totalIdr) {
       throw new DomainError("Partial refund must be greater than 0 and less than the order total.");
     }
-    refundCents = partialCents;
+    refundIdr = partialIdr;
   }
-  if (refundCents > 0 && order.paymentRef) await payments.refund({ ref: order.paymentRef, amountCents: refundCents });
+  if (refundIdr > 0 && order.paymentRef) await payments.refund({ ref: order.paymentRef, amountIdr: refundIdr });
   if (resolution !== "REFUND_BUYER") {
-    await payments.payout({ orderId: order.id, sellerId: order.sellerId, amountCents: order.totalCents - order.platformFeeCents - refundCents });
+    await payments.payout({ orderId: order.id, sellerId: order.sellerId, amountIdr: order.totalIdr - order.platformFeeIdr - refundIdr });
   }
 
   return db.$transaction(async (tx) => {
     await tx.dispute.update({
       where: { id: disputeId },
-      data: { status: "RESOLVED", resolution, resolutionNote: note, refundCents, resolvedById: adminId, resolvedAt: new Date() },
+      data: { status: "RESOLVED", resolution, resolutionNote: note, refundIdr, resolvedById: adminId, resolvedAt: new Date() },
     });
     await tx.disputeMessage.create({
       data: { disputeId, authorId: adminId, authorRole: "ADMIN", body: `Resolution: ${note}` },
     });
     if (resolution === "REFUND_BUYER") {
-      await setStatus(tx, order.id, "DISPUTED", "REFUNDED", { refundedAt: new Date(), refundCents });
+      await setStatus(tx, order.id, "DISPUTED", "REFUNDED", { refundedAt: new Date(), refundIdr });
       await tx.listing.update({ where: { id: order.listingId }, data: { status: "DRAFT" } });
       await addEvent(tx, order.id, "DISPUTE_RESOLVED", "Dispute resolved in the buyer's favour. Full refund issued.", adminId);
     } else {
       await setStatus(tx, order.id, "DISPUTED", "COMPLETED", {
         completedAt: new Date(),
-        ...(refundCents ? { refundCents, refundedAt: new Date() } : {}),
+        ...(refundIdr ? { refundIdr, refundedAt: new Date() } : {}),
       });
       await tx.listing.update({ where: { id: order.listingId }, data: { status: "SOLD" } });
       await tx.sellerProfile.update({ where: { id: order.sellerId }, data: { salesCount: { increment: 1 } } });

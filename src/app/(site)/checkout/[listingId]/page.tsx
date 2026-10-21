@@ -38,8 +38,8 @@ async function Checkout({ params }: { params: PageProps<"/checkout/[listingId]">
       slug: true,
       title: true,
       status: true,
-      priceCents: true,
-      shippingCents: true,
+      priceIdr: true,
+      shippingIdr: true,
       conditionGrade: true,
       returnWindowDays: true,
       images: { select: { key: true }, orderBy: { position: "asc" }, take: 1 },
@@ -71,9 +71,9 @@ async function Checkout({ params }: { params: PageProps<"/checkout/[listingId]">
           </div>
         </div>
         <dl className="space-y-2 border-t border-slate-100 pt-3">
-          <div className="flex justify-between"><dt className="text-slate-600">Item</dt><dd>{formatMoney(listing.priceCents)}</dd></div>
-          <div className="flex justify-between"><dt className="text-slate-600">Shipping</dt><dd>{listing.shippingCents ? formatMoney(listing.shippingCents) : "Free"}</dd></div>
-          <div className="flex justify-between border-t border-slate-100 pt-2 text-base font-bold"><dt>Total</dt><dd>{formatMoney(listing.priceCents + listing.shippingCents)}</dd></div>
+          <div className="flex justify-between"><dt className="text-slate-600">Item</dt><dd>{formatMoney(listing.priceIdr)}</dd></div>
+          <div className="flex justify-between"><dt className="text-slate-600">Shipping</dt><dd>{listing.shippingIdr ? formatMoney(listing.shippingIdr) : "Free"}</dd></div>
+          <div className="flex justify-between border-t border-slate-100 pt-2 text-base font-bold"><dt>Total</dt><dd>{formatMoney(listing.priceIdr + listing.shippingIdr)}</dd></div>
         </dl>
         <p className="flex gap-2 rounded-lg bg-brand-50 p-3 text-xs text-brand-900">
           <ShieldCheck className="size-4 shrink-0" aria-hidden />

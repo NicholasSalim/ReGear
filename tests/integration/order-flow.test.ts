@@ -45,8 +45,8 @@ async function fixture() {
       brand: "B",
       model: "M",
       description: "d",
-      priceCents: 10_000,
-      shippingCents: 500,
+      priceIdr: 10_000,
+      shippingIdr: 500,
       conditionGrade: "GOOD",
       returnWindowDays: 7,
       status: "ACTIVE",
@@ -72,8 +72,8 @@ describe("order lifecycle", () => {
 
     const order = await db.order.findUniqueOrThrow({ where: { id: orderId }, include: { events: true } });
     expect(order.status).toBe("COMPLETED");
-    expect(order.totalCents).toBe(10_500);
-    expect(order.platformFeeCents).toBe(500);
+    expect(order.totalIdr).toBe(10_500);
+    expect(order.platformFeeIdr).toBe(500);
     expect(order.events.map((e) => e.type)).toEqual(["CREATED", "PAID", "SHIPPED", "DELIVERED", "COMPLETED"]);
     expect((await db.listing.findUniqueOrThrow({ where: { id: f.listing.id } })).status).toBe("SOLD");
     expect((await db.sellerProfile.findUniqueOrThrow({ where: { id: f.seller.id } })).salesCount).toBe(1);
@@ -110,7 +110,7 @@ describe("order lifecycle", () => {
     await orders.cancelOrder(orderId, f.sellerUser.id, "Out of stock");
     const order = await db.order.findUniqueOrThrow({ where: { id: orderId } });
     expect(order.status).toBe("CANCELLED");
-    expect(order.refundCents).toBe(order.totalCents);
+    expect(order.refundIdr).toBe(order.totalIdr);
     expect((await db.listing.findUniqueOrThrow({ where: { id: f.listing.id } })).status).toBe("ACTIVE");
   });
 
@@ -151,7 +151,7 @@ describe("order lifecycle", () => {
 
     const order = await db.order.findUniqueOrThrow({ where: { id: orderId } });
     expect(order.status).toBe("COMPLETED");
-    expect(order.refundCents).toBe(2_500);
+    expect(order.refundIdr).toBe(2_500);
     expect((await db.dispute.findUniqueOrThrow({ where: { id: disputeId } })).status).toBe("RESOLVED");
   });
 

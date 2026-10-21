@@ -12,8 +12,8 @@ export default async function AdminOverviewPage() {
     db.listing.count({ where: { status: "ACTIVE" } }),
     db.verificationRequest.count({ where: { status: "PENDING" } }),
     db.dispute.count({ where: { status: { not: "RESOLVED" } } }),
-    db.order.aggregate({ where: { status: "COMPLETED" }, _sum: { totalCents: true } }),
-    db.order.aggregate({ where: { status: "COMPLETED" }, _sum: { platformFeeCents: true } }),
+    db.order.aggregate({ where: { status: "COMPLETED" }, _sum: { totalIdr: true } }),
+    db.order.aggregate({ where: { status: "COMPLETED" }, _sum: { platformFeeIdr: true } }),
     db.order.groupBy({ by: ["status"], _count: { _all: true } }),
   ]);
 
@@ -23,7 +23,7 @@ export default async function AdminOverviewPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard label="Users" value={users} hint={`${sellers} sellers`} />
         <StatCard label="Active listings" value={activeListings} />
-        <StatCard label="Completed GMV" value={formatMoney(gmv._sum.totalCents ?? 0)} hint={`${formatMoney(fees._sum.platformFeeCents ?? 0)} fees`} />
+        <StatCard label="Completed GMV" value={formatMoney(gmv._sum.totalIdr ?? 0)} hint={`${formatMoney(fees._sum.platformFeeIdr ?? 0)} fees`} />
         <Link href="/admin/verifications">
           <StatCard label="Pending verifications" value={pendingVerifications} hint="Open the review queue" />
         </Link>

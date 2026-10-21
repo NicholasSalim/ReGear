@@ -7,9 +7,9 @@ import { randomBytes } from "node:crypto";
 // (PaymentIntent with manual capture + webhook verification) in production.
 
 export interface PaymentProvider {
-  charge(input: { orderId: string; amountCents: number; currency: string }): Promise<{ ref: string }>;
-  refund(input: { ref: string; amountCents: number }): Promise<{ ref: string }>;
-  payout(input: { orderId: string; amountCents: number; sellerId: string }): Promise<{ ref: string }>;
+  charge(input: { orderId: string; amountIdr: number; currency: string }): Promise<{ ref: string }>;
+  refund(input: { ref: string; amountIdr: number }): Promise<{ ref: string }>;
+  payout(input: { orderId: string; amountIdr: number; sellerId: string }): Promise<{ ref: string }>;
 }
 
 const simulated: PaymentProvider = {

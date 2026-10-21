@@ -57,7 +57,7 @@ async function CompareTable({ searchParams }: { searchParams: PageProps<"/compar
   }
 
   const best = {
-    price: Math.min(...listings.map((l) => l.priceCents + l.shippingCents)),
+    price: Math.min(...listings.map((l) => l.priceIdr + l.shippingIdr)),
     functional: Math.max(...listings.map((l) => l.conditionReport?.functionalScore ?? 0)),
     cosmetic: Math.max(...listings.map((l) => l.conditionReport?.cosmeticScore ?? 0)),
     battery: Math.max(...listings.map((l) => l.conditionReport?.batteryHealth ?? 0)),
@@ -67,7 +67,7 @@ async function CompareTable({ searchParams }: { searchParams: PageProps<"/compar
 
   type Row = { label: string; render: (l: ListingDetail) => React.ReactNode; isBest?: (l: ListingDetail) => boolean };
   const rows: Row[] = [
-    { label: "Price + shipping", render: (l) => formatMoney(l.priceCents + l.shippingCents), isBest: (l) => l.priceCents + l.shippingCents === best.price },
+    { label: "Price + shipping", render: (l) => formatMoney(l.priceIdr + l.shippingIdr), isBest: (l) => l.priceIdr + l.shippingIdr === best.price },
     { label: "Condition grade", render: (l) => <GradeBadge grade={l.conditionGrade} /> },
     { label: "Functional score", render: (l) => `${l.conditionReport?.functionalScore ?? "—"}/100`, isBest: (l) => (l.conditionReport?.functionalScore ?? -1) === best.functional },
     { label: "Cosmetic score", render: (l) => `${l.conditionReport?.cosmeticScore ?? "—"}/10`, isBest: (l) => (l.conditionReport?.cosmeticScore ?? -1) === best.cosmetic },

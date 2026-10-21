@@ -64,9 +64,9 @@ export async function resolveDisputeAction(disputeId: string, _prev: ActionState
     const admin = await requireAdminStrict();
     idSchema.parse(disputeId);
     const data = disputeResolutionSchema.parse(formToObject(formData));
-    const res = await resolveDispute(disputeId, admin.id, data.resolution, data.note, data.refundCents ?? 0);
+    const res = await resolveDispute(disputeId, admin.id, data.resolution, data.note, data.refundIdr ?? 0);
     invalidate(res.tags);
-    await audit(admin.id, "dispute.resolve", "Dispute", disputeId, { resolution: data.resolution, refundCents: data.refundCents });
+    await audit(admin.id, "dispute.resolve", "Dispute", disputeId, { resolution: data.resolution, refundIdr: data.refundIdr });
     return { ok: true, message: "Dispute resolved." };
   });
 }

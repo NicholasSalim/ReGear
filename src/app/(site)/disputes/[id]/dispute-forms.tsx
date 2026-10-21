@@ -5,6 +5,7 @@ import type { ActionState } from "@/lib/action";
 import { DISPUTE_RESOLUTION_LABELS, DISPUTE_RESOLUTIONS } from "@/lib/constants";
 import { ActionForm, FormMessage, SubmitButton } from "@/components/forms";
 import { Field } from "@/components/ui";
+import { formatMoney } from "@/lib/format";
 
 type FormAction = (state: ActionState, formData: FormData) => Promise<ActionState>;
 
@@ -24,7 +25,7 @@ export function MessageForm({ action }: { action: FormAction }) {
   );
 }
 
-export function ResolveForm({ action, totalCents }: { action: FormAction; totalCents: number }) {
+export function ResolveForm({ action, totalIdr }: { action: FormAction; totalIdr: number }) {
   const [resolution, setResolution] = useState<string>("REFUND_BUYER");
   return (
     <ActionForm action={action} className="space-y-3">
@@ -41,8 +42,8 @@ export function ResolveForm({ action, totalCents }: { action: FormAction; totalC
             </select>
           </Field>
           {resolution === "PARTIAL_REFUND" && (
-            <Field label="Refund amount" name="refundCents" error={s.fieldErrors?.refundCents} hint={`Less than ${(totalCents / 100).toFixed(2)}`}>
-              <input id="refundCents" name="refundCents" type="number" step="0.01" min="0.01" className="input" />
+            <Field label="Refund amount" name="refundIdr" error={s.fieldErrors?.refundIdr} hint={`Less than ${formatMoney(totalIdr)}`}>
+              <input id="refundIdr" name="refundIdr" inputMode="numeric" placeholder="e.g. 500.000" className="input" />
             </Field>
           )}
           <Field label="Decision note (shared with both parties)" name="note" error={s.fieldErrors?.note}>

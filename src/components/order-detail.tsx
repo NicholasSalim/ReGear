@@ -113,7 +113,7 @@ export function OrderDetail({ order, now }: { order: OrderForUser; now: Date }) 
                     Complete payment to secure this item. Your money is held in escrow until you accept the item.
                     <span className="block text-xs text-indigo-700">Demo mode: payments are simulated, no card is charged.</span>
                   </div>
-                  <ActionButton action={payOrderAction.bind(null, order.id)}>Pay {formatMoney(order.totalCents)}</ActionButton>
+                  <ActionButton action={payOrderAction.bind(null, order.id)}>Pay {formatMoney(order.totalIdr)}</ActionButton>
                 </>
               )}
               {(isBuyer || isSeller) && (s === "PENDING_PAYMENT" || s === "PAID") && (
@@ -155,7 +155,7 @@ export function OrderDetail({ order, now }: { order: OrderForUser; now: Date }) 
               {s === "COMPLETED" && <p className="text-sm text-slate-600">This order is complete.{order.review ? ` You rated the seller ${order.review.rating}★.` : ""}</p>}
               {(s === "CANCELLED" || s === "REFUNDED") && (
                 <p className="text-sm text-slate-600">
-                  This order is closed{order.refundCents ? `, ${formatMoney(order.refundCents)} refunded` : ""}.
+                  This order is closed{order.refundIdr ? `, ${formatMoney(order.refundIdr)} refunded` : ""}.
                 </p>
               )}
               {order.dispute && (
@@ -225,16 +225,16 @@ export function OrderDetail({ order, now }: { order: OrderForUser; now: Date }) 
           <section className="card p-5 text-sm" aria-labelledby="summary-heading">
             <h2 id="summary-heading" className="mb-3 font-bold">Summary</h2>
             <dl className="space-y-2">
-              <Row label="Item" value={formatMoney(order.priceCents)} />
-              <Row label="Shipping" value={order.shippingCents ? formatMoney(order.shippingCents) : "Free"} />
-              <Row label="Total paid" value={formatMoney(order.totalCents)} strong />
+              <Row label="Item" value={formatMoney(order.priceIdr)} />
+              <Row label="Shipping" value={order.shippingIdr ? formatMoney(order.shippingIdr) : "Free"} />
+              <Row label="Total paid" value={formatMoney(order.totalIdr)} strong />
               {!isBuyer && (
                 <>
-                  <Row label="ReGear fee (5%)" value={`−${formatMoney(order.platformFeeCents)}`} />
-                  <Row label="Seller payout" value={formatMoney(order.totalCents - order.platformFeeCents - order.refundCents)} strong />
+                  <Row label="ReGear fee (5%)" value={`−${formatMoney(order.platformFeeIdr)}`} />
+                  <Row label="Seller payout" value={formatMoney(order.totalIdr - order.platformFeeIdr - order.refundIdr)} strong />
                 </>
               )}
-              {order.refundCents > 0 && <Row label="Refunded" value={formatMoney(order.refundCents)} />}
+              {order.refundIdr > 0 && <Row label="Refunded" value={formatMoney(order.refundIdr)} />}
             </dl>
           </section>
           {order.trackingNumber && (

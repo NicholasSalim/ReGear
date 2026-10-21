@@ -23,7 +23,7 @@ export default async function AdminListingsPage({ searchParams }: PageProps<"/ad
       slug: true,
       title: true,
       status: true,
-      priceCents: true,
+      priceIdr: true,
       createdAt: true,
       seller: { select: { displayName: true, verificationStatus: true } },
     },
@@ -42,7 +42,7 @@ export default async function AdminListingsPage({ searchParams }: PageProps<"/ad
             <div className="min-w-0 flex-1">
               <Link href={`/listings/${l.slug}`} className="font-medium hover:text-brand-700">{l.title}</Link>
               <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                <ListingStatusBadge status={l.status} /> <span className="num">{formatMoney(l.priceCents)}</span> {l.seller.displayName}
+                <ListingStatusBadge status={l.status} /> <span className="num">{formatMoney(l.priceIdr)}</span> {l.seller.displayName}
                 <VerifiedBadge status={l.seller.verificationStatus} compact /> <span>{formatDate(l.createdAt)}</span>
               </p>
             </div>

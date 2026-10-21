@@ -139,7 +139,7 @@ function InspectionSheet({ listing }: { listing: ListingDetail }) {
             <p className="mt-0.5 leading-snug font-semibold text-ink">{listing.title}</p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <GradeBadge grade={listing.conditionGrade} />
-              <span className="num text-sm font-bold">{formatMoney(listing.priceCents)}</span>
+              <span className="num text-sm font-bold">{formatMoney(listing.priceIdr)}</span>
               <VerifiedBadge status={listing.seller.verificationStatus} />
             </div>
           </div>

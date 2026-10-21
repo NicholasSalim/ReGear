@@ -52,7 +52,7 @@ async function Dispute({ params }: { params: PageProps<"/disputes/[id]">["params
 
         {closed && dispute.resolution && (
           <div className="rounded-xl bg-brand-50 p-4 text-sm text-brand-900">
-            <p className="font-semibold">Resolved: {DISPUTE_RESOLUTION_LABELS[dispute.resolution as keyof typeof DISPUTE_RESOLUTION_LABELS]}{dispute.refundCents ? ` (${formatMoney(dispute.refundCents)})` : ""}</p>
+            <p className="font-semibold">Resolved: {DISPUTE_RESOLUTION_LABELS[dispute.resolution as keyof typeof DISPUTE_RESOLUTION_LABELS]}{dispute.refundIdr ? ` (${formatMoney(dispute.refundIdr)})` : ""}</p>
             {dispute.resolutionNote && <p className="mt-1">{dispute.resolutionNote}</p>}
           </div>
         )}
@@ -78,7 +78,7 @@ async function Dispute({ params }: { params: PageProps<"/disputes/[id]">["params
           <h2 className="font-bold">Case details</h2>
           <p>Status: <strong>{dispute.status.replace("_", " ").toLowerCase()}</strong></p>
           <p className="flex items-center gap-2">Order: <OrderStatusBadge status={dispute.order.status} /></p>
-          <p>Total: {formatMoney(dispute.order.totalCents)}</p>
+          <p>Total: {formatMoney(dispute.order.totalIdr)}</p>
           <p>Buyer: {dispute.order.buyer.name}</p>
           <p>Seller: {dispute.order.seller.displayName}</p>
           {dispute.order.trackingNumber && <p>Tracking: {dispute.order.carrier} <span className="num font-semibold">{dispute.order.trackingNumber}</span></p>}
@@ -87,7 +87,7 @@ async function Dispute({ params }: { params: PageProps<"/disputes/[id]">["params
           <div className="card space-y-4 p-5">
             <h2 className="font-bold">Admin</h2>
             {dispute.status === "OPEN" && <ActionButton action={markDisputeUnderReviewAction.bind(null, dispute.id)} variant="secondary">Mark under review</ActionButton>}
-            <ResolveForm action={resolveDisputeAction.bind(null, dispute.id)} totalCents={dispute.order.totalCents} />
+            <ResolveForm action={resolveDisputeAction.bind(null, dispute.id)} totalIdr={dispute.order.totalIdr} />
           </div>
         )}
         <p className="text-xs text-slate-500">

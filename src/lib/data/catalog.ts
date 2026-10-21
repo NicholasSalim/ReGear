@@ -19,8 +19,8 @@ const cardSelect = {
   title: true,
   category: true,
   brand: true,
-  priceCents: true,
-  originalPriceCents: true,
+  priceIdr: true,
+  originalPriceIdr: true,
   conditionGrade: true,
   warrantyType: true,
   warrantyMonths: true,
@@ -39,9 +39,9 @@ function browseWhere(p: BrowseParams): Prisma.ListingWhereInput {
   if (p.grade.length) where.conditionGrade = { in: p.grade };
   if (p.brand) where.brand = p.brand;
   if (p.min !== undefined || p.max !== undefined) {
-    where.priceCents = {
-      ...(p.min !== undefined ? { gte: Math.round(p.min * 100) } : {}),
-      ...(p.max !== undefined ? { lte: Math.round(p.max * 100) } : {}),
+    where.priceIdr = {
+      ...(p.min !== undefined ? { gte: p.min } : {}),
+      ...(p.max !== undefined ? { lte: p.max } : {}),
     };
   }
   if (p.verified) where.seller = { verificationStatus: "VERIFIED" };
@@ -56,9 +56,9 @@ function browseWhere(p: BrowseParams): Prisma.ListingWhereInput {
 function browseOrder(sort: BrowseParams["sort"]): Prisma.ListingOrderByWithRelationInput[] {
   switch (sort) {
     case "price_asc":
-      return [{ priceCents: "asc" }, { id: "asc" }];
+      return [{ priceIdr: "asc" }, { id: "asc" }];
     case "price_desc":
-      return [{ priceCents: "desc" }, { id: "asc" }];
+      return [{ priceIdr: "desc" }, { id: "asc" }];
     case "best_condition":
       return [{ gradeRank: "asc" }, { publishedAt: "desc" }];
     default:
@@ -139,9 +139,9 @@ const detailSelect = {
   brand: true,
   model: true,
   description: true,
-  priceCents: true,
-  originalPriceCents: true,
-  shippingCents: true,
+  priceIdr: true,
+  originalPriceIdr: true,
+  shippingIdr: true,
   conditionGrade: true,
   specs: true,
   warrantyType: true,

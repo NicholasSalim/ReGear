@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getCategory } from "@/lib/catalog";
-import { browseSchema, listingSchema, registerSchema } from "@/lib/validation";
+import { browseSchema, listingSchema, parseRupiah, registerSchema } from "@/lib/validation";
 import { safeRedirectPath } from "@/lib/security/request";
 
 const phoneChecks = getCategory("phones")!.checks.map((c) => ({ key: c.key, status: "PASS" as const }));
@@ -11,9 +11,9 @@ const validListing = {
   brand: "Apple",
   model: "iPhone 13",
   description: "Well kept phone, used with a case and screen protector since day one.",
-  priceCents: "499.99",
-  originalPriceCents: null,
-  shippingCents: "0",
+  priceIdr: "7.999.000",
+  originalPriceIdr: null,
+  shippingIdr: "0",
   location: "Jakarta",
   conditionGrade: "EXCELLENT",
   warrantyType: "NONE",
@@ -37,7 +37,7 @@ describe("listing validation", () => {
     const res = listingSchema.safeParse(validListing);
     expect(res.success).toBe(true);
     if (!res.success) return;
-    expect(res.data.priceCents).toBe(49_999);
+    expect(res.data.priceIdr).toBe(7_999_000);
     expect(res.data.specs).toMatchObject({ storage: 128, simLock: "Unlocked", dualSim: false });
     expect(res.data.specs).not.toHaveProperty("unknownKey");
   });
@@ -104,5 +104,25 @@ describe("redirect safety", () => {
     expect(safeRedirectPath("/\\evil.com")).toBe("/");
     expect(safeRedirectPath("https://evil.com")).toBe("/");
     expect(safeRedirectPath(undefined, "/x")).toBe("/x");
+  });
+});
+
+describe("rupiah amounts", () => {
+  it("reads whole rupiah with or without digit grouping", () => {
+    for (const s of ["1500000", "1.500.000", "1,500,000", "Rp 1.500.000", "rp1.500.000"]) expect(parseRupiah(s)).toBe(1_500_000);
+    for (const s of ["1.5", "99.99", "1.50.000", "abc", "", "-5000"]) expect(parseRupiah(s)).toBeNull();
+  });
+
+  it("caps an item at Rp 200.000.000 and requires at least Rp 10.000", () => {
+    const price = (priceIdr: string) => listingSchema.safeParse({ ...validListing, priceIdr });
+    expect(price("200.000.000").success).toBe(true);
+    expect(price("200.000.001").success).toBe(false);
+    expect(price("9.999").success).toBe(false);
+    expect(price("150.000,50").success).toBe(false);
+    expect(listingSchema.safeParse({ ...validListing, shippingIdr: "5.000.001" }).success).toBe(false);
+  });
+
+  it("accepts grouped amounts in the price filter and ignores junk", () => {
+    expect(browseSchema.parse({ min: "1.000.000", max: "abc" })).toMatchObject({ min: 1_000_000, max: undefined });
   });
 });

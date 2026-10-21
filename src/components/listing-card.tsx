@@ -26,8 +26,8 @@ export function ListingCard({ listing, priority }: { listing: CardData; priority
   const cover = listing.images[0];
   const checks = parseChecks(listing.conditionReport?.checks);
   const discount =
-    listing.originalPriceCents && listing.originalPriceCents > listing.priceCents
-      ? Math.round((1 - listing.priceCents / listing.originalPriceCents) * 100)
+    listing.originalPriceIdr && listing.originalPriceIdr > listing.priceIdr
+      ? Math.round((1 - listing.priceIdr / listing.originalPriceIdr) * 100)
       : 0;
 
   return (
@@ -62,10 +62,10 @@ export function ListingCard({ listing, priority }: { listing: CardData; priority
         </h3>
         {checks.length > 0 && <p className="text-xs text-slate-500">{stripLabel(checks)}</p>}
         <div className="mt-auto flex items-baseline gap-2 pt-1">
-          <span className="num wide text-xl font-extrabold text-ink">{formatMoney(listing.priceCents)}</span>
-          {discount >= 5 && listing.originalPriceCents && (
+          <span className="num wide text-xl font-extrabold text-ink">{formatMoney(listing.priceIdr)}</span>
+          {discount >= 5 && listing.originalPriceIdr && (
             <span className="num text-xs text-slate-500">
-              <span className="line-through">{formatMoney(listing.originalPriceCents)}</span> new
+              <span className="line-through">{formatMoney(listing.originalPriceIdr)}</span> new
             </span>
           )}
         </div>

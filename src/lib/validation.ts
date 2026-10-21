@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { applicableChecks, getCategory, needsBattery, CATEGORY_SLUGS } from "@/lib/catalog";
 import { isCustomCheck, MAX_CUSTOM_CHECKS } from "@/lib/condition";
+import { formatMoney } from "@/lib/format";
 import {
   CARRIERS,
   CHECK_STATUSES,
@@ -9,6 +10,10 @@ import {
   DISPUTE_RESOLUTIONS,
   ID_TYPES,
   MAX_LISTING_IMAGES,
+  MAX_ORIGINAL_PRICE_IDR,
+  MAX_PRICE_IDR,
+  MAX_SHIPPING_IDR,
+  MIN_PRICE_IDR,
   RETURN_REASONS,
   WARRANTY_TYPES,
 } from "@/lib/constants";
@@ -36,14 +41,38 @@ export const password = z
 
 export const id = z.string().regex(/^[a-z0-9]{20,32}$/i, "Invalid id");
 
-/** Money entered as a decimal string ("1299.99") -> integer cents. */
-export const moneyCents = (opts: { min?: number; max?: number } = {}) =>
+/** Whole rupiah, with or without digit grouping: "1500000", "1.500.000", "1,500,000", "Rp 1.500.000". */
+export function parseRupiah(input: string): number | null {
+  const s = input.trim().replace(/^rp\.?\s*/i, "").replace(/\s/g, "");
+  return /^(\d{1,3}([.,]\d{3})+|\d+)$/.test(s) ? Number(s.replace(/[.,]/g, "")) : null;
+}
+
+/** A whole-rupiah amount between `min` (default 0) and `max`. */
+export const moneyIdr = (opts: { min?: number; max: number }) =>
   z
     .union([z.string(), z.number()])
-    .transform((v) => (typeof v === "number" ? v : Number(String(v).replace(/[,\s]/g, ""))))
-    .pipe(z.number().finite().nonnegative())
-    .transform((v) => Math.round(v * 100))
-    .pipe(z.number().int().min(opts.min ?? 0).max(opts.max ?? 100_000_000));
+    .transform((v, ctx) => {
+      const n = typeof v === "number" ? v : parseRupiah(v);
+      if (n === null || !Number.isInteger(n)) {
+        ctx.addIssue({ code: "custom", message: "Enter a whole rupiah amount, e.g. 1.500.000" });
+        return z.NEVER;
+      }
+      return n;
+    })
+    .pipe(
+      z
+        .number()
+        .min(opts.min ?? 0, `Minimum is ${formatMoney(opts.min ?? 0)}`)
+        .max(opts.max, `Maximum is ${formatMoney(opts.max)}`),
+    );
+
+/** Price filter from a GET form: accepts the same formats, ignores anything invalid. */
+const browsePrice = z
+  .string()
+  .optional()
+  .transform((v) => (v ? (parseRupiah(v) ?? undefined) : undefined))
+  .pipe(z.number().max(MAX_ORIGINAL_PRICE_IDR).optional())
+  .catch(undefined);
 
 const checkbox = z
   .union([z.literal("on"), z.literal("true"), z.literal("false"), z.boolean(), z.undefined(), z.null()])
@@ -106,9 +135,9 @@ export const listingBaseSchema = z.object({
   brand: text(1, 40),
   model: text(1, 80),
   description: text(30, 5000),
-  priceCents: moneyCents({ min: 100 }),
-  originalPriceCents: moneyCents().optional().nullable(),
-  shippingCents: moneyCents({ max: 100_000 }),
+  priceIdr: moneyIdr({ min: MIN_PRICE_IDR, max: MAX_PRICE_IDR }),
+  originalPriceIdr: moneyIdr({ max: MAX_ORIGINAL_PRICE_IDR }).optional().nullable(),
+  shippingIdr: moneyIdr({ max: MAX_SHIPPING_IDR }),
   location: text(2, 80),
   conditionGrade: z.enum(CONDITION_GRADES),
   warrantyType: z.enum(WARRANTY_TYPES),
@@ -214,7 +243,7 @@ export const listingSchema = listingBaseSchema.superRefine((data, ctx) => {
       ctx.addIssue({ code: "custom", path: ["checks", c.key], message: "Describe the issue" });
     }
   }
-  if (data.originalPriceCents && data.originalPriceCents <= data.priceCents) data.originalPriceCents = null;
+  if (data.originalPriceIdr && data.originalPriceIdr <= data.priceIdr) data.originalPriceIdr = null;
 });
 
 export type ListingInput = z.infer<typeof listingSchema>;
@@ -231,8 +260,8 @@ export const browseSchema = z.object({
     .optional()
     .transform((v) => (v === undefined ? [] : Array.isArray(v) ? v : [v]))
     .catch([]),
-  min: z.coerce.number().nonnegative().max(1_000_000).optional().catch(undefined),
-  max: z.coerce.number().nonnegative().max(1_000_000).optional().catch(undefined),
+  min: browsePrice,
+  max: browsePrice,
   brand: z.string().trim().max(40).optional().catch(undefined),
   verified: z
     .enum(["1"])
@@ -282,7 +311,7 @@ export const disputeMessageSchema = z.object({ body: text(2, 2000) });
 
 export const disputeResolutionSchema = z.object({
   resolution: z.enum(DISPUTE_RESOLUTIONS),
-  refundCents: moneyCents().optional(),
+  refundIdr: moneyIdr({ min: 1, max: MAX_PRICE_IDR + MAX_SHIPPING_IDR }).optional(),
   note: text(10, 2000),
 });
 

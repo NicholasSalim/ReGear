@@ -5,7 +5,7 @@ import { mediaUrl } from "@/lib/media";
 import type { OrderSnapshot } from "@/lib/data/orders";
 import { OrderStatusBadge } from "@/components/badges";
 
-type Row = { id: string; number: string; status: string; totalCents: number; createdAt: Date; snapshot: OrderSnapshot; counterpart?: string };
+type Row = { id: string; number: string; status: string; totalIdr: number; createdAt: Date; snapshot: OrderSnapshot; counterpart?: string };
 
 export function OrderList({ orders, basePath }: { orders: Row[]; basePath: string }) {
   return (
@@ -24,7 +24,7 @@ export function OrderList({ orders, basePath }: { orders: Row[]; basePath: strin
               </p>
             </div>
             <div className="flex flex-col items-end gap-1">
-              <span className="text-sm font-semibold">{formatMoney(o.totalCents)}</span>
+              <span className="text-sm font-semibold">{formatMoney(o.totalIdr)}</span>
               <OrderStatusBadge status={o.status} />
             </div>
           </Link>

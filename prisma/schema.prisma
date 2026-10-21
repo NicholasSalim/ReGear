@@ -2,7 +2,7 @@
 //
 // Status-like columns are plain strings validated by the application layer
 // (see src/lib/constants.ts) rather than database enums.
-// Money is always stored as integer minor units (cents).
+// Money is always stored as whole rupiah (IDR) in integer columns named *Idr.
 // Structured blobs (specs, checks, addresses, snapshots) are JSON strings
 // validated with zod on read and write.
 
@@ -110,31 +110,31 @@ model VerificationRequest {
 }
 
 model Listing {
-  id                 String    @id @default(cuid())
-  slug               String    @unique
-  sellerId           String
-  title              String
-  category           String
-  brand              String
-  model              String
-  description        String
-  priceCents         Int
-  originalPriceCents Int?
-  shippingCents      Int       @default(0)
-  conditionGrade     String // LIKE_NEW | EXCELLENT | GOOD | FAIR | FOR_PARTS
-  gradeRank          Int       @default(2) // 0 = LIKE_NEW ... 4 = FOR_PARTS, for sorting
-  specs              String    @default("{}") // JSON: Record<specKey, string|number|boolean>
-  warrantyType       String    @default("NONE") // NONE | SELLER | MANUFACTURER
-  warrantyMonths     Int       @default(0)
-  warrantyTerms      String    @default("")
-  returnWindowDays   Int       @default(7)
-  location           String    @default("")
-  status             String    @default("DRAFT") // DRAFT | ACTIVE | RESERVED | SOLD | REMOVED
-  searchText         String    @default("") // lower-cased denormalised search column
-  viewCount          Int       @default(0)
-  publishedAt        DateTime?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  id               String    @id @default(cuid())
+  slug             String    @unique
+  sellerId         String
+  title            String
+  category         String
+  brand            String
+  model            String
+  description      String
+  priceIdr         Int
+  originalPriceIdr Int?
+  shippingIdr      Int       @default(0)
+  conditionGrade   String // LIKE_NEW | EXCELLENT | GOOD | FAIR | FOR_PARTS
+  gradeRank        Int       @default(2) // 0 = LIKE_NEW ... 4 = FOR_PARTS, for sorting
+  specs            String    @default("{}") // JSON: Record<specKey, string|number|boolean>
+  warrantyType     String    @default("NONE") // NONE | SELLER | MANUFACTURER
+  warrantyMonths   Int       @default(0)
+  warrantyTerms    String    @default("")
+  returnWindowDays Int       @default(7)
+  location         String    @default("")
+  status           String    @default("DRAFT") // DRAFT | ACTIVE | RESERVED | SOLD | REMOVED
+  searchText       String    @default("") // lower-cased denormalised search column
+  viewCount        Int       @default(0)
+  publishedAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   seller          SellerProfile    @relation(fields: [sellerId], references: [id], onDelete: Cascade)
   images          Upload[]
@@ -143,7 +143,7 @@ model Listing {
   favorites       Favorite[]
 
   @@index([status, category, publishedAt])
-  @@index([status, priceCents])
+  @@index([status, priceIdr])
   @@index([status, gradeRank])
   @@index([status, brand])
   @@index([sellerId, status])
@@ -186,31 +186,31 @@ model Upload {
 }
 
 model Order {
-  id                 String    @id @default(cuid())
-  number             String    @unique
-  buyerId            String
-  sellerId           String
-  listingId          String
-  priceCents         Int
-  shippingCents      Int
-  platformFeeCents   Int
-  totalCents         Int
-  status             String    @default("PENDING_PAYMENT")
-  shippingAddress    String // JSON snapshot
-  listingSnapshot    String // JSON snapshot of title/grade/image at purchase time
-  carrier            String?
-  trackingNumber     String?
-  paymentRef         String?
-  returnWindowDays   Int
-  paidAt             DateTime?
-  shippedAt          DateTime?
-  deliveredAt        DateTime?
-  completedAt        DateTime?
-  cancelledAt        DateTime?
-  refundedAt         DateTime?
-  refundCents        Int       @default(0)
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  id               String    @id @default(cuid())
+  number           String    @unique
+  buyerId          String
+  sellerId         String
+  listingId        String
+  priceIdr         Int
+  shippingIdr      Int
+  platformFeeIdr   Int
+  totalIdr         Int
+  status           String    @default("PENDING_PAYMENT")
+  shippingAddress  String // JSON snapshot
+  listingSnapshot  String // JSON snapshot of title/grade/image at purchase time
+  carrier          String?
+  trackingNumber   String?
+  paymentRef       String?
+  returnWindowDays Int
+  paidAt           DateTime?
+  shippedAt        DateTime?
+  deliveredAt      DateTime?
+  completedAt      DateTime?
+  cancelledAt      DateTime?
+  refundedAt       DateTime?
+  refundIdr        Int       @default(0)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   buyer         User           @relation("BuyerOrders", fields: [buyerId], references: [id])
   seller        SellerProfile  @relation("SellerOrders", fields: [sellerId], references: [id])
@@ -255,19 +255,19 @@ model ReturnRequest {
 }
 
 model Dispute {
-  id           String    @id @default(cuid())
-  orderId      String    @unique
-  openedById   String
-  reason       String // NOT_RECEIVED | NOT_AS_DESCRIBED | DAMAGED | COUNTERFEIT | RETURN_ISSUE | OTHER
-  description  String
-  status       String    @default("OPEN") // OPEN | UNDER_REVIEW | RESOLVED
-  resolution   String? // REFUND_BUYER | PARTIAL_REFUND | RELEASE_TO_SELLER
+  id             String    @id @default(cuid())
+  orderId        String    @unique
+  openedById     String
+  reason         String // NOT_RECEIVED | NOT_AS_DESCRIBED | DAMAGED | COUNTERFEIT | RETURN_ISSUE | OTHER
+  description    String
+  status         String    @default("OPEN") // OPEN | UNDER_REVIEW | RESOLVED
+  resolution     String? // REFUND_BUYER | PARTIAL_REFUND | RELEASE_TO_SELLER
   resolutionNote String?
-  refundCents  Int       @default(0)
-  resolvedById String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  resolvedAt   DateTime?
+  refundIdr      Int       @default(0)
+  resolvedById   String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  resolvedAt     DateTime?
 
   order    Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
   openedBy User             @relation("DisputeOpener", fields: [openedById], references: [id])
@@ -277,12 +277,12 @@ model Dispute {
 }
 
 model DisputeMessage {
-  id        String   @id @default(cuid())
-  disputeId String
-  authorId  String
+  id         String   @id @default(cuid())
+  disputeId  String
+  authorId   String
   authorRole String // BUYER | SELLER | ADMIN
-  body      String
-  createdAt DateTime @default(now())
+  body       String
+  createdAt  DateTime @default(now())
 
   dispute Dispute @relation(fields: [disputeId], references: [id], onDelete: Cascade)
   author  User    @relation(fields: [authorId], references: [id])

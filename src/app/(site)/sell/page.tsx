@@ -42,7 +42,7 @@ export default async function SellerDashboardPage() {
         <StatCard label="Active listings" value={d.listings.active} hint={`${d.listings.draft} drafts, ${d.listings.reserved} reserved`} />
         <StatCard label="To ship" value={d.orders.toShip} hint={`${d.orders.inTransit} in transit`} />
         <StatCard label="Completed sales" value={d.orders.completed} />
-        <StatCard label="Net earnings" value={formatMoney(d.earningsCents)} hint="After the 5% ReGear fee" />
+        <StatCard label="Net earnings" value={formatMoney(d.earningsIdr)} hint="After the 5% ReGear fee" />
       </div>
 
       <section className="mt-8">

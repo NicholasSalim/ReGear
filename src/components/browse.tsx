@@ -128,9 +128,9 @@ function Filters({
           <fieldset>
             <legend className="label">Price</legend>
             <div className="flex items-center gap-2">
-              <input name="min" type="number" min={0} step="1" inputMode="numeric" placeholder="Min" defaultValue={params.min ?? ""} className="input" aria-label="Minimum price" />
+              <input name="min" inputMode="numeric" placeholder="Min (Rp)" defaultValue={params.min ?? ""} className="input" aria-label="Minimum price" />
               <span className="text-slate-400">–</span>
-              <input name="max" type="number" min={0} step="1" inputMode="numeric" placeholder="Max" defaultValue={params.max ?? ""} className="input" aria-label="Maximum price" />
+              <input name="max" inputMode="numeric" placeholder="Max (Rp)" defaultValue={params.max ?? ""} className="input" aria-label="Maximum price" />
             </div>
           </fieldset>
 

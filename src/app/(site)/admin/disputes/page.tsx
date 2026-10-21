@@ -14,7 +14,7 @@ export default async function AdminDisputesPage() {
     orderBy: [{ status: "asc" }, { createdAt: "asc" }],
     take: 100,
     include: {
-      order: { select: { number: true, totalCents: true, buyer: { select: { name: true } }, seller: { select: { displayName: true } } } },
+      order: { select: { number: true, totalIdr: true, buyer: { select: { name: true } }, seller: { select: { displayName: true } } } },
       _count: { select: { messages: true } },
     },
   });
@@ -37,7 +37,7 @@ export default async function AdminDisputesPage() {
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold">{DISPUTE_REASON_LABELS[d.reason as keyof typeof DISPUTE_REASON_LABELS]}, order {d.order.number}</p>
                   <p className="text-xs text-slate-500">
-                    {d.order.buyer.name} vs {d.order.seller.displayName}, {formatMoney(d.order.totalCents)}, {d._count.messages} messages, opened {formatDateTime(d.createdAt)}
+                    {d.order.buyer.name} vs {d.order.seller.displayName}, {formatMoney(d.order.totalIdr)}, {d._count.messages} messages, opened {formatDateTime(d.createdAt)}
                   </p>
                 </div>
                 <Badge className={tone[d.status]}>{d.status.replace("_", " ").toLowerCase()}</Badge>

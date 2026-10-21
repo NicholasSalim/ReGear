@@ -13,11 +13,14 @@ import {
   CONDITION_GRADES,
   GRADE_INFO,
   MAX_LISTING_IMAGES,
+  MAX_PRICE_IDR,
+  MIN_PRICE_IDR,
   WARRANTY_INFO,
   WARRANTY_TYPES,
   type CheckStatus,
 } from "@/lib/constants";
 import { Button, Field } from "@/components/ui";
+import { formatMoney } from "@/lib/format";
 import type { ListingFormValues } from "./listing-form-values";
 
 export function ListingForm({ listingId, initial }: { listingId: string | null; initial: ListingFormValues }) {
@@ -110,9 +113,9 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
       brand: v.brand,
       model: v.model,
       description: v.description,
-      priceCents: v.price,
-      originalPriceCents: v.originalPrice || null,
-      shippingCents: v.shipping || "0",
+      priceIdr: v.price,
+      originalPriceIdr: v.originalPrice || null,
+      shippingIdr: v.shipping || "0",
       location: v.location,
       conditionGrade: v.conditionGrade,
       warrantyType: v.warrantyType,
@@ -432,14 +435,14 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
 
       <Section title="Price, warranty & returns">
         <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Price" name="price" error={err("priceCents")}>
-            <input id="price" type="number" min={1} step="0.01" inputMode="decimal" className="input" value={v.price} onChange={(e) => set("price", e.target.value)} />
+          <Field label="Price (Rp)" name="price" error={err("priceIdr")} hint={`${formatMoney(MIN_PRICE_IDR)} to ${formatMoney(MAX_PRICE_IDR)}`}>
+            <input id="price" inputMode="numeric" placeholder="e.g. 1.500.000" className="input" value={v.price} onChange={(e) => set("price", e.target.value)} />
           </Field>
-          <Field label="Original retail price (optional)" name="originalPrice" error={err("originalPriceCents")}>
-            <input id="originalPrice" type="number" min={0} step="0.01" inputMode="decimal" className="input" value={v.originalPrice} onChange={(e) => set("originalPrice", e.target.value)} />
+          <Field label="Original retail price (Rp, optional)" name="originalPrice" error={err("originalPriceIdr")}>
+            <input id="originalPrice" inputMode="numeric" className="input" value={v.originalPrice} onChange={(e) => set("originalPrice", e.target.value)} />
           </Field>
-          <Field label="Shipping cost" name="shipping" error={err("shippingCents")} hint="0 for free shipping">
-            <input id="shipping" type="number" min={0} step="0.01" inputMode="decimal" className="input" value={v.shipping} onChange={(e) => set("shipping", e.target.value)} />
+          <Field label="Shipping cost (Rp)" name="shipping" error={err("shippingIdr")} hint="0 for free shipping">
+            <input id="shipping" inputMode="numeric" className="input" value={v.shipping} onChange={(e) => set("shipping", e.target.value)} />
           </Field>
           <Field label="Warranty" name="warrantyType" error={err("warrantyType")}>
             <select id="warrantyType" className="input" value={v.warrantyType} onChange={(e) => set("warrantyType", e.target.value)}>

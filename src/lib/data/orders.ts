@@ -28,7 +28,7 @@ const listSelect = {
   id: true,
   number: true,
   status: true,
-  totalCents: true,
+  totalIdr: true,
   createdAt: true,
   listingSnapshot: true,
   trackingNumber: true,
@@ -48,7 +48,7 @@ export async function getBuyerOrders(userId: string) {
 export async function getSellerOrders(sellerId: string, status?: string) {
   const rows = await db.order.findMany({
     where: { sellerId, ...(status ? { status } : {}) },
-    select: { ...listSelect, platformFeeCents: true, buyer: { select: { name: true } } },
+    select: { ...listSelect, platformFeeIdr: true, buyer: { select: { name: true } } },
     orderBy: { createdAt: "desc" },
     take: 200,
   });
@@ -97,7 +97,7 @@ export async function getDisputeForUser(disputeId: string, user: CurrentUser) {
           id: true,
           number: true,
           status: true,
-          totalCents: true,
+          totalIdr: true,
           buyerId: true,
           listingSnapshot: true,
           trackingNumber: true,
@@ -127,8 +127,8 @@ export async function getFavorites(userId: string) {
           title: true,
           category: true,
           brand: true,
-          priceCents: true,
-          originalPriceCents: true,
+          priceIdr: true,
+          originalPriceIdr: true,
           conditionGrade: true,
           warrantyType: true,
           warrantyMonths: true,
@@ -148,7 +148,7 @@ export async function getSellerDashboard(sellerId: string) {
   const [listingCounts, orderCounts, revenue, needsAction] = await Promise.all([
     db.listing.groupBy({ by: ["status"], where: { sellerId }, _count: { _all: true } }),
     db.order.groupBy({ by: ["status"], where: { sellerId }, _count: { _all: true } }),
-    db.order.aggregate({ where: { sellerId, status: "COMPLETED" }, _sum: { totalCents: true, platformFeeCents: true, refundCents: true } }),
+    db.order.aggregate({ where: { sellerId, status: "COMPLETED" }, _sum: { totalIdr: true, platformFeeIdr: true, refundIdr: true } }),
     db.order.findMany({
       where: {
         sellerId,
@@ -163,7 +163,7 @@ export async function getSellerDashboard(sellerId: string) {
   return {
     listings: { active: count(listingCounts, "ACTIVE"), draft: count(listingCounts, "DRAFT"), sold: count(listingCounts, "SOLD"), reserved: count(listingCounts, "RESERVED") },
     orders: { toShip: count(orderCounts, "PAID"), inTransit: count(orderCounts, "SHIPPED"), completed: count(orderCounts, "COMPLETED") },
-    earningsCents: (revenue._sum.totalCents ?? 0) - (revenue._sum.platformFeeCents ?? 0) - (revenue._sum.refundCents ?? 0),
+    earningsIdr: (revenue._sum.totalIdr ?? 0) - (revenue._sum.platformFeeIdr ?? 0) - (revenue._sum.refundIdr ?? 0),
     needsAction: needsAction.map((o) => ({ ...o, snapshot: parse<OrderSnapshot>(o.listingSnapshot, {} as OrderSnapshot) })),
   };
 }

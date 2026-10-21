@@ -1,19 +1,21 @@
-const CURRENCY = process.env.NEXT_PUBLIC_CURRENCY ?? "USD";
 const LOCALE = process.env.NEXT_PUBLIC_LOCALE ?? "en-US";
 
-const money = new Intl.NumberFormat(LOCALE, { style: "currency", currency: CURRENCY });
+// All amounts are whole rupiah (IDR has no minor unit in practice), so the
+// currency is fixed: formatting another currency would show wrong amounts.
+export const currencyCode = "IDR";
+
+const money = new Intl.NumberFormat("id-ID", { style: "currency", currency: currencyCode, maximumFractionDigits: 0 });
 const dateFmt = new Intl.DateTimeFormat(LOCALE, { dateStyle: "medium" });
 const dateTimeFmt = new Intl.DateTimeFormat(LOCALE, { dateStyle: "medium", timeStyle: "short" });
 
-export const currencyCode = CURRENCY;
-
-export function formatMoney(cents: number): string {
-  return money.format(cents / 100);
+/** "Rp 1.500.000" */
+export function formatMoney(amountIdr: number): string {
+  return money.format(amountIdr);
 }
 
-/** Price string for structured data (schema.org expects a plain decimal). */
-export function centsToDecimal(cents: number): string {
-  return (cents / 100).toFixed(2);
+/** Amount in Indonesian digit grouping without the currency, for form fields: "1.500.000". */
+export function formatAmount(amountIdr: number): string {
+  return amountIdr.toLocaleString("id-ID", { maximumFractionDigits: 0 });
 }
 
 export function formatDate(d: Date | string): string {

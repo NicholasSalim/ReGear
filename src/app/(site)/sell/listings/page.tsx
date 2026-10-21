@@ -21,7 +21,7 @@ export default async function SellerListingsPage() {
       slug: true,
       title: true,
       status: true,
-      priceCents: true,
+      priceIdr: true,
       conditionGrade: true,
       viewCount: true,
       updatedAt: true,
@@ -57,7 +57,7 @@ export default async function SellerListingsPage() {
                 <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
                   <ListingStatusBadge status={l.status} />
                   <GradeBadge grade={l.conditionGrade} />
-                  <span>{formatMoney(l.priceCents)}</span>
+                  <span>{formatMoney(l.priceIdr)}</span>
                   <span>· {l._count.favorites} saves</span>
                   <span>· updated {formatDate(l.updatedAt)}</span>
                 </div>

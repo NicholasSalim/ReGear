@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { requireSeller } from "@/lib/auth/dal";
 import { mediaUrl } from "@/lib/media";
+import { formatAmount } from "@/lib/format";
 import { applicableChecks, getCategory } from "@/lib/catalog";
 import type { ConditionCheckEntry } from "@/lib/condition";
 import { EmptyState, PageHeader } from "@/components/ui";
@@ -11,7 +12,7 @@ import type { ListingFormValues } from "../../listing-form-values";
 
 export const metadata: Metadata = { title: "Edit listing" };
 
-const toMoney = (cents: number | null | undefined) => (cents == null ? "" : (cents / 100).toFixed(2));
+const toMoney = (amountIdr: number | null | undefined) => (amountIdr == null ? "" : formatAmount(amountIdr));
 
 export default async function EditListingPage({ params }: PageProps<"/sell/listings/[id]/edit">) {
   const { id } = await params;
@@ -41,9 +42,9 @@ export default async function EditListingPage({ params }: PageProps<"/sell/listi
     brand: listing.brand,
     model: listing.model,
     description: listing.description,
-    price: toMoney(listing.priceCents),
-    originalPrice: toMoney(listing.originalPriceCents),
-    shipping: toMoney(listing.shippingCents),
+    price: toMoney(listing.priceIdr),
+    originalPrice: toMoney(listing.originalPriceIdr),
+    shipping: toMoney(listing.shippingIdr),
     location: listing.location,
     conditionGrade: listing.conditionGrade,
     warrantyType: listing.warrantyType,

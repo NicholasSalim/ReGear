@@ -48,12 +48,12 @@ export function canOpenDispute(order: { status: string }): boolean {
   return canTransition(order.status, "DISPUTED");
 }
 
-export function calculateFees(priceCents: number, shippingCents: number, feeBps: number) {
-  const platformFeeCents = Math.round((priceCents * feeBps) / 10_000);
+export function calculateFees(priceIdr: number, shippingIdr: number, feeBps: number) {
+  const platformFeeIdr = Math.round((priceIdr * feeBps) / 10_000);
   return {
-    platformFeeCents,
-    totalCents: priceCents + shippingCents,
-    sellerPayoutCents: priceCents + shippingCents - platformFeeCents,
+    platformFeeIdr,
+    totalIdr: priceIdr + shippingIdr,
+    sellerPayoutIdr: priceIdr + shippingIdr - platformFeeIdr,
   };
 }
 

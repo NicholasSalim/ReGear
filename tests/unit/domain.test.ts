@@ -37,7 +37,7 @@ describe("order state machine", () => {
   });
 
   it("calculates fees in integer cents", () => {
-    expect(calculateFees(99_999, 900, 500)).toEqual({ platformFeeCents: 5000, totalCents: 100_899, sellerPayoutCents: 95_899 });
+    expect(calculateFees(99_999, 900, 500)).toEqual({ platformFeeIdr: 5000, totalIdr: 100_899, sellerPayoutIdr: 95_899 });
   });
 
   it("generates readable order numbers", () => {

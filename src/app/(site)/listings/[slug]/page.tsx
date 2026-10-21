@@ -8,7 +8,7 @@ import { getCurrentUser } from "@/lib/auth/dal";
 import { categoryName } from "@/lib/catalog";
 import { GRADE_INFO, type ConditionGrade } from "@/lib/constants";
 import { getPublicListing, getSimilarListings, type ListingDetail } from "@/lib/data/catalog";
-import { centsToDecimal, currencyCode, formatDate, formatMoney } from "@/lib/format";
+import { currencyCode, formatDate, formatMoney } from "@/lib/format";
 import { mediaUrl } from "@/lib/media";
 import { GradeBadge, Stars, VerifiedBadge, warrantyLabel } from "@/components/badges";
 import { ConditionReportView, SpecTable } from "@/components/condition-report";
@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: PageProps<"/listings/[slug]">
   const listing = await getPublicListing(slug);
   if (!listing) return { title: "Listing not found", robots: { index: false } };
   const grade = GRADE_INFO[listing.conditionGrade as ConditionGrade]?.label ?? "";
-  const description = `${grade} condition ${listing.brand} ${listing.model} for ${formatMoney(listing.priceCents)}. ${listing.description.slice(0, 120)}`;
+  const description = `${grade} condition ${listing.brand} ${listing.model} for ${formatMoney(listing.priceIdr)}. ${listing.description.slice(0, 120)}`;
   const image = listing.images[0];
   return {
     title: `${listing.title} — ${grade}`,
@@ -76,13 +76,13 @@ export default async function ListingPage({ params }: PageProps<"/listings/[slug
             </div>
             <h1 className="mt-2 text-xl font-bold leading-snug text-ink">{listing.title}</h1>
             <div className="mt-3 flex items-baseline gap-3">
-              <span className="text-3xl font-extrabold text-ink">{formatMoney(listing.priceCents)}</span>
-              {listing.originalPriceCents && (
-                <span className="text-sm text-slate-400 line-through">{formatMoney(listing.originalPriceCents)} new</span>
+              <span className="text-3xl font-extrabold text-ink">{formatMoney(listing.priceIdr)}</span>
+              {listing.originalPriceIdr && (
+                <span className="text-sm text-slate-400 line-through">{formatMoney(listing.originalPriceIdr)} new</span>
               )}
             </div>
             <p className="mt-1 text-sm text-slate-600">
-              {listing.shippingCents === 0 ? "Free shipping" : `+ ${formatMoney(listing.shippingCents)} shipping`}
+              {listing.shippingIdr === 0 ? "Free shipping" : `+ ${formatMoney(listing.shippingIdr)} shipping`}
             </p>
 
             <div className="mt-5 space-y-2">
@@ -227,7 +227,7 @@ function ProductJsonLd({ listing }: { listing: ListingDetail }) {
           offers: {
             "@type": "Offer",
             url,
-            price: centsToDecimal(listing.priceCents),
+            price: String(listing.priceIdr),
             priceCurrency: currencyCode,
             availability,
             itemCondition: "https://schema.org/UsedCondition",

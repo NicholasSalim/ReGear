@@ -142,6 +142,11 @@ export const CARRIERS = ["DHL", "FedEx", "UPS", "USPS", "JNE", "J&T", "SiCepat",
 
 // Business rules
 export const PLATFORM_FEE_BPS = 500; // 5% charged to the seller
+// Money limits, in whole rupiah.
+export const MIN_PRICE_IDR = 10_000;
+export const MAX_PRICE_IDR = 200_000_000;
+export const MAX_ORIGINAL_PRICE_IDR = 500_000_000; // reference only, may exceed the price cap
+export const MAX_SHIPPING_IDR = 5_000_000;
 export const PAYMENT_HOLD_MINUTES = 30; // unpaid orders release the listing after this
 export const AUTO_COMPLETE_DAYS_AFTER_DELIVERY_BUFFER = 2; // added to the return window
 export const MAX_LISTING_IMAGES = 10;

@@ -13,7 +13,7 @@ import { calculateFees, generateOrderNumber } from "../src/lib/orders/state";
 
 const db = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
 const STORAGE = path.resolve(process.env.STORAGE_DIR ?? "./storage");
-const DEMO_PASSWORD = "Password123";
+const DEMO_PASSWORD = "Gear-Demo-2026!";
 
 const GRADE_RANK: Record<ConditionGrade, number> = { LIKE_NEW: 0, EXCELLENT: 1, GOOD: 2, FAIR: 3, FOR_PARTS: 4 };
 const PALETTES = [

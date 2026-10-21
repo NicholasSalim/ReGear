@@ -46,7 +46,7 @@ npm run build && npm start
 
 ### Demo accounts
 
-All demo accounts use the password `Password123`.
+All demo accounts use the password `Gear-Demo-2026!`.
 
 | Role | Email |
 |---|---|

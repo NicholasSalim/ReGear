@@ -44,8 +44,8 @@ export function RegisterForm({ next }: { next?: string }) {
       <Field label="Email" name="email" error={state.fieldErrors?.email}>
         <input id="email" name="email" type="email" autoComplete="email" required className="input" aria-invalid={!!state.fieldErrors?.email} />
       </Field>
-      <Field label="Password" name="password" error={state.fieldErrors?.password} hint="At least 10 characters with a letter and a number.">
-        <input id="password" name="password" type="password" autoComplete="new-password" required minLength={10} maxLength={128} className="input" aria-invalid={!!state.fieldErrors?.password} />
+      <Field label="Password" name="password" error={state.fieldErrors?.password} hint="At least 8 characters with a letter, a number and a symbol.">
+        <input id="password" name="password" type="password" autoComplete="new-password" required minLength={8} maxLength={128} className="input" aria-invalid={!!state.fieldErrors?.password} />
       </Field>
       <SubmitButton className="w-full" pendingText="Creating account…">
         Create account

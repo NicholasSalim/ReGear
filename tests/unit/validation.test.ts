@@ -74,10 +74,15 @@ describe("listing validation", () => {
 
 describe("auth validation", () => {
   it("normalises email and enforces password policy", () => {
-    const ok = registerSchema.safeParse({ name: "Ann", email: "  Ann@Example.COM ", password: "longpassword1" });
+    const ok = registerSchema.safeParse({ name: "Ann", email: "  Ann@Example.COM ", password: "pass#word1" });
     expect(ok.success && ok.data.email).toBe("ann@example.com");
-    expect(registerSchema.safeParse({ name: "Ann", email: "ann@example.com", password: "short1" }).success).toBe(false);
-    expect(registerSchema.safeParse({ name: "Ann", email: "ann@example.com", password: "nodigitsatall" }).success).toBe(false);
+    const accepts = (password: string) => registerSchema.safeParse({ name: "Ann", email: "ann@example.com", password }).success;
+    expect(accepts("ab1!cdef")).toBe(true); // exactly 8
+    expect(accepts("ab1!cde")).toBe(false); // too short
+    expect(accepts("nodigits!here")).toBe(false);
+    expect(accepts("12345678!")).toBe(false); // no letter
+    expect(accepts("Password123")).toBe(false); // no symbol
+    expect(accepts("pass word1")).toBe(false); // a space is not a symbol
   });
 });
 

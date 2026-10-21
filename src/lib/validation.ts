@@ -27,9 +27,11 @@ export const email = z.string().trim().toLowerCase().pipe(z.email("Enter a valid
 
 export const password = z
   .string()
-  .min(10, "Use at least 10 characters")
+  .min(8, "Use at least 8 characters")
   .max(128, "Use at most 128 characters")
-  .refine((p) => /[a-zA-Z]/.test(p) && /[0-9]/.test(p), "Include at least one letter and one number");
+  .refine((p) => /[a-zA-Z]/.test(p), "Include at least one letter")
+  .refine((p) => /[0-9]/.test(p), "Include at least one number")
+  .refine((p) => /[^a-zA-Z0-9\s]/.test(p), "Include at least one symbol, such as ! # or -");
 
 export const id = z.string().regex(/^[a-z0-9]{20,32}$/i, "Invalid id");
 

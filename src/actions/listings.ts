@@ -6,7 +6,7 @@ import { audit } from "@/lib/audit";
 import { invalidate, listingTags } from "@/lib/cache";
 import { runAction, type ActionState } from "@/lib/action";
 import { getSellerProfile, requireUserStrict } from "@/lib/auth/dal";
-import { getCategory } from "@/lib/catalog";
+import { categorySearchTerms } from "@/lib/catalog";
 import { functionalScore } from "@/lib/condition";
 import { gradeRank } from "@/lib/data/catalog";
 import { slugify } from "@/lib/format";
@@ -15,9 +15,9 @@ import { DomainError } from "@/lib/orders/service";
 
 const UNVERIFIED_ACTIVE_LIMIT = 5;
 
+// Category names in every language, so "kamera" and "camera" both find a listing.
 function buildSearchText(d: ListingInput) {
-  const category = getCategory(d.category);
-  return [d.title, d.brand, d.model, category?.name, ...Object.values(d.specs).filter((v) => typeof v !== "boolean")]
+  return [d.title, d.brand, d.model, ...categorySearchTerms(d.category), ...Object.values(d.specs).filter((v) => typeof v !== "boolean")]
     .join(" ")
     .toLowerCase()
     .replace(/\s+/g, " ")

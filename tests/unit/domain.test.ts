@@ -59,16 +59,24 @@ describe("condition scoring", () => {
   });
 
   it("labels battery health", () => {
-    expect(batteryLabel(95)?.label).toBe("Excellent");
-    expect(batteryLabel(65)?.label).toBe("Service recommended");
+    expect(batteryLabel(95)?.level).toBe("excellent");
+    expect(batteryLabel(65)?.level).toBe("service");
     expect(batteryLabel(null)).toBeNull();
   });
 
   it("formats storage specs", () => {
     const field = getCategory("phones")!.specFields.find((f) => f.key === "storage");
-    expect(formatSpecValue(field, 2048)).toBe("2 TB");
-    expect(formatSpecValue(field, 256)).toBe("256 GB");
-    expect(formatSpecValue(undefined, true)).toBe("Yes");
+    expect(formatSpecValue(field, 2048, "en")).toBe("2 TB");
+    expect(formatSpecValue(field, 256, "en")).toBe("256 GB");
+    expect(formatSpecValue(undefined, true, "en")).toBe("Yes");
+    expect(formatSpecValue(undefined, true, "id")).toBe("Ya");
+  });
+
+  it("translates select options but keeps the stored value", () => {
+    const usage = getCategory("pc-components")!.specFields.find((f) => f.key === "usage");
+    expect(formatSpecValue(usage, "Mining", "id")).toBe("Penambangan kripto");
+    expect(formatSpecValue(usage, "Mining", "en")).toBe("Mining");
+    expect(formatSpecValue(usage, "Workstation", "id")).toBe("Workstation");
   });
 });
 

@@ -3,11 +3,13 @@
 import { useOptimistic, useTransition } from "react";
 import { Heart } from "lucide-react";
 import { toggleFavoriteAction } from "@/actions/listings";
+import { useT } from "@/i18n/client";
 import { buttonClass } from "@/components/ui";
 
 export function FavoriteButton({ listingId, initial }: { listingId: string; initial: boolean }) {
   const [optimistic, setOptimistic] = useOptimistic(initial);
   const [pending, start] = useTransition();
+  const t = useT();
 
   return (
     <button
@@ -23,7 +25,7 @@ export function FavoriteButton({ listingId, initial }: { listingId: string; init
       }
     >
       <Heart className={`size-4 ${optimistic ? "fill-rose-500 text-rose-500" : ""}`} aria-hidden />
-      {optimistic ? "Saved" : "Save"}
+      {optimistic ? t.favorite.saved : t.favorite.save}
     </button>
   );
 }

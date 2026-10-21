@@ -1,4 +1,6 @@
 import Image from "next/image";
+import { pick } from "@/i18n/locales";
+import { getLocale } from "@/i18n/server";
 import Link from "next/link";
 import { CircleDot, Package, ShieldAlert } from "lucide-react";
 import {
@@ -33,7 +35,8 @@ import {
 
 const STEPS = ["PAID", "SHIPPED", "DELIVERED", "COMPLETED"] as const;
 
-export function OrderDetail({ order, now }: { order: OrderForUser; now: Date }) {
+export async function OrderDetail({ order, now }: { order: OrderForUser; now: Date }) {
+  const locale = await getLocale();
   const isBuyer = order.role === "BUYER";
   const isSeller = order.role === "SELLER";
   const s = order.status;
@@ -48,7 +51,7 @@ export function OrderDetail({ order, now }: { order: OrderForUser; now: Date }) 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Order {order.number}</h1>
-          <p className="text-sm text-slate-500">Placed {formatDateTime(order.createdAt)}</p>
+          <p className="text-sm text-slate-500">Placed {formatDateTime(order.createdAt, locale)}</p>
         </div>
         <OrderStatusBadge status={s} />
       </div>
@@ -64,7 +67,7 @@ export function OrderDetail({ order, now }: { order: OrderForUser; now: Date }) 
                   {i + 1}
                 </span>
                 <span className={done ? "font-semibold text-ink" : "text-slate-500"}>{step.charAt(0) + step.slice(1).toLowerCase()}</span>
-                {stepTimes[i] && <span className="text-slate-400">{formatDateTime(stepTimes[i]!)}</span>}
+                {stepTimes[i] && <span className="text-slate-400">{formatDateTime(stepTimes[i]!, locale)}</span>}
                 <span className="sr-only">{done ? "completed" : reachedIndex >= i ? "current" : "pending"}</span>
               </li>
             );
@@ -86,7 +89,7 @@ export function OrderDetail({ order, now }: { order: OrderForUser; now: Date }) 
               <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
                 <GradeBadge grade={order.snapshot.conditionGrade} />
                 <span>
-                  {warrantyLabel(order.snapshot.warrantyType)}
+                  {warrantyLabel(order.snapshot.warrantyType, locale)}
                   {order.snapshot.warrantyMonths ? `, ${order.snapshot.warrantyMonths} months` : ""}
                 </span>
                 <span>{order.returnWindowDays ? `${order.returnWindowDays}-day returns` : "No returns"}</span>
@@ -178,11 +181,11 @@ export function OrderDetail({ order, now }: { order: OrderForUser; now: Date }) 
               <dl className="grid gap-2 text-sm sm:grid-cols-2">
                 <div>
                   <dt className="text-slate-500">Status</dt>
-                  <dd className="font-medium">{RETURN_STATUS_LABELS[order.returnRequest.status as ReturnStatus]}</dd>
+                  <dd className="font-medium">{pick(RETURN_STATUS_LABELS[order.returnRequest.status as ReturnStatus], locale)}</dd>
                 </div>
                 <div>
                   <dt className="text-slate-500">Reason</dt>
-                  <dd className="font-medium">{RETURN_REASON_LABELS[order.returnRequest.reason as keyof typeof RETURN_REASON_LABELS]}</dd>
+                  <dd className="font-medium">{pick(RETURN_REASON_LABELS[order.returnRequest.reason as keyof typeof RETURN_REASON_LABELS], locale)}</dd>
                 </div>
               </dl>
               <p className="text-sm whitespace-pre-line text-slate-700">{order.returnRequest.details}</p>
@@ -214,7 +217,7 @@ export function OrderDetail({ order, now }: { order: OrderForUser; now: Date }) 
                 <li key={e.id} className="relative">
                   <CircleDot className="absolute top-0.5 -left-[1.95rem] size-4 bg-white text-brand-600" aria-hidden />
                   <p className="text-sm text-ink">{e.message}</p>
-                  <p className="text-xs text-slate-500">{formatDateTime(e.createdAt)}</p>
+                  <p className="text-xs text-slate-500">{formatDateTime(e.createdAt, locale)}</p>
                 </li>
               ))}
             </ol>

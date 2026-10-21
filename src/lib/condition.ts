@@ -17,12 +17,15 @@ export function functionalScore(checks: readonly ConditionCheckEntry[]): number 
   return Math.round((points / applicable.length) * 100);
 }
 
-export function batteryLabel(health: number | null | undefined): { label: string; tone: string } | null {
+export type BatteryLevel = "excellent" | "good" | "fair" | "service";
+
+/** Battery health band; `level` is a key into the dictionary's `battery` section. */
+export function batteryLabel(health: number | null | undefined): { level: BatteryLevel; tone: string } | null {
   if (health === null || health === undefined) return null;
-  if (health >= 90) return { label: "Excellent", tone: "text-emerald-700" };
-  if (health >= 80) return { label: "Good", tone: "text-teal-700" };
-  if (health >= 70) return { label: "Fair", tone: "text-amber-700" };
-  return { label: "Service recommended", tone: "text-rose-700" };
+  if (health >= 90) return { level: "excellent", tone: "text-emerald-700" };
+  if (health >= 80) return { level: "good", tone: "text-teal-700" };
+  if (health >= 70) return { level: "fair", tone: "text-amber-700" };
+  return { level: "service", tone: "text-rose-700" };
 }
 
 export function countIssues(checks: readonly ConditionCheckEntry[]) {

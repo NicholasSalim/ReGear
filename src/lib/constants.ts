@@ -1,5 +1,10 @@
 // Domain enumerations. Stored as strings in the DB (see prisma/schema.prisma)
 // and validated through these tuples everywhere data enters the system.
+// Labels are bilingual (see src/i18n/locales.ts); the stored codes never change.
+
+import type { Localized } from "@/i18n/locales";
+
+const L = (en: string, id: string): Localized => ({ en, id });
 
 export const ROLES = ["USER", "ADMIN"] as const;
 export type Role = (typeof ROLES)[number];
@@ -7,30 +12,45 @@ export type Role = (typeof ROLES)[number];
 export const CONDITION_GRADES = ["LIKE_NEW", "EXCELLENT", "GOOD", "FAIR", "FOR_PARTS"] as const;
 export type ConditionGrade = (typeof CONDITION_GRADES)[number];
 
-export const GRADE_INFO: Record<ConditionGrade, { label: string; summary: string; tone: string }> = {
+export const GRADE_INFO: Record<ConditionGrade, { label: Localized; summary: Localized; tone: string }> = {
   LIKE_NEW: {
-    label: "Like New",
-    summary: "No visible wear. Fully functional, typically with original accessories.",
+    label: L("Like New", "Seperti Baru"),
+    summary: L(
+      "No visible wear. Fully functional, typically with original accessories.",
+      "Tanpa bekas pemakaian yang terlihat. Berfungsi penuh, biasanya dengan aksesori asli.",
+    ),
     tone: "bg-emerald-100 text-emerald-800 ring-emerald-600/20",
   },
   EXCELLENT: {
-    label: "Excellent",
-    summary: "Faint signs of use only visible up close. Fully functional.",
+    label: L("Excellent", "Sangat Baik"),
+    summary: L(
+      "Faint signs of use only visible up close. Fully functional.",
+      "Bekas pemakaian tipis yang hanya terlihat dari dekat. Berfungsi penuh.",
+    ),
     tone: "bg-teal-100 text-teal-800 ring-teal-600/20",
   },
   GOOD: {
-    label: "Good",
-    summary: "Light scratches or scuffs visible at arm's length. Fully functional.",
+    label: L("Good", "Baik"),
+    summary: L(
+      "Light scratches or scuffs visible at arm's length. Fully functional.",
+      "Goresan atau lecet ringan terlihat dari jarak sejangkauan tangan. Berfungsi penuh.",
+    ),
     tone: "bg-sky-100 text-sky-800 ring-sky-600/20",
   },
   FAIR: {
-    label: "Fair",
-    summary: "Noticeable wear such as dents or deep scratches. Works as described.",
+    label: L("Fair", "Cukup"),
+    summary: L(
+      "Noticeable wear such as dents or deep scratches. Works as described.",
+      "Bekas pemakaian jelas seperti penyok atau goresan dalam. Berfungsi sesuai deskripsi.",
+    ),
     tone: "bg-amber-100 text-amber-800 ring-amber-600/20",
   },
   FOR_PARTS: {
-    label: "For Parts",
-    summary: "One or more functions do not work. Sold for repair or parts.",
+    label: L("For Parts", "Untuk Suku Cadang"),
+    summary: L(
+      "One or more functions do not work. Sold for repair or parts.",
+      "Satu atau lebih fungsi tidak bekerja. Dijual untuk diperbaiki atau diambil suku cadangnya.",
+    ),
     tone: "bg-rose-100 text-rose-800 ring-rose-600/20",
   },
 };
@@ -38,34 +58,42 @@ export const GRADE_INFO: Record<ConditionGrade, { label: string; summary: string
 export const CHECK_STATUSES = ["PASS", "MINOR", "FAIL", "NA"] as const;
 export type CheckStatus = (typeof CHECK_STATUSES)[number];
 
-export const CHECK_STATUS_INFO: Record<CheckStatus, { label: string; tone: string }> = {
-  PASS: { label: "Works perfectly", tone: "text-pass" },
-  MINOR: { label: "Minor issue", tone: "text-[#9a6a00]" },
-  FAIL: { label: "Not working", tone: "text-fail" },
-  NA: { label: "Not applicable", tone: "text-slate-500" },
+export const CHECK_STATUS_INFO: Record<CheckStatus, { label: Localized; tone: string }> = {
+  PASS: { label: L("Works perfectly", "Berfungsi sempurna"), tone: "text-pass" },
+  MINOR: { label: L("Minor issue", "Masalah kecil"), tone: "text-[#9a6a00]" },
+  FAIL: { label: L("Not working", "Tidak berfungsi"), tone: "text-fail" },
+  NA: { label: L("Not applicable", "Tidak berlaku"), tone: "text-slate-500" },
 };
 
 export const LISTING_STATUSES = ["DRAFT", "ACTIVE", "RESERVED", "SOLD", "REMOVED"] as const;
 export type ListingStatus = (typeof LISTING_STATUSES)[number];
 
+export const LISTING_STATUS_LABELS: Record<ListingStatus, Localized> = {
+  DRAFT: L("Draft", "Draf"),
+  ACTIVE: L("Active", "Aktif"),
+  RESERVED: L("Reserved", "Dipesan"),
+  SOLD: L("Sold", "Terjual"),
+  REMOVED: L("Removed", "Dihapus"),
+};
+
 export const WARRANTY_TYPES = ["NONE", "SELLER", "MANUFACTURER"] as const;
 export type WarrantyType = (typeof WARRANTY_TYPES)[number];
 
-export const WARRANTY_INFO: Record<WarrantyType, string> = {
-  NONE: "No warranty",
-  SELLER: "Seller warranty",
-  MANUFACTURER: "Remaining manufacturer warranty",
+export const WARRANTY_INFO: Record<WarrantyType, Localized> = {
+  NONE: L("No warranty", "Tanpa garansi"),
+  SELLER: L("Seller warranty", "Garansi penjual"),
+  MANUFACTURER: L("Remaining manufacturer warranty", "Sisa garansi resmi pabrikan"),
 };
 
 export const VERIFICATION_STATUSES = ["UNVERIFIED", "PENDING", "VERIFIED", "REJECTED"] as const;
 export type VerificationStatus = (typeof VERIFICATION_STATUSES)[number];
 
 export const ID_TYPES = ["NATIONAL_ID", "PASSPORT", "DRIVERS_LICENSE", "BUSINESS_REG"] as const;
-export const ID_TYPE_LABELS: Record<(typeof ID_TYPES)[number], string> = {
-  NATIONAL_ID: "National ID card",
-  PASSPORT: "Passport",
-  DRIVERS_LICENSE: "Driver's license",
-  BUSINESS_REG: "Business registration",
+export const ID_TYPE_LABELS: Record<(typeof ID_TYPES)[number], Localized> = {
+  NATIONAL_ID: L("National ID card", "KTP"),
+  PASSPORT: L("Passport", "Paspor"),
+  DRIVERS_LICENSE: L("Driver's license", "SIM"),
+  BUSINESS_REG: L("Business registration", "Dokumen legalitas usaha (NIB)"),
 };
 
 export const ORDER_STATUSES = [
@@ -81,36 +109,36 @@ export const ORDER_STATUSES = [
 ] as const;
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
-export const ORDER_STATUS_INFO: Record<OrderStatus, { label: string; tone: string }> = {
-  PENDING_PAYMENT: { label: "Awaiting payment", tone: "bg-slate-100 text-slate-700" },
-  PAID: { label: "Paid · awaiting shipment", tone: "bg-indigo-100 text-indigo-800" },
-  SHIPPED: { label: "Shipped", tone: "bg-sky-100 text-sky-800" },
-  DELIVERED: { label: "Delivered", tone: "bg-teal-100 text-teal-800" },
-  COMPLETED: { label: "Completed", tone: "bg-emerald-100 text-emerald-800" },
-  RETURN_IN_PROGRESS: { label: "Return in progress", tone: "bg-amber-100 text-amber-800" },
-  DISPUTED: { label: "In dispute", tone: "bg-rose-100 text-rose-800" },
-  REFUNDED: { label: "Refunded", tone: "bg-slate-200 text-slate-800" },
-  CANCELLED: { label: "Cancelled", tone: "bg-slate-100 text-slate-500" },
+export const ORDER_STATUS_INFO: Record<OrderStatus, { label: Localized; tone: string }> = {
+  PENDING_PAYMENT: { label: L("Awaiting payment", "Menunggu pembayaran"), tone: "bg-slate-100 text-slate-700" },
+  PAID: { label: L("Paid · awaiting shipment", "Dibayar · menunggu pengiriman"), tone: "bg-indigo-100 text-indigo-800" },
+  SHIPPED: { label: L("Shipped", "Dikirim"), tone: "bg-sky-100 text-sky-800" },
+  DELIVERED: { label: L("Delivered", "Diterima"), tone: "bg-teal-100 text-teal-800" },
+  COMPLETED: { label: L("Completed", "Selesai"), tone: "bg-emerald-100 text-emerald-800" },
+  RETURN_IN_PROGRESS: { label: L("Return in progress", "Pengembalian berlangsung"), tone: "bg-amber-100 text-amber-800" },
+  DISPUTED: { label: L("In dispute", "Dalam sengketa"), tone: "bg-rose-100 text-rose-800" },
+  REFUNDED: { label: L("Refunded", "Dana dikembalikan"), tone: "bg-slate-200 text-slate-800" },
+  CANCELLED: { label: L("Cancelled", "Dibatalkan"), tone: "bg-slate-100 text-slate-500" },
 };
 
 export const RETURN_REASONS = ["NOT_AS_DESCRIBED", "DAMAGED", "DEFECTIVE", "CHANGED_MIND", "OTHER"] as const;
-export const RETURN_REASON_LABELS: Record<(typeof RETURN_REASONS)[number], string> = {
-  NOT_AS_DESCRIBED: "Not as described in the condition report",
-  DAMAGED: "Arrived damaged",
-  DEFECTIVE: "Stopped working / defective",
-  CHANGED_MIND: "Changed my mind",
-  OTHER: "Other",
+export const RETURN_REASON_LABELS: Record<(typeof RETURN_REASONS)[number], Localized> = {
+  NOT_AS_DESCRIBED: L("Not as described in the condition report", "Tidak sesuai laporan kondisi"),
+  DAMAGED: L("Arrived damaged", "Tiba dalam keadaan rusak"),
+  DEFECTIVE: L("Stopped working / defective", "Berhenti berfungsi / cacat"),
+  CHANGED_MIND: L("Changed my mind", "Berubah pikiran"),
+  OTHER: L("Other", "Lainnya"),
 };
 
 export const RETURN_STATUSES = ["REQUESTED", "APPROVED", "REJECTED", "SHIPPED_BACK", "RECEIVED", "REFUNDED"] as const;
 export type ReturnStatus = (typeof RETURN_STATUSES)[number];
-export const RETURN_STATUS_LABELS: Record<ReturnStatus, string> = {
-  REQUESTED: "Requested",
-  APPROVED: "Approved · ship the item back",
-  REJECTED: "Rejected by seller",
-  SHIPPED_BACK: "Shipped back to seller",
-  RECEIVED: "Received by seller",
-  REFUNDED: "Refunded",
+export const RETURN_STATUS_LABELS: Record<ReturnStatus, Localized> = {
+  REQUESTED: L("Requested", "Diajukan"),
+  APPROVED: L("Approved · ship the item back", "Disetujui · kirim barang kembali"),
+  REJECTED: L("Rejected by seller", "Ditolak penjual"),
+  SHIPPED_BACK: L("Shipped back to seller", "Dikirim kembali ke penjual"),
+  RECEIVED: L("Received by seller", "Diterima penjual"),
+  REFUNDED: L("Refunded", "Dana dikembalikan"),
 };
 
 export const DISPUTE_REASONS = [
@@ -121,24 +149,25 @@ export const DISPUTE_REASONS = [
   "RETURN_ISSUE",
   "OTHER",
 ] as const;
-export const DISPUTE_REASON_LABELS: Record<(typeof DISPUTE_REASONS)[number], string> = {
-  NOT_RECEIVED: "Item not received",
-  NOT_AS_DESCRIBED: "Significantly not as described",
-  DAMAGED: "Item damaged in transit",
-  COUNTERFEIT: "Counterfeit or not genuine",
-  RETURN_ISSUE: "Problem with a return",
-  OTHER: "Other",
+export const DISPUTE_REASON_LABELS: Record<(typeof DISPUTE_REASONS)[number], Localized> = {
+  NOT_RECEIVED: L("Item not received", "Barang tidak diterima"),
+  NOT_AS_DESCRIBED: L("Significantly not as described", "Sangat berbeda dari deskripsi"),
+  DAMAGED: L("Item damaged in transit", "Barang rusak dalam pengiriman"),
+  COUNTERFEIT: L("Counterfeit or not genuine", "Palsu atau tidak orisinal"),
+  RETURN_ISSUE: L("Problem with a return", "Masalah dengan pengembalian"),
+  OTHER: L("Other", "Lainnya"),
 };
 
 export const DISPUTE_STATUSES = ["OPEN", "UNDER_REVIEW", "RESOLVED"] as const;
 export const DISPUTE_RESOLUTIONS = ["REFUND_BUYER", "PARTIAL_REFUND", "RELEASE_TO_SELLER"] as const;
-export const DISPUTE_RESOLUTION_LABELS: Record<(typeof DISPUTE_RESOLUTIONS)[number], string> = {
-  REFUND_BUYER: "Full refund to buyer",
-  PARTIAL_REFUND: "Partial refund to buyer",
-  RELEASE_TO_SELLER: "Release payment to seller",
+export const DISPUTE_RESOLUTION_LABELS: Record<(typeof DISPUTE_RESOLUTIONS)[number], Localized> = {
+  REFUND_BUYER: L("Full refund to buyer", "Pengembalian dana penuh ke pembeli"),
+  PARTIAL_REFUND: L("Partial refund to buyer", "Pengembalian dana sebagian ke pembeli"),
+  RELEASE_TO_SELLER: L("Release payment to seller", "Teruskan pembayaran ke penjual"),
 };
 
 export const CARRIERS = ["DHL", "FedEx", "UPS", "USPS", "JNE", "J&T", "SiCepat", "Other"] as const;
+export const CARRIER_LABELS: Partial<Record<(typeof CARRIERS)[number], Localized>> = { Other: L("Other", "Lainnya") };
 
 // Business rules
 export const PLATFORM_FEE_BPS = 500; // 5% charged to the seller

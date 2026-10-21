@@ -1,10 +1,11 @@
-import Link from "next/link";
 import { SlidersHorizontal } from "lucide-react";
-import { CATEGORIES, getCategory } from "@/lib/catalog";
+import { Link } from "@/i18n/client";
+import { localePath, pick, type Locale } from "@/i18n/locales";
+import { getDictionary, getLocale, type Dictionary } from "@/i18n/server";
+import { CATEGORIES } from "@/lib/catalog";
 import { CONDITION_GRADES, GRADE_INFO } from "@/lib/constants";
 import { getBrands, searchListings } from "@/lib/data/catalog";
-import { browseSchema, type BrowseParams } from "@/lib/validation";
-import { pluralize } from "@/lib/format";
+import { browseSchema, SORTS, type BrowseParams } from "@/lib/validation";
 import { ListingGrid } from "@/components/listing-card";
 import { EmptyState } from "@/components/ui";
 
@@ -23,38 +24,39 @@ export async function BrowseView({
   fixedCategory?: string;
 }) {
   const params = parseBrowseParams(await searchParams, fixedCategory);
-  const [results, brands] = await Promise.all([searchListings(params), getBrands(params.category)]);
+  const [results, brands, locale, t] = await Promise.all([searchListings(params), getBrands(params.category), getLocale(), getDictionary()]);
   const basePath = fixedCategory ? `/c/${fixedCategory}` : "/listings";
 
   return (
     <div className="grid gap-8 lg:grid-cols-[16rem_1fr]">
-      <Filters params={params} brands={brands} basePath={basePath} fixedCategory={fixedCategory} />
+      <Filters params={params} brands={brands} basePath={basePath} fixedCategory={fixedCategory} locale={locale} t={t} />
       <div>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-slate-600" aria-live="polite">
-            {pluralize(results.total, "listing")}
+            {t.browse.resultCount(results.total)}
             {params.q ? (
               <>
-                {" "}for <strong className="text-ink">&ldquo;{params.q}&rdquo;</strong>
+                {" "}
+                {t.browse.forQuery} <strong className="text-ink">&ldquo;{params.q}&rdquo;</strong>
               </>
             ) : null}
           </p>
-          <SortForm params={params} basePath={basePath} />
+          <SortForm params={params} basePath={basePath} t={t} />
         </div>
         {results.items.length ? (
           <ListingGrid listings={results.items} priorityCount={4} />
         ) : (
           <EmptyState
-            title="No listings match your filters"
-            description="Try widening your price range or removing a filter."
+            title={t.browse.noResults}
+            description={t.browse.noResultsHint}
             action={
               <Link href={basePath} className="text-sm font-semibold text-brand-700 hover:underline">
-                Clear all filters
+                {t.browse.clearFilters}
               </Link>
             }
           />
         )}
-        <Pagination params={params} pages={results.pages} basePath={basePath} />
+        <Pagination params={params} pages={results.pages} basePath={basePath} t={t} />
       </div>
     </div>
   );
@@ -80,33 +82,37 @@ function Filters({
   brands,
   basePath,
   fixedCategory,
+  locale,
+  t,
 }: {
   params: BrowseParams;
   brands: { brand: string; count: number }[];
   basePath: string;
   fixedCategory?: string;
+  locale: Locale;
+  t: Dictionary;
 }) {
   // Plain GET form: works without JavaScript and produces shareable, crawlable URLs.
   return (
-    <aside aria-label="Filters">
+    <aside aria-label={t.browse.filtersAria}>
       <details open className="card group p-4 lg:sticky lg:top-32">
         <summary className="flex cursor-pointer list-none items-center gap-2 font-semibold lg:pointer-events-none">
-          <SlidersHorizontal className="size-4" aria-hidden /> Filters
+          <SlidersHorizontal className="size-4" aria-hidden /> {t.browse.filters}
         </summary>
-        <form method="get" action={basePath} className="mt-4 space-y-5 text-sm">
+        <form method="get" action={localePath(basePath, locale)} className="mt-4 space-y-5 text-sm">
           {params.q && <input type="hidden" name="q" value={params.q} />}
           {params.sort !== "newest" && <input type="hidden" name="sort" value={params.sort} />}
 
           {!fixedCategory && (
             <div>
               <label htmlFor="f-category" className="label">
-                Category
+                {t.browse.category}
               </label>
               <select id="f-category" name="category" defaultValue={params.category ?? ""} className="input">
-                <option value="">All categories</option>
+                <option value="">{t.browse.allCategories}</option>
                 {CATEGORIES.map((c) => (
                   <option key={c.slug} value={c.slug}>
-                    {c.name}
+                    {pick(c.name, locale)}
                   </option>
                 ))}
               </select>
@@ -114,33 +120,33 @@ function Filters({
           )}
 
           <fieldset>
-            <legend className="label">Condition</legend>
+            <legend className="label">{t.browse.condition}</legend>
             <div className="space-y-1.5">
               {CONDITION_GRADES.map((g) => (
                 <label key={g} className="flex items-center gap-2">
                   <input type="checkbox" name="grade" value={g} defaultChecked={params.grade.includes(g)} className="size-4 accent-brand-600" />
-                  {GRADE_INFO[g].label}
+                  {pick(GRADE_INFO[g].label, locale)}
                 </label>
               ))}
             </div>
           </fieldset>
 
           <fieldset>
-            <legend className="label">Price</legend>
+            <legend className="label">{t.browse.price}</legend>
             <div className="flex items-center gap-2">
-              <input name="min" inputMode="numeric" placeholder="Min (Rp)" defaultValue={params.min ?? ""} className="input" aria-label="Minimum price" />
+              <input name="min" inputMode="numeric" placeholder={t.browse.minPrice} defaultValue={params.min ?? ""} className="input" aria-label={t.browse.minPriceAria} />
               <span className="text-slate-400">–</span>
-              <input name="max" inputMode="numeric" placeholder="Max (Rp)" defaultValue={params.max ?? ""} className="input" aria-label="Maximum price" />
+              <input name="max" inputMode="numeric" placeholder={t.browse.maxPrice} defaultValue={params.max ?? ""} className="input" aria-label={t.browse.maxPriceAria} />
             </div>
           </fieldset>
 
           {brands.length > 0 && (
             <div>
               <label htmlFor="f-brand" className="label">
-                Brand
+                {t.browse.brand}
               </label>
               <select id="f-brand" name="brand" defaultValue={params.brand ?? ""} className="input">
-                <option value="">Any brand</option>
+                <option value="">{t.browse.anyBrand}</option>
                 {brands.map((b) => (
                   <option key={b.brand} value={b.brand}>
                     {b.brand} ({b.count})
@@ -151,23 +157,23 @@ function Filters({
           )}
 
           <fieldset className="space-y-1.5">
-            <legend className="label">Trust</legend>
+            <legend className="label">{t.browse.trust}</legend>
             <label className="flex items-center gap-2">
               <input type="checkbox" name="verified" value="1" defaultChecked={params.verified} className="size-4 accent-brand-600" />
-              Verified sellers only
+              {t.browse.verifiedOnly}
             </label>
             <label className="flex items-center gap-2">
               <input type="checkbox" name="warranty" value="1" defaultChecked={params.warranty} className="size-4 accent-brand-600" />
-              With warranty
+              {t.browse.withWarranty}
             </label>
           </fieldset>
 
           <div className="flex gap-2">
             <button type="submit" className="flex-1 rounded-lg bg-brand-600 px-3 py-2 font-semibold text-white hover:bg-brand-700">
-              Apply
+              {t.browse.apply}
             </button>
             <Link href={basePath} className="rounded-lg px-3 py-2 font-medium text-slate-600 hover:bg-slate-100">
-              Reset
+              {t.browse.reset}
             </Link>
           </div>
         </form>
@@ -176,16 +182,10 @@ function Filters({
   );
 }
 
-function SortForm({ params, basePath }: { params: BrowseParams; basePath: string }) {
-  const options = [
-    ["newest", "Newest"],
-    ["price_asc", "Price: low to high"],
-    ["price_desc", "Price: high to low"],
-    ["best_condition", "Best condition"],
-  ] as const;
+function SortForm({ params, basePath, t }: { params: BrowseParams; basePath: string; t: Dictionary }) {
   return (
-    <nav aria-label="Sort" className="flex flex-wrap gap-1 text-sm">
-      {options.map(([value, label]) => (
+    <nav aria-label={t.browse.sortAria} className="flex flex-wrap gap-1 text-sm">
+      {SORTS.map((value) => (
         <Link
           key={value}
           href={`${basePath}${toQuery(params, { sort: value, page: 1 }, basePath !== "/listings")}`}
@@ -193,35 +193,29 @@ function SortForm({ params, basePath }: { params: BrowseParams; basePath: string
           aria-current={params.sort === value ? "true" : undefined}
           scroll={false}
         >
-          {label}
+          {t.browse.sort[value]}
         </Link>
       ))}
     </nav>
   );
 }
 
-function Pagination({ params, pages, basePath }: { params: BrowseParams; pages: number; basePath: string }) {
+function Pagination({ params, pages, basePath, t }: { params: BrowseParams; pages: number; basePath: string; t: Dictionary }) {
   if (pages <= 1) return null;
   const omit = basePath !== "/listings";
   return (
-    <nav aria-label="Pagination" className="mt-8 flex items-center justify-center gap-2 text-sm">
+    <nav aria-label={t.browse.paginationAria} className="mt-8 flex items-center justify-center gap-2 text-sm">
       {params.page > 1 && (
         <Link rel="prev" href={`${basePath}${toQuery(params, { page: params.page - 1 }, omit)}`} className="rounded-lg px-3 py-2 ring-1 ring-slate-300 hover:bg-white">
-          Previous
+          {t.browse.previous}
         </Link>
       )}
-      <span className="px-3 text-slate-600">
-        Page {params.page} of {pages}
-      </span>
+      <span className="px-3 text-slate-600">{t.browse.pageOf(params.page, pages)}</span>
       {params.page < pages && (
         <Link rel="next" href={`${basePath}${toQuery(params, { page: params.page + 1 }, omit)}`} className="rounded-lg px-3 py-2 ring-1 ring-slate-300 hover:bg-white">
-          Next
+          {t.browse.next}
         </Link>
       )}
     </nav>
   );
-}
-
-export function categoryHeading(slug?: string) {
-  return slug ? (getCategory(slug)?.name ?? "Listings") : "All listings";
 }

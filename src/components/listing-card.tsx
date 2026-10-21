@@ -1,6 +1,7 @@
 import Image from "next/image";
-import Link from "next/link";
 import { BatteryMedium, MapPin } from "lucide-react";
+import { Link } from "@/i18n/client";
+import { getDictionary } from "@/i18n/server";
 import type { ListingCard as ListingCardData } from "@/lib/data/catalog";
 import type { ConditionCheckEntry } from "@/lib/condition";
 import { formatMoney } from "@/lib/format";
@@ -22,7 +23,8 @@ function parseChecks(raw?: string): ConditionCheckEntry[] {
   }
 }
 
-export function ListingCard({ listing, priority }: { listing: CardData; priority?: boolean }) {
+export async function ListingCard({ listing, priority }: { listing: CardData; priority?: boolean }) {
+  const t = await getDictionary();
   const cover = listing.images[0];
   const checks = parseChecks(listing.conditionReport?.checks);
   const discount =
@@ -45,11 +47,11 @@ export function ListingCard({ listing, priority }: { listing: CardData; priority
         ) : null}
         {listing.status !== "ACTIVE" && (
           <span className="absolute top-3 left-3 rounded-[var(--radius-tag)] bg-ink px-2 py-0.5 text-xs font-semibold text-white">
-            {listing.status === "SOLD" ? "Sold" : "Reserved"}
+            {listing.status === "SOLD" ? t.listing.soldTag : t.listing.reservedTag}
           </span>
         )}
       </Link>
-      {checks.length > 0 && <ConditionStrip checks={checks} className="px-4 pt-3" />}
+      {checks.length > 0 && <ConditionStrip checks={checks} label={stripLabel(checks, t.condition)} className="px-4 pt-3" />}
       <div className="flex flex-1 flex-col gap-2 px-4 pt-3 pb-4">
         <div className="flex flex-wrap items-center gap-1.5">
           <GradeBadge grade={listing.conditionGrade} />
@@ -60,12 +62,12 @@ export function ListingCard({ listing, priority }: { listing: CardData; priority
             {listing.title}
           </Link>
         </h3>
-        {checks.length > 0 && <p className="text-xs text-slate-500">{stripLabel(checks)}</p>}
+        {checks.length > 0 && <p className="text-xs text-slate-500">{stripLabel(checks, t.condition)}</p>}
         <div className="mt-auto flex items-baseline gap-2 pt-1">
           <span className="num wide text-xl font-extrabold text-ink">{formatMoney(listing.priceIdr)}</span>
           {discount >= 5 && listing.originalPriceIdr && (
             <span className="num text-xs text-slate-500">
-              <span className="line-through">{formatMoney(listing.originalPriceIdr)}</span> new
+              <span className="line-through">{formatMoney(listing.originalPriceIdr)}</span> {t.listing.newSuffix}
             </span>
           )}
         </div>

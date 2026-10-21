@@ -1,23 +1,24 @@
-import Link from "next/link";
 import { Heart, LayoutDashboard, LogOut, Package, Shield, Store } from "lucide-react";
+import { Link } from "@/i18n/client";
+import { getDictionary } from "@/i18n/server";
 import { getCurrentUser } from "@/lib/auth/dal";
 import { logoutAction } from "@/actions/auth";
 import { buttonClass } from "@/components/ui";
 
 // Streams in behind a Suspense boundary: it is the only per-user part of the header.
 export async function UserMenu() {
-  const user = await getCurrentUser();
+  const [user, t] = await Promise.all([getCurrentUser(), getDictionary()]);
   if (!user) {
     return (
       <>
         <Link href="/sell" className={buttonClass("ghost", "max-sm:hidden")}>
-          Sell
+          {t.nav.sell}
         </Link>
         <Link href="/login" className={buttonClass("secondary")}>
-          Sign in
+          {t.nav.signIn}
         </Link>
         <Link href="/register" className={buttonClass("primary", "max-sm:hidden")}>
-          Join
+          {t.nav.join}
         </Link>
       </>
     );
@@ -33,25 +34,25 @@ export async function UserMenu() {
       </summary>
       <div className="absolute right-0 mt-2 w-56 rounded-xl border border-slate-200 bg-white p-1.5 text-sm shadow-lg">
         <MenuLink href="/account" icon={<LayoutDashboard className="size-4" />}>
-          My account
+          {t.nav.myAccount}
         </MenuLink>
         <MenuLink href="/account/orders" icon={<Package className="size-4" />}>
-          Purchases
+          {t.nav.purchases}
         </MenuLink>
         <MenuLink href="/account/favorites" icon={<Heart className="size-4" />}>
-          Saved items
+          {t.nav.savedItems}
         </MenuLink>
         <MenuLink href="/sell" icon={<Store className="size-4" />}>
-          Seller dashboard
+          {t.nav.sellerDashboard}
         </MenuLink>
         {user.role === "ADMIN" && (
           <MenuLink href="/admin" icon={<Shield className="size-4" />}>
-            Admin
+            {t.nav.admin}
           </MenuLink>
         )}
         <form action={logoutAction} className="mt-1 border-t border-slate-100 pt-1">
           <button type="submit" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-700 hover:bg-slate-100">
-            <LogOut className="size-4" /> Sign out
+            <LogOut className="size-4" /> {t.nav.signOut}
           </button>
         </form>
       </div>

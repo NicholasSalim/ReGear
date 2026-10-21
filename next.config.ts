@@ -49,6 +49,8 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["better-sqlite3", "sharp"],
   experimental: {
     authInterrupts: true,
+    // The root layout lives under app/[lang]; unmatched URLs need a 404 of their own.
+    globalNotFound: true,
     // Verification documents are posted through a Server Action (validated & capped at 8MB in code).
     serverActions: { bodySizeLimit: "10mb" },
   },

@@ -171,13 +171,13 @@ export const listingSchema = listingBaseSchema.superRefine((data, ctx) => {
     const empty = raw === undefined || raw === "" || raw === null;
     if (empty) {
       if (field.type === "boolean") cleanSpecs[field.key] = false;
-      else if (field.required) ctx.addIssue({ code: "custom", path: ["specs", field.key], message: `${field.label} is required` });
+      else if (field.required) ctx.addIssue({ code: "custom", path: ["specs", field.key], message: `${field.label.en} is required` });
       continue;
     }
     if (field.type === "number") {
       const n = Number(raw);
       if (!Number.isFinite(n) || n < 0 || n > 1_000_000) {
-        ctx.addIssue({ code: "custom", path: ["specs", field.key], message: `${field.label} must be a number` });
+        ctx.addIssue({ code: "custom", path: ["specs", field.key], message: `${field.label.en} must be a number` });
         continue;
       }
       cleanSpecs[field.key] = n;
@@ -185,7 +185,7 @@ export const listingSchema = listingBaseSchema.superRefine((data, ctx) => {
       cleanSpecs[field.key] = raw === true || raw === "true" || raw === "on";
     } else if (field.type === "select") {
       if (!field.options?.includes(String(raw))) {
-        ctx.addIssue({ code: "custom", path: ["specs", field.key], message: `Choose a valid ${field.label.toLowerCase()}` });
+        ctx.addIssue({ code: "custom", path: ["specs", field.key], message: `Choose a valid ${field.label.en.toLowerCase()}` });
         continue;
       }
       cleanSpecs[field.key] = String(raw);

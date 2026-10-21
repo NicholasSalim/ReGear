@@ -6,7 +6,7 @@ import sharp from "sharp";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { hashPassword } from "../src/lib/auth/password";
-import { applicableChecks, getCategory } from "../src/lib/catalog";
+import { applicableChecks, categorySearchTerms, getCategory } from "../src/lib/catalog";
 import { functionalScore, type ConditionCheckEntry } from "../src/lib/condition";
 import type { CheckStatus, ConditionGrade } from "../src/lib/constants";
 import { calculateFees, generateOrderNumber } from "../src/lib/orders/state";
@@ -206,7 +206,7 @@ async function main() {
         publishedAt,
         createdAt: publishedAt,
         viewCount: Math.floor(Math.random() * 400),
-        searchText: [l.title, l.brand, l.model, getCategory(l.category)!.name, ...Object.values(l.specs).filter((v) => typeof v !== "boolean")].join(" ").toLowerCase(),
+        searchText: [l.title, l.brand, l.model, ...categorySearchTerms(l.category), ...Object.values(l.specs).filter((v) => typeof v !== "boolean")].join(" ").toLowerCase(),
         conditionReport: {
           create: {
             batteryHealth: l.battery ?? null,
@@ -223,7 +223,7 @@ async function main() {
       },
     });
     for (let v = 0; v < 3; v++) {
-      const img = await makeImage("public", `${l.brand} ${l.model}`, getCategory(l.category)!.singular, i, v, l.category);
+      const img = await makeImage("public", `${l.brand} ${l.model}`, getCategory(l.category)!.singular.en, i, v, l.category);
       await db.upload.create({ data: { ...img, ownerId: seller.userId, listingId: listing.id, position: v, alt: l.title } });
     }
     listingIds.push(listing.id);

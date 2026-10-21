@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "@/i18n/client";
 import type { ComponentProps, ReactNode } from "react";
 
 export function cn(...classes: Array<string | false | null | undefined>) {

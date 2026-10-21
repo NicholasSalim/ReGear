@@ -1,8 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useSyncExternalStore } from "react";
 import { GitCompareArrows, X } from "lucide-react";
+import { Link, useLocale, useT } from "@/i18n/client";
+import { localePath } from "@/i18n/locales";
 import { MAX_COMPARE } from "@/lib/constants";
 
 // Comparison list kept in localStorage (no server state needed) and shared
@@ -60,6 +61,7 @@ function useCompare() {
 
 export function CompareToggle({ id, title, category }: Item) {
   const items = useCompare();
+  const t = useT();
   const selected = items.some((i) => i.id === id);
   const full = items.length >= MAX_COMPARE;
 
@@ -72,18 +74,19 @@ export function CompareToggle({ id, title, category }: Item) {
         disabled={!selected && full}
         onChange={() => write(selected ? items.filter((i) => i.id !== id) : [...items, { id, title, category }])}
       />
-      {selected ? "Added to compare" : full ? `Compare full (${MAX_COMPARE})` : "Compare"}
+      {selected ? t.compare.added : full ? t.compare.full(MAX_COMPARE) : t.compare.compare}
     </label>
   );
 }
 
 export function CompareTray() {
   const items = useCompare();
+  const t = useT();
   if (items.length === 0) return null;
   const mixed = new Set(items.map((i) => i.category)).size > 1;
 
   return (
-    <div className="fixed inset-x-0 bottom-4 z-40 px-4" role="region" aria-label="Comparison">
+    <div className="fixed inset-x-0 bottom-4 z-40 px-4" role="region" aria-label={t.compare.trayAria}>
       <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-3 rounded-2xl bg-ink px-4 py-3 text-white shadow-2xl">
         <GitCompareArrows className="size-5 shrink-0 text-brand-200" aria-hidden />
         <ul className="flex min-w-0 flex-1 flex-wrap gap-2">
@@ -94,23 +97,23 @@ export function CompareTray() {
                 type="button"
                 onClick={() => write(items.filter((x) => x.id !== i.id))}
                 className="rounded-full p-0.5 hover:bg-white/20"
-                aria-label={`Remove ${i.title} from comparison`}
+                aria-label={t.compare.remove(i.title)}
               >
                 <X className="size-3" />
               </button>
             </li>
           ))}
         </ul>
-        {mixed && <span className="text-xs text-amber-300">Mixed categories</span>}
+        {mixed && <span className="text-xs text-amber-300">{t.compare.mixed}</span>}
         <button type="button" onClick={() => write([])} className="text-xs text-slate-300 hover:text-white">
-          Clear
+          {t.compare.clear}
         </button>
         <Link
           href={`/compare?ids=${items.map((i) => i.id).join(",")}`}
           className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${items.length < 2 ? "pointer-events-none bg-white/20 text-white/60" : "bg-brand-500 hover:bg-brand-600"}`}
           aria-disabled={items.length < 2}
         >
-          Compare {items.length}
+          {t.compare.compareCount(items.length)}
         </Link>
       </div>
     </div>
@@ -119,6 +122,8 @@ export function CompareTray() {
 
 export function RemoveFromCompare({ id }: { id: string }) {
   const items = useCompare();
+  const t = useT();
+  const locale = useLocale();
   return (
     <button
       type="button"
@@ -126,10 +131,10 @@ export function RemoveFromCompare({ id }: { id: string }) {
       onClick={() => {
         const next = items.filter((i) => i.id !== id);
         write(next);
-        window.location.assign(next.length ? `/compare?ids=${next.map((i) => i.id).join(",")}` : "/compare");
+        window.location.assign(localePath(next.length ? `/compare?ids=${next.map((i) => i.id).join(",")}` : "/compare", locale));
       }}
     >
-      Remove
+      {t.compare.removeOne}
     </button>
   );
 }

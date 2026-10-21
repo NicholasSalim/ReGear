@@ -1,5 +1,7 @@
 "use client";
 
+import { useLocale } from "@/i18n/client";
+import { pick } from "@/i18n/locales";
 import { useState } from "react";
 import type { ActionState } from "@/lib/action";
 import { CARRIERS, DISPUTE_REASON_LABELS, DISPUTE_REASONS, RETURN_REASON_LABELS, RETURN_REASONS } from "@/lib/constants";
@@ -69,6 +71,7 @@ export function CancelForm({ action }: { action: FormAction }) {
 }
 
 export function ReturnRequestForm({ action, daysLeft }: { action: FormAction; daysLeft: number }) {
+  const locale = useLocale();
   return (
     <ActionForm action={action} className="space-y-3">
       {(s) => (
@@ -83,7 +86,7 @@ export function ReturnRequestForm({ action, daysLeft }: { action: FormAction; da
               </option>
               {RETURN_REASONS.map((r) => (
                 <option key={r} value={r}>
-                  {RETURN_REASON_LABELS[r]}
+                  {pick(RETURN_REASON_LABELS[r], locale)}
                 </option>
               ))}
             </select>
@@ -122,6 +125,7 @@ export function ReturnResponseForm({ action }: { action: FormAction }) {
 }
 
 export function DisputeForm({ action, allowNotReceived }: { action: FormAction; allowNotReceived: boolean }) {
+  const locale = useLocale();
   return (
     <ActionForm action={action} className="space-y-3">
       {(s) => (
@@ -136,7 +140,7 @@ export function DisputeForm({ action, allowNotReceived }: { action: FormAction; 
               </option>
               {DISPUTE_REASONS.filter((r) => allowNotReceived || r !== "NOT_RECEIVED").map((r) => (
                 <option key={r} value={r}>
-                  {DISPUTE_REASON_LABELS[r]}
+                  {pick(DISPUTE_REASON_LABELS[r], locale)}
                 </option>
               ))}
             </select>

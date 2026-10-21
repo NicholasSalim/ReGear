@@ -1,8 +1,7 @@
 // ReGear data model.
 //
 // Status-like columns are plain strings validated by the application layer
-// (see src/lib/constants.ts) so the schema stays portable between SQLite
-// (local / single node) and PostgreSQL (switch `provider` and re-run migrate).
+// (see src/lib/constants.ts) rather than database enums.
 // Money is always stored as integer minor units (cents).
 // Structured blobs (specs, checks, addresses, snapshots) are JSON strings
 // validated with zod on read and write.
@@ -13,7 +12,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 model User {

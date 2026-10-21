@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { hashPassword } from "../src/lib/auth/password";
 import { getCategory } from "../src/lib/catalog";
@@ -11,7 +11,7 @@ import { functionalScore, type ConditionCheckEntry } from "../src/lib/condition"
 import type { CheckStatus, ConditionGrade } from "../src/lib/constants";
 import { calculateFees, generateOrderNumber } from "../src/lib/orders/state";
 
-const db = new PrismaClient({ adapter: new PrismaBetterSqlite3({ url: process.env.DATABASE_URL ?? "file:./prisma/dev.db" }) });
+const db = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
 const STORAGE = path.resolve(process.env.STORAGE_DIR ?? "./storage");
 const DEMO_PASSWORD = "Password123";
 

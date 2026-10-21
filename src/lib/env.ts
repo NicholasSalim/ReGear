@@ -4,7 +4,7 @@ import { z } from "zod";
 // Validate configuration once at boot; fail fast on misconfiguration.
 const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-  DATABASE_URL: z.string().min(1).default("file:./prisma/dev.db"),
+  DATABASE_URL: z.string().regex(/^postgres(ql)?:\/\//,"must be a postgresql:// connection string"),
   NEXT_PUBLIC_SITE_URL: z.url().default("http://localhost:3000"),
   STORAGE_DIR: z.string().min(1).default("./storage"),
   CRON_SECRET: z.string().min(32).optional(),

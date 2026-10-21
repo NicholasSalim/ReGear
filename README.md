@@ -20,19 +20,21 @@ A marketplace for pre-owned electronics (phones, laptops, tablets, cameras, PC c
 |---|---|
 | Framework | Next.js 16 (App Router, Server Components, Server Actions, Cache Components / PPR, Turbopack) |
 | Language | TypeScript (strict) |
-| DB / ORM | Prisma 7 + SQLite (better-sqlite3 driver adapter); PostgreSQL-ready schema |
+| DB / ORM | Prisma 7 + PostgreSQL (`pg` driver adapter) |
 | Validation | Zod 4 on every input boundary |
 | Styling | Tailwind CSS 4 |
 | Images | sharp (validate, re-encode to WebP, strip metadata) + `next/image` (AVIF/WebP) |
-| Tests | Vitest: unit tests plus integration tests against a real migrated SQLite DB |
+| Tests | Vitest: unit tests plus integration tests against a real migrated PostgreSQL DB |
 
 ## Getting started
 
-Requires Node.js 22 or newer.
+Requires Node.js 22 or newer and PostgreSQL (tested with 17).
 
 ```bash
+psql -U postgres -c "CREATE DATABASE regear;"
+psql -U postgres -c "CREATE DATABASE regear_test;"
 npm install                  # also runs `prisma generate`
-cp .env.example .env         # then set CRON_SECRET to a long random string
+cp .env.example .env         # then set DATABASE_URL, TEST_DATABASE_URL and CRON_SECRET
 npm run setup                # migrate + generate + seed demo data
 npm run dev                  # http://localhost:3000
 ```
@@ -62,7 +64,7 @@ Payments run in **simulated mode**; no card is charged.
 | Script | Purpose |
 |---|---|
 | `npm run dev` / `build` / `start` | Next.js |
-| `npm test` | Vitest (unit + integration; creates a throwaway `prisma/test.db`) |
+| `npm test` | Vitest (unit + integration; resets the `TEST_DATABASE_URL` database) |
 | `npm run typecheck` / `lint` | Type and lint checks |
 | `npm run db:migrate` / `db:deploy` / `db:seed` | Database |
 
@@ -137,7 +139,6 @@ tests/              unit + integration tests
 
 ## Going further in production
 
-- **PostgreSQL.** Set `provider = "postgresql"` in `prisma/schema.prisma`, swap in `@prisma/adapter-pg` in `src/lib/db.ts`, then run `prisma migrate dev`. Columns are plain strings and ints, so no data-model changes are needed.
 - **Payments.** Implement `PaymentProvider` (`src/lib/payments.ts`) with Stripe Connect or Xendit using manual capture, idempotency keys tied to the order ID, and verified webhooks.
 - **Storage.** Swap `src/lib/storage.ts` for S3/R2. Keep private documents in a separate, encrypted bucket.
 - **Multi-instance.** Set `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY`, use a shared cache handler (`'use cache: remote'`), and move rate limiting to Redis if load warrants it.

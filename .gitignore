@@ -45,8 +45,6 @@ next-env.d.ts
 
 # local data
 /storage
-/prisma/*.db
-/prisma/*.db-journal
 /src/generated
 /storage-test
 /.playwright-mcp

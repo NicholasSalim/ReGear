@@ -108,4 +108,22 @@ describe("server messages in the visitor's language", () => {
       "Pesanan dibatalkan oleh penjual. Dana dikembalikan penuh.",
     );
   });
+
+  it("rewords ReGear's own dispute notes but leaves people's messages alone", async () => {
+    const { id } = await import("@/i18n/dictionaries/id");
+    const { disputeMessageText } = await import("@/i18n/messages");
+    expect(disputeMessageText({ authorRole: "ADMIN", body: "A ReGear specialist is now reviewing this case." }, id)).toBe(
+      "Petugas ReGear sekarang meninjau kasus ini.",
+    );
+    expect(disputeMessageText({ authorRole: "ADMIN", body: "Resolution: Partial refund for the fan." }, id)).toBe("Keputusan: Partial refund for the fan.");
+    expect(disputeMessageText({ authorRole: "BUYER", body: "Resolution: please refund me" }, id)).toBe("Resolution: please refund me");
+  });
+
+  it("gives rejected images a code the uploader sees translated", async () => {
+    const { InvalidImageError } = await import("@/lib/storage");
+    const { id } = await import("@/i18n/dictionaries/id");
+    const err = new InvalidImageError("tooSmall");
+    expect(err.message).toBe("Images must be at least 200×200 pixels");
+    expect(id.uploads.image[err.code]).toBe("Gambar minimal berukuran 200×200 piksel");
+  });
 });

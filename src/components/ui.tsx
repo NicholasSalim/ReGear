@@ -1,4 +1,4 @@
-import { Link } from "@/i18n/client";
+import { Link, LoadingLabel } from "@/i18n/client";
 import type { ComponentProps, ReactNode } from "react";
 
 export function cn(...classes: Array<string | false | null | undefined>) {
@@ -100,7 +100,10 @@ export function Skeleton({ className }: { className?: string }) {
 
 export function PageSkeleton() {
   return (
-    <div className="container-page py-8" aria-busy="true" aria-label="Loading">
+    <div className="container-page py-8" aria-busy="true" role="status">
+      <span className="sr-only">
+        <LoadingLabel />
+      </span>
       <Skeleton className="mb-6 h-8 w-64" />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 6 }, (_, i) => (

@@ -6,6 +6,7 @@
 // worded when displayed. Both survive being produced in one place and read in
 // another, where the language is only known at the end.
 
+import { en } from "./dictionaries/en";
 import type { Dictionary } from "./server";
 import { LOCALES, pick, type Locale, type Localized } from "./locales";
 
@@ -52,6 +53,21 @@ export type EventType = keyof Dictionary["events"];
 export type EventParams<T extends EventType> = Args<Dictionary["events"][T]> extends [infer P, ...unknown[]] ? P : Record<string, never>;
 
 /** Wording for a stored order event; events from before params existed keep their stored text. */
+/**
+ * Wording for a dispute message. ReGear's own notes are stored in English (so
+ * older rows work too) and reworded for the reader; people's messages are
+ * shown as written.
+ */
+export function disputeMessageText(message: { authorRole: string; body: string }, t: Dictionary): string {
+  if (message.authorRole !== "ADMIN") return message.body;
+  const stored = en.disputes.system;
+  if (message.body === stored.reviewing) return t.disputes.system.reviewing;
+  if (message.body.startsWith(stored.resolutionPrefix)) {
+    return t.disputes.system.resolutionPrefix + message.body.slice(stored.resolutionPrefix.length);
+  }
+  return message.body;
+}
+
 export function eventText(event: { type: string; message: string; params: string | null }, t: Dictionary): string {
   if (event.params === null) return event.message;
   const entry = (t.events as Record<string, string | Fn>)[event.type];

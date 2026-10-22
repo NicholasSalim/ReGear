@@ -1,4 +1,7 @@
-import Link from "next/link";
+import { Link } from "@/i18n/client";
+import { pick } from "@/i18n/locales";
+import { getDictionary, getLocale } from "@/i18n/server";
+import { ORDER_STATUS_INFO, type OrderStatus } from "@/lib/constants";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth/dal";
 import { formatMoney } from "@/lib/format";
@@ -6,6 +9,8 @@ import { PageHeader, StatCard } from "@/components/ui";
 
 export default async function AdminOverviewPage() {
   await requireAdmin();
+  const [locale, dict] = await Promise.all([getLocale(), getDictionary()]);
+  const t = dict.admin;
   const [users, sellers, activeListings, pendingVerifications, openDisputes, gmv, fees, ordersByStatus] = await Promise.all([
     db.user.count(),
     db.sellerProfile.count(),
@@ -19,24 +24,24 @@ export default async function AdminOverviewPage() {
 
   return (
     <>
-      <PageHeader title="Marketplace overview" />
+      <PageHeader title={t.overviewTitle} />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <StatCard label="Users" value={users} hint={`${sellers} sellers`} />
-        <StatCard label="Active listings" value={activeListings} />
-        <StatCard label="Completed GMV" value={formatMoney(gmv._sum.totalIdr ?? 0)} hint={`${formatMoney(fees._sum.platformFeeIdr ?? 0)} fees`} />
+        <StatCard label={t.users} value={users} hint={t.sellers(sellers)} />
+        <StatCard label={t.activeListings} value={activeListings} />
+        <StatCard label={t.gmv} value={formatMoney(gmv._sum.totalIdr ?? 0)} hint={t.fees(formatMoney(fees._sum.platformFeeIdr ?? 0))} />
         <Link href="/admin/verifications">
-          <StatCard label="Pending verifications" value={pendingVerifications} hint="Open the review queue" />
+          <StatCard label={t.pendingVerifications} value={pendingVerifications} hint={t.openQueue} />
         </Link>
         <Link href="/admin/disputes">
-          <StatCard label="Open disputes" value={openDisputes} hint="Open the dispute list" />
+          <StatCard label={t.openDisputes} value={openDisputes} hint={t.openDisputeList} />
         </Link>
       </div>
       <section className="card mt-8 p-5">
-        <h2 className="mb-3 font-bold">Orders by status</h2>
+        <h2 className="mb-3 font-bold">{t.ordersByStatus}</h2>
         <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
           {ordersByStatus.map((r) => (
             <div key={r.status}>
-              <dt className="text-slate-500">{r.status.replaceAll("_", " ").toLowerCase()}</dt>
+              <dt className="text-slate-500">{r.status in ORDER_STATUS_INFO ? pick(ORDER_STATUS_INFO[r.status as OrderStatus].label, locale) : r.status}</dt>
               <dd className="text-lg font-semibold">{r._count._all}</dd>
             </div>
           ))}

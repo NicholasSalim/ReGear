@@ -369,7 +369,7 @@ export async function resolveDispute(
       data: { status: "RESOLVED", resolution, resolutionNote: note, refundIdr, resolvedById: adminId, resolvedAt: new Date() },
     });
     await tx.disputeMessage.create({
-      data: { disputeId, authorId: adminId, authorRole: "ADMIN", body: `Resolution: ${note}` },
+      data: { disputeId, authorId: adminId, authorRole: "ADMIN", body: `${en.disputes.system.resolutionPrefix}${note}` },
     });
     if (resolution === "REFUND_BUYER") {
       await setStatus(tx, order.id, "DISPUTED", "REFUNDED", { refundedAt: new Date(), refundIdr });

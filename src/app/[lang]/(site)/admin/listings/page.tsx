@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { getLocale } from "@/i18n/server";
-import Link from "next/link";
+import { Link } from "@/i18n/client";
+import { getDictionary, getLocale } from "@/i18n/server";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth/dal";
 import { formatDate, formatMoney } from "@/lib/format";
@@ -9,10 +9,13 @@ import { ListingStatusBadge, VerifiedBadge } from "@/components/badges";
 import { PageHeader } from "@/components/ui";
 import { ModerateForm } from "../admin-forms";
 
-export const metadata: Metadata = { title: "Listings" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getDictionary()).admin.listingsMetaTitle };
+}
 
 export default async function AdminListingsPage({ searchParams }: PageProps<"/[lang]/admin/listings">) {
-  const locale = await getLocale();
+  const [locale, dict] = await Promise.all([getLocale(), getDictionary()]);
+  const t = dict.admin;
   await requireAdmin();
   const q = (await searchParams).q;
   const query = typeof q === "string" ? q.trim().toLowerCase().slice(0, 100) : "";
@@ -33,10 +36,10 @@ export default async function AdminListingsPage({ searchParams }: PageProps<"/[l
 
   return (
     <>
-      <PageHeader title="Listing moderation" description="Remove listings that violate policy (counterfeits, prohibited items, misleading reports)." />
+      <PageHeader title={t.listingsTitle} description={t.listingsIntro} />
       <form method="get" className="mb-4 flex gap-2">
-        <input name="q" defaultValue={query} placeholder="Search listings" aria-label="Search listings" className="input max-w-sm" />
-        <button className="rounded-lg bg-ink px-4 text-sm font-semibold text-white">Search</button>
+        <input name="q" defaultValue={query} placeholder={t.searchListings} aria-label={t.searchListings} className="input max-w-sm" />
+        <button className="rounded-lg bg-ink px-4 text-sm font-semibold text-white">{t.search}</button>
       </form>
       <ul className="card divide-y divide-slate-100">
         {listings.map((l) => (

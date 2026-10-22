@@ -13,6 +13,7 @@ A marketplace for pre-owned electronics (phones, laptops, tablets, cameras, PC c
 - **Disputes.** The buyer or seller opens a case, which freezes the payout. Buyer, seller and admin share a message thread, and the admin resolves it with a full refund, a partial refund, or a release to the seller.
 - **Reviews.** Only buyers with a completed order can review, which keeps ratings tied to real transactions.
 - **Admin console.** Verification queue, disputes, listing moderation, marketplace stats and an audit log.
+- **Indonesian and English.** Indonesian is the default; visitors can switch to English, and the choice is remembered. Prices are in rupiah (IDR) in both languages.
 
 ## Tech stack
 
@@ -98,8 +99,9 @@ It expires unpaid orders, auto-delivers long-shipped orders, auto-completes orde
 ```
 src/
   actions/          Server Actions (auth, listings, seller, orders, admin): thin, validated entry points
-  app/              Routes (public catalogue, account, sell, admin, disputes, API, media)
+  app/              Routes: pages under [lang]/ (catalogue, account, sell, admin, disputes); API and media at the root
   components/       UI (server components by default; small client islands)
+  i18n/             languages: dictionaries, locale helpers, server/client access, translated server messages
   lib/
     auth/           password hashing, sessions, Data Access Layer (getCurrentUser/requireX)
     data/           read models: catalog.ts (cached, public) and orders.ts (per-user, uncached)
@@ -114,7 +116,17 @@ tests/              unit + integration tests
 ```
 
 - **Order lifecycle.** All state changes go through `assertTransition()` (`src/lib/orders/state.ts`) plus optimistic concurrency on the status column, so illegal or racing transitions fail loudly.
-- **Money** is stored as integer cents. The platform fee is 5%, charged to the seller.
+- **Money** is stored as whole rupiah (IDR has no minor unit in practice). Prices run from Rp 10.000 to Rp 200.000.000. The platform fee is 5%, charged to the seller.
+
+## Languages
+
+The app is fully available in Indonesian (default) and English.
+
+- **URLs.** Indonesian pages live at clean URLs (`/listings`), English pages under `/en` (`/en/listings`). The proxy (`src/proxy.ts`) rewrites clean URLs to the `[lang]` route segment, redirects `/id/...` to the clean URL, and remembers the visitor's choice in the `regear_lang` cookie. A first visit is always Indonesian. Each page declares both versions with `hreflang`, and the sitemap lists both.
+- **Text.** All UI text lives in `src/i18n/dictionaries/`. `en.ts` defines the shape and `id.ts` must match it, so a missing Indonesian entry fails `npm run typecheck`. Entries that take values are functions. Server Components read them with `getDictionary()`; Client Components use `useT()` with the smaller `client.*.ts` dictionaries. Use `Link` from `@/i18n/client` and `localePath()` so links and redirects keep the language.
+- **Catalogue labels** (categories, spec fields, checks, grades, statuses) are `{ en, id }` pairs next to their definitions in `src/lib/catalog.ts` and `src/lib/constants.ts`, read with `pick()`. Stored values such as slugs and status codes never change between languages.
+- **Server messages.** Validation messages are stored as keys (`vmsg()`), business-rule errors carry a code (`DomainError`), and order events store their details as JSON. All three are worded in the visitor's language when shown (`src/i18n/messages.ts`). Seller-written text (titles, descriptions, notes) is shown as written.
+- **Adding a language** means adding it to `LOCALES` in `src/i18n/locales.ts`, writing its dictionaries, and adding its text to the `{ en, id }` labels.
 
 ## Security
 

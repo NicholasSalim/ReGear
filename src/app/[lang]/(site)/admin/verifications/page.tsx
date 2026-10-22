@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { pick } from "@/i18n/locales";
-import { getLocale } from "@/i18n/server";
-import Link from "next/link";
+import { Link } from "@/i18n/client";
+import { getDictionary, getLocale } from "@/i18n/server";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth/dal";
 import { ID_TYPE_LABELS } from "@/lib/constants";
@@ -10,10 +10,13 @@ import { reviewVerificationAction } from "@/actions/admin";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { VerificationDecisionForm } from "../admin-forms";
 
-export const metadata: Metadata = { title: "Verifications" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getDictionary()).admin.verificationsMetaTitle };
+}
 
 export default async function AdminVerificationsPage() {
-  const locale = await getLocale();
+  const [locale, dict] = await Promise.all([getLocale(), getDictionary()]);
+  const t = dict.admin;
   await requireAdmin();
   const pending = await db.verificationRequest.findMany({
     where: { status: "PENDING" },
@@ -24,9 +27,9 @@ export default async function AdminVerificationsPage() {
 
   return (
     <>
-      <PageHeader title="Seller verification queue" description="Oldest first. Every document view is recorded in the audit log." />
+      <PageHeader title={t.verificationsTitle} description={t.verificationsIntro} />
       {pending.length === 0 ? (
-        <EmptyState title="Queue is empty" />
+        <EmptyState title={t.queueEmpty} />
       ) : (
         <ul className="space-y-4">
           {pending.map((r) => (
@@ -37,14 +40,14 @@ export default async function AdminVerificationsPage() {
                   <span className="ml-2 text-xs font-normal text-slate-500">{r.seller.user.email}</span>
                 </p>
                 <dl className="grid gap-2 sm:grid-cols-2">
-                  <div><dt className="text-slate-500">Legal name</dt><dd>{r.legalName}</dd></div>
-                  <div><dt className="text-slate-500">Phone</dt><dd>{r.phone}</dd></div>
-                  <div><dt className="text-slate-500">Document</dt><dd>{pick(ID_TYPE_LABELS[r.idType as keyof typeof ID_TYPE_LABELS], locale)} ···{r.idNumberLast4}</dd></div>
-                  <div><dt className="text-slate-500">Submitted</dt><dd>{formatDateTime(r.createdAt, locale)}</dd></div>
-                  <div className="sm:col-span-2"><dt className="text-slate-500">Address</dt><dd>{r.address}</dd></div>
+                  <div><dt className="text-slate-500">{t.legalName}</dt><dd>{r.legalName}</dd></div>
+                  <div><dt className="text-slate-500">{t.phone}</dt><dd>{r.phone}</dd></div>
+                  <div><dt className="text-slate-500">{t.document}</dt><dd>{pick(ID_TYPE_LABELS[r.idType as keyof typeof ID_TYPE_LABELS], locale)} ···{r.idNumberLast4}</dd></div>
+                  <div><dt className="text-slate-500">{t.submitted}</dt><dd>{formatDateTime(r.createdAt, locale)}</dd></div>
+                  <div className="sm:col-span-2"><dt className="text-slate-500">{t.address}</dt><dd>{r.address}</dd></div>
                 </dl>
                 <a href={`/api/admin/verifications/${r.id}/document`} target="_blank" rel="noopener noreferrer" className="inline-block font-semibold text-brand-700 hover:underline">
-                  View document ↗
+                  {t.viewDocument}
                 </a>
               </div>
               <VerificationDecisionForm action={reviewVerificationAction.bind(null, r.id)} id={r.id} />

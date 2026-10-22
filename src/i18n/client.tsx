@@ -30,3 +30,8 @@ export function Link({ href, ...props }: ComponentProps<typeof NextLink>) {
   const locale = useLocale();
   return <NextLink href={typeof href === "string" ? localePath(href, locale) : href} {...props} />;
 }
+
+/** "Loading…" in the visitor's language, for placeholders that Server Components render. */
+export function LoadingLabel() {
+  return <>{useT().forms.loading}</>;
+}

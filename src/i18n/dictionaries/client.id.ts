@@ -23,7 +23,7 @@ export const clientId: typeof clientEn = {
     retry: "Coba lagi",
   },
   language: { label: "Bahasa", switchTo: { id: "Ganti ke Bahasa Indonesia", en: "Switch to English" } },
-  forms: { working: "Memproses…", choose: "Pilih…" },
+  forms: { working: "Memproses…", choose: "Pilih…", loading: "Memuat…" },
   nav: { section: "Bagian" },
   auth: {
     email: "Email",
@@ -206,5 +206,13 @@ export const clientId: typeof clientEn = {
     saveDraft: "Simpan draf",
     saving: "Menyimpan…",
     publish: "Terbitkan iklan",
+  },
+  adminForms: {
+    noteToSeller: "Catatan untuk penjual",
+    noteHint: "Wajib diisi jika menolak.",
+    approve: "Setujui",
+    reject: "Tolak",
+    removalReason: "Alasan penghapusan",
+    remove: "Hapus",
   },
 };

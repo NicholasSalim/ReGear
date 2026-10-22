@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { Link } from "@/i18n/client";
 import { pick } from "@/i18n/locales";
+import { disputeMessageText } from "@/i18n/messages";
 import { getDictionary, getLocale } from "@/i18n/server";
 import { requireUser } from "@/lib/auth/dal";
 import { getDisputeForUser } from "@/lib/data/orders";
@@ -74,7 +75,7 @@ async function Dispute({ params }: { params: PageProps<"/[lang]/disputes/[id]">[
                 <span className="font-medium text-slate-700">{m.authorRole === "ADMIN" ? t.specialist : m.author.name}</span>
                 <span className="text-slate-400">{formatDateTime(m.createdAt, locale)}</span>
               </div>
-              <p className="text-sm whitespace-pre-line text-slate-800">{m.body}</p>
+              <p className="text-sm whitespace-pre-line text-slate-800">{disputeMessageText(m, dict)}</p>
             </li>
           ))}
         </ol>

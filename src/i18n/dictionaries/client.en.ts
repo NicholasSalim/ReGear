@@ -22,7 +22,7 @@ export const clientEn = {
     retry: "Try again",
   },
   language: { label: "Language", switchTo: { id: "Ganti ke Bahasa Indonesia", en: "Switch to English" } },
-  forms: { working: "Working…", choose: "Choose…" },
+  forms: { working: "Working…", choose: "Choose…", loading: "Loading…" },
   nav: { section: "Section" },
   auth: {
     email: "Email",
@@ -205,5 +205,13 @@ export const clientEn = {
     saveDraft: "Save draft",
     saving: "Saving…",
     publish: "Publish listing",
+  },
+  adminForms: {
+    noteToSeller: "Note to seller",
+    noteHint: "Required when rejecting.",
+    approve: "Approve",
+    reject: "Reject",
+    removalReason: "Removal reason",
+    remove: "Remove",
   },
 };

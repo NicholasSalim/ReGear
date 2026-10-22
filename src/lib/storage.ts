@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import sharp, { type Metadata as SharpMetadata } from "sharp";
+import { en } from "@/i18n/dictionaries/en";
 import { env } from "@/lib/env";
 
 // File storage on local disk. Public images live under <STORAGE_DIR>/public
@@ -20,7 +21,17 @@ export const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 const MAX_INPUT_PIXELS = 50_000_000;
 const MAX_DIMENSION = 1600;
 
-export class InvalidImageError extends Error {}
+type ImageErrorCode = keyof typeof en.uploads.image;
+
+/** A rejected upload. The message is English; the code picks the text shown to the uploader. */
+export class InvalidImageError extends Error {
+  readonly code: ImageErrorCode;
+  constructor(code: ImageErrorCode) {
+    super(en.uploads.image[code]);
+    this.name = "InvalidImageError";
+    this.code = code;
+  }
+}
 
 function newKey(ext: "webp" | "jpg") {
   const name = randomBytes(16).toString("hex");
@@ -44,13 +55,13 @@ async function processImage(input: Buffer, quality: number) {
   try {
     meta = await sharp(input, { limitInputPixels: MAX_INPUT_PIXELS }).metadata();
   } catch {
-    throw new InvalidImageError("File is not a valid image");
+    throw new InvalidImageError("notImage");
   }
   if (!meta.format || !["jpeg", "png", "webp", "avif", "heif"].includes(meta.format)) {
-    throw new InvalidImageError("Use JPEG, PNG, WebP or AVIF images");
+    throw new InvalidImageError("format");
   }
   if ((meta.width ?? 0) < 200 || (meta.height ?? 0) < 200) {
-    throw new InvalidImageError("Images must be at least 200×200 pixels");
+    throw new InvalidImageError("tooSmall");
   }
   try {
     return await sharp(input, { limitInputPixels: MAX_INPUT_PIXELS })
@@ -59,7 +70,7 @@ async function processImage(input: Buffer, quality: number) {
       .webp({ quality })
       .toBuffer({ resolveWithObject: true });
   } catch {
-    throw new InvalidImageError("Could not process image");
+    throw new InvalidImageError("process");
   }
 }
 

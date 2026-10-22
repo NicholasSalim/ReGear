@@ -1,22 +1,28 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { getDictionary } from "@/i18n/server";
 import { DashboardNav, DashboardShell } from "@/components/dashboard-nav";
 import { PageSkeleton } from "@/components/ui";
 
-export const metadata: Metadata = { title: { default: "Seller dashboard", template: "%s · Seller · ReGear" }, robots: { index: false } };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = (await getDictionary()).sell;
+  return { title: { default: t.metaTitle, template: t.metaTemplate }, robots: { index: false } };
+}
 
-export default function SellLayout({ children }: { children: React.ReactNode }) {
+export default async function SellLayout({ children }: { children: React.ReactNode }) {
+  const t = (await getDictionary()).sell;
+  const nav = t.nav;
   return (
     <DashboardShell
-      title="Seller"
+      title={t.title}
       nav={
         <DashboardNav
           items={[
-            { href: "/sell", label: "Dashboard", exact: true },
-            { href: "/sell/listings", label: "Listings" },
-            { href: "/sell/orders", label: "Sales" },
-            { href: "/sell/verification", label: "Verification" },
-            { href: "/sell/profile", label: "Shop profile" },
+            { href: "/sell", label: nav.dashboard, exact: true },
+            { href: "/sell/listings", label: nav.listings },
+            { href: "/sell/orders", label: nav.sales },
+            { href: "/sell/verification", label: nav.verification },
+            { href: "/sell/profile", label: nav.profile },
           ]}
         />
       }

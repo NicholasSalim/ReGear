@@ -1,19 +1,22 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
+import { getDictionary, localeRedirect } from "@/i18n/server";
 import { getSellerProfile, requireUser } from "@/lib/auth/dal";
 import { PageHeader } from "@/components/ui";
 import { SellerProfileForm } from "../seller-forms";
 import { createSellerProfileAction } from "@/actions/seller";
 
-export const metadata: Metadata = { title: "Start selling" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getDictionary()).sell.onboardingMetaTitle };
+}
 
 export default async function OnboardingPage() {
   const user = await requireUser("/sell/onboarding");
-  if (await getSellerProfile(user.id)) redirect("/sell");
+  if (await getSellerProfile(user.id)) await localeRedirect("/sell");
+  const t = (await getDictionary()).sell;
   return (
     <div className="max-w-2xl">
-      <PageHeader title="Start selling on ReGear" description="Set up your shop. You can verify your identity afterwards to earn the trust badge." />
-      <SellerProfileForm action={createSellerProfileAction} submitLabel="Create shop" />
+      <PageHeader title={t.onboardingHeading} description={t.onboardingIntro} />
+      <SellerProfileForm action={createSellerProfileAction} submitLabel={t.createShop} />
     </div>
   );
 }

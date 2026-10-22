@@ -1,6 +1,6 @@
 "use client";
 
-import { useLocale } from "@/i18n/client";
+import { useLocale, useT } from "@/i18n/client";
 import { pick } from "@/i18n/locales";
 import type { ActionState } from "@/lib/action";
 import { ID_TYPE_LABELS, ID_TYPES } from "@/lib/constants";
@@ -18,18 +18,19 @@ export function SellerProfileForm({
   submitLabel: string;
   initial?: { displayName: string; bio: string; location: string };
 }) {
+  const t = useT().sellerForms;
   return (
     <ActionForm action={action} className="card space-y-4 p-6">
       {(s) => (
         <>
           <FormMessage state={s} />
-          <Field label="Shop name" name="displayName" error={s.fieldErrors?.displayName}>
+          <Field label={t.shopName} name="displayName" error={s.fieldErrors?.displayName}>
             <input id="displayName" name="displayName" defaultValue={initial?.displayName} maxLength={50} className="input" />
           </Field>
-          <Field label="Location (city, country)" name="location" error={s.fieldErrors?.location}>
+          <Field label={t.location} name="location" error={s.fieldErrors?.location}>
             <input id="location" name="location" defaultValue={initial?.location} maxLength={80} className="input" />
           </Field>
-          <Field label="About your shop" name="bio" error={s.fieldErrors?.bio} hint="Optional. What you sell, how you test devices, shipping times.">
+          <Field label={t.about} name="bio" error={s.fieldErrors?.bio} hint={t.aboutHint}>
             <textarea id="bio" name="bio" rows={4} defaultValue={initial?.bio} maxLength={600} className="input" />
           </Field>
           <SubmitButton>{submitLabel}</SubmitButton>
@@ -41,6 +42,7 @@ export function SellerProfileForm({
 
 export function VerificationForm({ action }: { action: FormAction }) {
   const locale = useLocale();
+  const t = useT().sellerForms;
   return (
     <ActionForm action={action} className="card space-y-4 p-6">
       {(s) => (
@@ -49,34 +51,34 @@ export function VerificationForm({ action }: { action: FormAction }) {
           {!s.ok && (
             <>
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Legal full name" name="legalName" error={s.fieldErrors?.legalName}>
+                <Field label={t.legalName} name="legalName" error={s.fieldErrors?.legalName}>
                   <input id="legalName" name="legalName" autoComplete="name" maxLength={100} className="input" />
                 </Field>
-                <Field label="Phone" name="phone" error={s.fieldErrors?.phone}>
+                <Field label={t.phone} name="phone" error={s.fieldErrors?.phone}>
                   <input id="phone" name="phone" type="tel" autoComplete="tel" maxLength={20} className="input" />
                 </Field>
                 <div className="sm:col-span-2">
-                  <Field label="Address" name="address" error={s.fieldErrors?.address}>
+                  <Field label={t.address} name="address" error={s.fieldErrors?.address}>
                     <textarea id="address" name="address" rows={2} autoComplete="street-address" maxLength={300} className="input" />
                   </Field>
                 </div>
-                <Field label="Document type" name="idType" error={s.fieldErrors?.idType}>
+                <Field label={t.documentType} name="idType" error={s.fieldErrors?.idType}>
                   <select id="idType" name="idType" className="input" defaultValue="NATIONAL_ID">
-                    {ID_TYPES.map((t) => (
-                      <option key={t} value={t}>
-                        {pick(ID_TYPE_LABELS[t], locale)}
+                    {ID_TYPES.map((type) => (
+                      <option key={type} value={type}>
+                        {pick(ID_TYPE_LABELS[type], locale)}
                       </option>
                     ))}
                   </select>
                 </Field>
-                <Field label="Document number" name="idNumber" error={s.fieldErrors?.idNumber} hint="We only keep the last 4 characters.">
+                <Field label={t.documentNumber} name="idNumber" error={s.fieldErrors?.idNumber} hint={t.documentNumberHint}>
                   <input id="idNumber" name="idNumber" autoComplete="off" maxLength={30} className="input" />
                 </Field>
               </div>
-              <Field label="Photo of the document" name="document" error={s.fieldErrors?.document} hint="JPEG/PNG/WebP up to 8MB. Kept in private storage that only ReGear reviewers can access; never shown to buyers.">
+              <Field label={t.documentPhoto} name="document" error={s.fieldErrors?.document} hint={t.documentPhotoHint}>
                 <input id="document" name="document" type="file" accept="image/jpeg,image/png,image/webp" className="block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:font-medium" />
               </Field>
-              <SubmitButton pendingText="Uploading…">Submit for review</SubmitButton>
+              <SubmitButton pendingText={t.uploading}>{t.submit}</SubmitButton>
             </>
           )}
         </>

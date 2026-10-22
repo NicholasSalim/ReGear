@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { getLocale } from "@/i18n/server";
+import { getDictionary, getLocale } from "@/i18n/server";
 import Image from "next/image";
-import Link from "next/link";
+import { Link } from "@/i18n/client";
 import { Plus } from "lucide-react";
 import { db } from "@/lib/db";
 import { requireSeller } from "@/lib/auth/dal";
@@ -11,10 +11,13 @@ import { GradeBadge, ListingStatusBadge } from "@/components/badges";
 import { ButtonLink, EmptyState, PageHeader } from "@/components/ui";
 import { ListingRowActions } from "./row-actions";
 
-export const metadata: Metadata = { title: "Listings" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getDictionary()).sell.listingsMetaTitle };
+}
 
 export default async function SellerListingsPage() {
-  const locale = await getLocale();
+  const [locale, dict] = await Promise.all([getLocale(), getDictionary()]);
+  const t = dict.sell;
   const { seller } = await requireSeller("/sell/listings");
   const listings = await db.listing.findMany({
     where: { sellerId: seller.id, status: { not: "REMOVED" } },
@@ -36,15 +39,15 @@ export default async function SellerListingsPage() {
   return (
     <>
       <PageHeader
-        title="Your listings"
+        title={t.listingsTitle}
         actions={
           <ButtonLink href="/sell/listings/new">
-            <Plus className="size-4" aria-hidden /> New listing
+            <Plus className="size-4" aria-hidden /> {t.newListing}
           </ButtonLink>
         }
       />
       {listings.length === 0 ? (
-        <EmptyState title="No listings yet" description="Create your first listing with a structured condition report." action={<ButtonLink href="/sell/listings/new">Create listing</ButtonLink>} />
+        <EmptyState title={t.noListings} description={t.noListingsHint} action={<ButtonLink href="/sell/listings/new">{t.createListing}</ButtonLink>} />
       ) : (
         <ul className="card divide-y divide-slate-100">
           {listings.map((l) => (
@@ -60,8 +63,8 @@ export default async function SellerListingsPage() {
                   <ListingStatusBadge status={l.status} />
                   <GradeBadge grade={l.conditionGrade} />
                   <span>{formatMoney(l.priceIdr)}</span>
-                  <span>· {l._count.favorites} saves</span>
-                  <span>· updated {formatDate(l.updatedAt, locale)}</span>
+                  <span>· {t.saves(l._count.favorites)}</span>
+                  <span>· {t.updated(formatDate(l.updatedAt, locale))}</span>
                 </div>
               </div>
               <ListingRowActions id={l.id} status={l.status} />

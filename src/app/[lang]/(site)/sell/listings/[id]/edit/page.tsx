@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
+import { getDictionary } from "@/i18n/server";
 import { requireSeller } from "@/lib/auth/dal";
 import { mediaUrl } from "@/lib/media";
 import { formatAmount } from "@/lib/format";
@@ -10,7 +11,9 @@ import { EmptyState, PageHeader } from "@/components/ui";
 import { ListingForm } from "../../listing-form";
 import type { ListingFormValues } from "../../listing-form-values";
 
-export const metadata: Metadata = { title: "Edit listing" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getDictionary()).sell.editTitle };
+}
 
 const toMoney = (amountIdr: number | null | undefined) => (amountIdr == null ? "" : formatAmount(amountIdr));
 
@@ -18,6 +21,7 @@ export default async function EditListingPage({ params }: PageProps<"/[lang]/sel
   const { id } = await params;
   const { seller } = await requireSeller(`/sell/listings/${id}/edit`);
   if (!/^[a-z0-9]{20,32}$/i.test(id)) notFound();
+  const t = (await getDictionary()).sell;
 
   const listing = await db.listing.findUnique({
     where: { id },
@@ -26,7 +30,7 @@ export default async function EditListingPage({ params }: PageProps<"/[lang]/sel
   // Ownership check: other sellers' listings look like they don't exist.
   if (!listing || listing.sellerId !== seller.id || listing.status === "REMOVED") notFound();
   if (listing.status !== "DRAFT" && listing.status !== "ACTIVE") {
-    return <EmptyState title="This listing can't be edited" description="Listings are locked once an order is placed." />;
+    return <EmptyState title={t.editLocked} description={t.editLockedHint} />;
   }
 
   const report = listing.conditionReport;
@@ -65,7 +69,7 @@ export default async function EditListingPage({ params }: PageProps<"/[lang]/sel
 
   return (
     <>
-      <PageHeader title="Edit listing" description={listing.status === "ACTIVE" ? "Changes go live immediately when you publish." : "Draft"} />
+      <PageHeader title={t.editTitle} description={listing.status === "ACTIVE" ? t.editLiveHint : t.draft} />
       <ListingForm listingId={listing.id} initial={initial} />
     </>
   );

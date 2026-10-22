@@ -4,7 +4,7 @@ import { randomBytes } from "node:crypto";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { invalidate, listingTags } from "@/lib/cache";
-import { runAction, type ActionState } from "@/lib/action";
+import { actionI18n, runAction, type ActionState } from "@/lib/action";
 import { getSellerProfile, requireUserStrict } from "@/lib/auth/dal";
 import { categorySearchTerms } from "@/lib/catalog";
 import { functionalScore } from "@/lib/condition";
@@ -41,8 +41,9 @@ export async function saveListingAction(listingId: string | null, payload: unkno
   let savedId: string | undefined;
   const result = await runAction(async () => {
     const user = await requireUserStrict();
+    const { t } = await actionI18n();
     const seller = await getSellerProfile(user.id);
-    if (!seller) return { error: "Create a seller profile first." };
+    if (!seller) return { error: t.actions.needSellerProfile };
     if (listingId !== null) idSchema.parse(listingId);
 
     const data = listingSchema.parse(payload);
@@ -50,9 +51,9 @@ export async function saveListingAction(listingId: string | null, payload: unkno
     const existing = listingId
       ? await db.listing.findUnique({ where: { id: listingId }, select: { id: true, sellerId: true, status: true } })
       : null;
-    if (listingId && (!existing || existing.sellerId !== seller.id)) return { error: "Listing not found." };
+    if (listingId && (!existing || existing.sellerId !== seller.id)) return { error: t.actions.listingNotFound };
     if (existing && !["DRAFT", "ACTIVE"].includes(existing.status)) {
-      return { error: "Listings that are reserved, sold or removed can no longer be edited." };
+      return { error: t.actions.listingLocked };
     }
     if (data.publish) await assertCanPublish(seller, existing?.id);
 
@@ -62,7 +63,7 @@ export async function saveListingAction(listingId: string | null, payload: unkno
       select: { id: true, listingId: true },
     });
     if (images.length !== data.imageIds.length || images.some((i) => i.listingId && i.listingId !== listingId)) {
-      return { fieldErrors: { imageIds: "One or more photos are invalid. Please re-upload them." } };
+      return { fieldErrors: { imageIds: t.actions.invalidPhotos } };
     }
 
     const listingData = {
@@ -134,7 +135,7 @@ export async function saveListingAction(listingId: string | null, payload: unkno
     savedId = listing.id;
     invalidate(listingTags(listing));
     await audit(user.id, existing ? "listing.update" : "listing.create", "Listing", listing.id, { status: listing.status });
-    return { ok: true, message: data.publish ? "Listing published." : "Draft saved." };
+    return { ok: true, message: data.publish ? t.actions.listingPublished : t.actions.draftSaved };
   });
   return { ...result, listingId: savedId };
 }
@@ -142,18 +143,19 @@ export async function saveListingAction(listingId: string | null, payload: unkno
 export async function setListingStatusAction(listingId: string, status: "ACTIVE" | "DRAFT" | "REMOVED"): Promise<ActionState> {
   return runAction(async () => {
     const user = await requireUserStrict();
+    const { t } = await actionI18n();
     const seller = await getSellerProfile(user.id);
     idSchema.parse(listingId);
-    if (!["ACTIVE", "DRAFT", "REMOVED"].includes(status)) return { error: "Invalid status." };
+    if (!["ACTIVE", "DRAFT", "REMOVED"].includes(status)) return { error: t.actions.invalidStatus };
     const listing = await db.listing.findUnique({
       where: { id: listingId },
       select: { id: true, sellerId: true, status: true, conditionReport: { select: { id: true } }, _count: { select: { images: true } } },
     });
-    if (!seller || !listing || listing.sellerId !== seller.id) return { error: "Listing not found." };
-    if (!["DRAFT", "ACTIVE"].includes(listing.status)) return { error: "This listing can no longer be changed." };
+    if (!seller || !listing || listing.sellerId !== seller.id) return { error: t.actions.listingNotFound };
+    if (!["DRAFT", "ACTIVE"].includes(listing.status)) return { error: t.actions.listingUnchangeable };
     if (status === "ACTIVE") {
       if (!listing.conditionReport || listing._count.images === 0) {
-        return { error: "Add photos and a condition report before publishing." };
+        return { error: t.actions.publishNeedsPhotos };
       }
       await assertCanPublish(seller, listing.id);
     }
@@ -179,7 +181,7 @@ export async function toggleFavoriteAction(listingId: string): Promise<ActionSta
       favorited = false;
     } else {
       const listing = await db.listing.findUnique({ where: { id: listingId }, select: { id: true } });
-      if (!listing) return { error: "Listing not found." };
+      if (!listing) return { error: (await actionI18n()).t.actions.listingNotFound };
       await db.favorite.create({ data: { userId: user.id, listingId } });
       favorited = true;
     }

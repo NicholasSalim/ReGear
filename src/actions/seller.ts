@@ -5,7 +5,8 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { invalidate, TAGS } from "@/lib/cache";
-import { formToObject, runAction, type ActionState } from "@/lib/action";
+import { actionI18n, formToObject, runAction, type ActionState } from "@/lib/action";
+import { localePath } from "@/i18n/locales";
 import { getSellerProfile, requireUserStrict } from "@/lib/auth/dal";
 import { slugify } from "@/lib/format";
 import { rateLimit } from "@/lib/security/rate-limit";
@@ -32,43 +33,45 @@ export async function createSellerProfileAction(_prev: ActionState, formData: Fo
     });
     await audit(user.id, "seller.create", "SellerProfile", seller.id);
   });
-  if (result.ok) redirect("/sell");
+  if (result.ok) redirect(localePath("/sell", (await actionI18n()).locale));
   return result;
 }
 
 export async function updateSellerProfileAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   return runAction(async () => {
     const user = await requireUserStrict();
+    const { t } = await actionI18n();
     const seller = await getSellerProfile(user.id);
-    if (!seller) return { error: "Create a seller profile first." };
+    if (!seller) return { error: t.actions.needSellerProfile };
     const data = sellerProfileSchema.parse(formToObject(formData));
     await db.sellerProfile.update({ where: { id: seller.id }, data });
     invalidate([TAGS.seller(seller.id), TAGS.listings]);
-    return { ok: true, message: "Seller profile saved." };
+    return { ok: true, message: t.actions.shopSaved };
   });
 }
 
 export async function submitVerificationAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   return runAction(async () => {
     const user = await requireUserStrict();
+    const { t } = await actionI18n();
     const seller = await getSellerProfile(user.id);
-    if (!seller) return { error: "Create a seller profile first." };
-    if (seller.verificationStatus === "VERIFIED") return { error: "Your account is already verified." };
-    if (seller.verificationStatus === "PENDING") return { error: "Your verification is already under review." };
+    if (!seller) return { error: t.actions.needSellerProfile };
+    if (seller.verificationStatus === "VERIFIED") return { error: t.actions.alreadyVerified };
+    if (seller.verificationStatus === "PENDING") return { error: t.actions.verificationPending };
 
     const limited = await rateLimit(`verify:${user.id}`, 5, 86_400);
-    if (!limited.ok) return { error: "Too many verification attempts today." };
+    if (!limited.ok) return { error: t.actions.verificationLimit };
 
     const data = verificationSchema.parse(formToObject(formData));
     const file = formData.get("document");
-    if (!(file instanceof File) || file.size === 0) return { fieldErrors: { document: "Upload a photo of your document." } };
-    if (file.size > MAX_UPLOAD_BYTES) return { fieldErrors: { document: "File must be 8MB or smaller." } };
+    if (!(file instanceof File) || file.size === 0) return { fieldErrors: { document: t.actions.documentRequired } };
+    if (file.size > MAX_UPLOAD_BYTES) return { fieldErrors: { document: t.actions.documentTooLarge } };
 
     let documentKey: string;
     try {
       ({ key: documentKey } = await savePrivateDocument(Buffer.from(await file.arrayBuffer())));
     } catch (err) {
-      if (err instanceof InvalidImageError) return { fieldErrors: { document: err.message } };
+      if (err instanceof InvalidImageError) return { fieldErrors: { document: t.uploads.image[err.code] } };
       throw err;
     }
 
@@ -88,6 +91,6 @@ export async function submitVerificationAction(_prev: ActionState, formData: For
       db.sellerProfile.update({ where: { id: seller.id }, data: { verificationStatus: "PENDING" } }),
     ]);
     await audit(user.id, "seller.verification_submitted", "SellerProfile", seller.id);
-    return { ok: true, message: "Thanks! Our team will review your documents within 1–2 business days." };
+    return { ok: true, message: t.actions.verificationSubmitted };
   });
 }

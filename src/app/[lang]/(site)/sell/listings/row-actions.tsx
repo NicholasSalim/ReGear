@@ -1,11 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { useState, useTransition } from "react";
 import { setListingStatusAction } from "@/actions/listings";
+import { Link, useT } from "@/i18n/client";
 import { buttonClass } from "@/components/ui";
 
 export function ListingRowActions({ id, status }: { id: string; status: string }) {
+  const t = useT().rowActions;
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const editable = status === "DRAFT" || status === "ACTIVE";
@@ -19,25 +20,25 @@ export function ListingRowActions({ id, status }: { id: string; status: string }
     });
   };
 
-  if (!editable) return <span className="text-xs text-slate-500">Locked while an order is in progress</span>;
+  if (!editable) return <span className="text-xs text-slate-500">{t.locked}</span>;
 
   return (
     <div className="flex flex-col items-end gap-1">
       <div className="flex gap-2">
         <Link href={`/sell/listings/${id}/edit`} className={buttonClass("secondary", "px-3 py-1.5")}>
-          Edit
+          {t.edit}
         </Link>
         {status === "DRAFT" ? (
           <button type="button" disabled={pending} onClick={() => change("ACTIVE")} className={buttonClass("primary", "px-3 py-1.5")}>
-            Publish
+            {t.publish}
           </button>
         ) : (
           <button type="button" disabled={pending} onClick={() => change("DRAFT")} className={buttonClass("secondary", "px-3 py-1.5")}>
-            Unpublish
+            {t.unpublish}
           </button>
         )}
-        <button type="button" disabled={pending} onClick={() => change("REMOVED", "Delete this listing? This cannot be undone.")} className={buttonClass("ghost", "px-3 py-1.5 text-rose-600")}>
-          Delete
+        <button type="button" disabled={pending} onClick={() => change("REMOVED", t.deleteConfirm)} className={buttonClass("ghost", "px-3 py-1.5 text-rose-600")}>
+          {t.delete}
         </button>
       </div>
       {error && <p className="text-xs text-rose-600">{error}</p>}

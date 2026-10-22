@@ -133,6 +133,7 @@ export const clientEn = {
     tooLarge: (name: string) => `${name} is larger than 8MB.`,
     uploadFailed: "Upload failed",
     offline: "Upload failed. Check your connection.",
+    moreErrors: (n: number) => `…and ${n} more`,
     saveFailed: "Could not save the listing.",
     photos: "Photos",
     photosHint: (max: number) => `Up to ${max} photos. Show every angle and any flaws mentioned in the report. The first photo is the cover.`,

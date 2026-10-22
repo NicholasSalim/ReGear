@@ -134,6 +134,7 @@ export const clientId: typeof clientEn = {
     tooLarge: (name: string) => `${name} lebih besar dari 8MB.`,
     uploadFailed: "Gagal mengunggah",
     offline: "Gagal mengunggah. Periksa koneksi Anda.",
+    moreErrors: (n: number) => `…dan ${n} lainnya`,
     saveFailed: "Iklan tidak bisa disimpan.",
     photos: "Foto",
     photosHint: (max: number) => `Maksimal ${max} foto. Tunjukkan semua sisi dan setiap cacat yang disebut di laporan. Foto pertama menjadi sampul.`,

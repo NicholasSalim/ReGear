@@ -32,6 +32,8 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
   const [v, setV] = useState<ListingFormValues>(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
+  // Upload problems are shown with the photos, apart from save errors.
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(0);
   const [saving, startSaving] = useTransition();
   const fileInput = useRef<HTMLInputElement>(null);
@@ -75,10 +77,10 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
     if (!files) return;
     const room = MAX_LISTING_IMAGES - v.images.length;
     const batch = Array.from(files).slice(0, room);
-    setFormError(null);
+    setUploadError(null);
     for (const file of batch) {
       if (file.size > 8 * 1024 * 1024) {
-        setFormError(t.tooLarge(file.name));
+        setUploadError(t.tooLarge(file.name));
         continue;
       }
       setUploading((n) => n + 1);
@@ -87,10 +89,10 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
         body.append("file", file);
         const res = await fetch("/api/uploads", { method: "POST", body });
         const json = await res.json();
-        if (!res.ok) setFormError(json.error ?? t.uploadFailed);
+        if (!res.ok) setUploadError(json.error ?? t.uploadFailed);
         else setV((prev) => ({ ...prev, images: [...prev.images, { id: json.id, url: json.url }].slice(0, MAX_LISTING_IMAGES) }));
       } catch {
-        setFormError(t.offline);
+        setUploadError(t.offline);
       } finally {
         setUploading((n) => n - 1);
       }
@@ -152,6 +154,46 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
 
   const err = (k: string) => errors[k];
 
+  // Name of the field an error key belongs to, for the summary at the top.
+  const FIELD_NAMES: Record<string, string> = {
+    title: t.title,
+    category: t.category,
+    brand: t.brand,
+    model: t.model,
+    location: t.shipsFrom,
+    description: t.description,
+    priceIdr: t.price,
+    originalPriceIdr: t.originalPrice,
+    shippingIdr: t.shipping,
+    conditionGrade: t.overallGrade,
+    warrantyType: t.warranty,
+    warrantyMonths: t.warrantyMonths,
+    warrantyTerms: t.warrantyTerms,
+    returnWindowDays: t.returnWindow,
+    batteryHealth: t.battery,
+    cosmeticScore: t.cosmetic,
+    knownIssues: t.knownIssues,
+    includedAccessories: t.accessories,
+    imageIds: t.photos,
+    checks: t.report,
+  };
+  function fieldName(key: string): string | undefined {
+    const [head, sub] = key.split(".");
+    if (head === "specs" && sub) {
+      const field = category.specFields.find((f) => f.key === sub);
+      return field && pick(field.label, locale);
+    }
+    if (head === "checks" && sub) {
+      const standard = applicable.find((c) => c.key === sub);
+      if (standard) return pick(standard.label, locale);
+      const index = custom.findIndex((c) => c.key === sub);
+      if (index >= 0) return custom[index].label?.trim() || t.customName(index + 1);
+    }
+    return FIELD_NAMES[head];
+  }
+  const errorList = Object.entries(errors);
+  const SUMMARY_LIMIT = 6;
+
   return (
     <form
       className="space-y-6"
@@ -164,13 +206,17 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
       {formError && (
         <p role="alert" className="rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-700">
           {formError}
-          {Object.keys(errors).length > 0 && (
+          {errorList.length > 0 && (
             <span className="mt-1 block text-xs">
-              {Object.values(errors)
-                .slice(0, 5)
-                .map((m, i) => (
-                  <span key={i} className="block">• {m}</span>
-                ))}
+              {errorList.slice(0, SUMMARY_LIMIT).map(([key, message]) => {
+                const name = fieldName(key);
+                return (
+                  <span key={key} className="block">
+                    • {name ? <strong className="font-semibold">{name}:</strong> : null} {message}
+                  </span>
+                );
+              })}
+              {errorList.length > SUMMARY_LIMIT && <span className="block">{t.moreErrors(errorList.length - SUMMARY_LIMIT)}</span>}
             </span>
           )}
         </p>
@@ -199,6 +245,11 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
             </li>
           )}
         </ul>
+        {uploadError && (
+          <p role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+            {uploadError}
+          </p>
+        )}
         {err("imageIds") && <p className="text-xs font-medium text-rose-600">{err("imageIds")}</p>}
       </Section>
 

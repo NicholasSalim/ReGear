@@ -1,8 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Suspense } from "react";
+import { Link, useT } from "@/i18n/client";
+import { splitLocale } from "@/i18n/locales";
 
 type NavItem = { href: string; label: string; exact?: boolean };
 
@@ -17,12 +18,14 @@ export function DashboardNav({ items }: { items: NavItem[] }) {
 }
 
 function ActiveNav({ items }: { items: NavItem[] }) {
-  return <NavLinks items={items} pathname={usePathname()} />;
+  // Compare without the language prefix: "/en/account" is the "/account" item.
+  return <NavLinks items={items} pathname={splitLocale(usePathname()).path} />;
 }
 
 function NavLinks({ items, pathname }: { items: NavItem[]; pathname: string | null }) {
+  const t = useT();
   return (
-    <nav className="flex gap-1 overflow-x-auto lg:flex-col" aria-label="Section">
+    <nav className="flex gap-1 overflow-x-auto lg:flex-col" aria-label={t.nav.section}>
       {items.map((item) => {
         const active = !!pathname && (item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`));
         return (

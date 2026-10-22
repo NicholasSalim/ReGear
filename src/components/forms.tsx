@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 import { CheckCircle2, AlertCircle } from "lucide-react";
+import { useT } from "@/i18n/client";
 import type { ActionState } from "@/lib/action";
 import { buttonClass, type ButtonVariant } from "@/components/ui";
 
@@ -22,9 +23,10 @@ export function SubmitButton({
   value?: string;
 }) {
   const { pending } = useFormStatus();
+  const t = useT();
   return (
     <button type="submit" name={name} value={value} disabled={pending} className={buttonClass(variant, className)} aria-busy={pending}>
-      {pending ? (pendingText ?? "Working…") : children}
+      {pending ? (pendingText ?? t.forms.working) : children}
     </button>
   );
 }

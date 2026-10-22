@@ -1,4 +1,6 @@
 import "server-only";
+import { en } from "@/i18n/dictionaries/en";
+import { resolveEntry, type EventParams, type EventType } from "@/i18n/messages";
 import { db } from "@/lib/db";
 import { listingTags, TAGS } from "@/lib/cache";
 import { currencyCode } from "@/lib/format";
@@ -23,25 +25,37 @@ import type { Address } from "@/lib/validation";
 // state transitions, listing inventory and the event log stay consistent no
 // matter which entry point (Server Action, cron) triggers them.
 
-export class DomainError extends Error {
-  constructor(message: string) {
-    super(message);
+type DomainMessages = typeof en.domain;
+export type DomainCode = keyof DomainMessages;
+type DomainArgs<K extends DomainCode> = DomainMessages[K] extends (...args: infer A) => string ? A : [];
+
+/** An expected business-rule failure. The message is English (logs, tests); actions show `code` in the visitor's language. */
+export class DomainError<K extends DomainCode = DomainCode> extends Error {
+  readonly code: K;
+  readonly args: DomainArgs<K>;
+  constructor(code: K, ...args: DomainArgs<K>) {
+    super(resolveEntry(en.domain[code], args));
     this.name = "DomainError";
+    this.code = code;
+    this.args = args;
   }
 }
 
 type Tx = Prisma.TransactionClient;
 type Result = { orderId: string; tags: string[] };
 
-async function addEvent(tx: Tx, orderId: string, type: string, message: string, actorId?: string | null) {
-  await tx.orderEvent.create({ data: { orderId, type, message, actorId: actorId ?? null } });
+// Events keep their details as params so the timeline can word them in the
+// viewer's language; the English text is stored too, for logs and admins.
+async function addEvent<T extends EventType>(tx: Tx, orderId: string, type: T, params: EventParams<T>, actorId?: string | null) {
+  const message = resolveEntry(en.events[type], [params]);
+  await tx.orderEvent.create({ data: { orderId, type, message, params: JSON.stringify(params), actorId: actorId ?? null } });
 }
 
 async function setStatus(tx: Tx, orderId: string, from: string, to: OrderStatus, data: Prisma.OrderUpdateInput = {}) {
   assertTransition(from, to);
   // Optimistic concurrency: the update only applies if nobody changed the status meanwhile.
   const res = await tx.order.updateMany({ where: { id: orderId, status: from }, data: { ...data, status: to } as Prisma.OrderUpdateManyMutationInput });
-  if (res.count !== 1) throw new DomainError("This order was updated by someone else. Refresh and try again.");
+  if (res.count !== 1) throw new DomainError("concurrentUpdate");
 }
 
 function tagsFor(order: { listingId: string; sellerId: string; buyerId: string }) {
@@ -53,15 +67,15 @@ async function loadOrder(tx: Tx, orderId: string) {
     where: { id: orderId },
     include: { seller: { select: { userId: true } }, returnRequest: true, dispute: true },
   });
-  if (!order) throw new DomainError("Order not found");
+  if (!order) throw new DomainError("orderNotFound");
   return order;
 }
 
 function assertBuyer(order: { buyerId: string }, userId: string) {
-  if (order.buyerId !== userId) throw new DomainError("Order not found");
+  if (order.buyerId !== userId) throw new DomainError("orderNotFound");
 }
 function assertSeller(order: { seller: { userId: string } }, userId: string) {
-  if (order.seller.userId !== userId) throw new DomainError("Order not found");
+  if (order.seller.userId !== userId) throw new DomainError("orderNotFound");
 }
 
 // Checkout -----------------------------------------------------------------
@@ -75,12 +89,12 @@ export async function createOrder(buyerId: string, listingId: string, address: A
         images: { select: { key: true }, orderBy: { position: "asc" }, take: 1 },
       },
     });
-    if (!listing || listing.status !== "ACTIVE") throw new DomainError("This item is no longer available.");
-    if (listing.seller.userId === buyerId) throw new DomainError("You cannot buy your own listing.");
+    if (!listing || listing.status !== "ACTIVE") throw new DomainError("itemUnavailable");
+    if (listing.seller.userId === buyerId) throw new DomainError("ownListing");
 
     // Atomically reserve: only one buyer can win the ACTIVE -> RESERVED race.
     const reserved = await tx.listing.updateMany({ where: { id: listingId, status: "ACTIVE" }, data: { status: "RESERVED" } });
-    if (reserved.count !== 1) throw new DomainError("Someone just reserved this item.");
+    if (reserved.count !== 1) throw new DomainError("justReserved");
 
     const fees = calculateFees(listing.priceIdr, listing.shippingIdr, PLATFORM_FEE_BPS);
     const order = await tx.order.create({
@@ -106,25 +120,25 @@ export async function createOrder(buyerId: string, listingId: string, address: A
         }),
       },
     });
-    await addEvent(tx, order.id, "CREATED", `Order placed. Item reserved for ${PAYMENT_HOLD_MINUTES} minutes pending payment.`, buyerId);
+    await addEvent(tx, order.id, "CREATED", { minutes: PAYMENT_HOLD_MINUTES }, buyerId);
     return { orderId: order.id, tags: tagsFor(order) };
   });
 }
 
 export async function payOrder(orderId: string, buyerId: string): Promise<Result> {
   const order = await db.order.findUnique({ where: { id: orderId } });
-  if (!order) throw new DomainError("Order not found");
+  if (!order) throw new DomainError("orderNotFound");
   assertBuyer(order, buyerId);
-  if (order.status !== "PENDING_PAYMENT") throw new DomainError("This order has already been paid or closed.");
+  if (order.status !== "PENDING_PAYMENT") throw new DomainError("alreadyPaid");
   if (Date.now() - order.createdAt.getTime() > PAYMENT_HOLD_MINUTES * 60_000) {
     await expireUnpaidOrder(order.id);
-    throw new DomainError("The payment window expired and the item was released.");
+    throw new DomainError("paymentExpired");
   }
 
   const charge = await payments.charge({ orderId, amountIdr: order.totalIdr, currency: currencyCode });
   return db.$transaction(async (tx) => {
     await setStatus(tx, orderId, "PENDING_PAYMENT", "PAID", { paidAt: new Date(), paymentRef: charge.ref });
-    await addEvent(tx, orderId, "PAID", "Payment received and held securely by ReGear until you confirm the item.", buyerId);
+    await addEvent(tx, orderId, "PAID", {}, buyerId);
     return { orderId, tags: tagsFor(order) };
   });
 }
@@ -133,12 +147,12 @@ export async function cancelOrder(orderId: string, userId: string, reason: strin
   const order = await db.$transaction((tx) => loadOrder(tx, orderId));
   const isBuyer = order.buyerId === userId;
   const isSeller = order.seller.userId === userId;
-  if (!isBuyer && !isSeller) throw new DomainError("Order not found");
+  if (!isBuyer && !isSeller) throw new DomainError("orderNotFound");
   if (isBuyer && order.status !== "PENDING_PAYMENT" && order.status !== "PAID") {
-    throw new DomainError("Orders can only be cancelled before they ship.");
+    throw new DomainError("cancelBeforeShip");
   }
   if (isSeller && order.status !== "PENDING_PAYMENT" && order.status !== "PAID") {
-    throw new DomainError("Orders can only be cancelled before they ship.");
+    throw new DomainError("cancelBeforeShip");
   }
 
   let refundRef: string | null = null;
@@ -151,12 +165,12 @@ export async function cancelOrder(orderId: string, userId: string, reason: strin
       ...(refundRef ? { refundIdr: order.totalIdr, refundedAt: new Date() } : {}),
     });
     await tx.listing.updateMany({ where: { id: order.listingId, status: "RESERVED" }, data: { status: "ACTIVE" } });
-    const who = isBuyer ? "buyer" : "seller";
+    const who = isBuyer ? ("buyer" as const) : ("seller" as const);
     await addEvent(
       tx,
       orderId,
       "CANCELLED",
-      `Order cancelled by the ${who}${reason ? `: ${reason}` : "."}${refundRef ? " Full refund issued." : ""}`,
+      { by: who, ...(reason ? { reason } : {}), refunded: !!refundRef },
       userId,
     );
     return { orderId, tags: tagsFor(order) };
@@ -169,7 +183,7 @@ export async function expireUnpaidOrder(orderId: string) {
     if (!order || order.status !== "PENDING_PAYMENT") return;
     await setStatus(tx, orderId, "PENDING_PAYMENT", "CANCELLED", { cancelledAt: new Date() });
     await tx.listing.updateMany({ where: { id: order.listingId, status: "RESERVED" }, data: { status: "ACTIVE" } });
-    await addEvent(tx, orderId, "EXPIRED", "Payment was not completed in time; the item was released.");
+    await addEvent(tx, orderId, "EXPIRED", {});
   });
 }
 
@@ -180,7 +194,7 @@ export async function shipOrder(orderId: string, sellerUserId: string, carrier: 
     const order = await loadOrder(tx, orderId);
     assertSeller(order, sellerUserId);
     await setStatus(tx, orderId, order.status, "SHIPPED", { shippedAt: new Date(), carrier, trackingNumber });
-    await addEvent(tx, orderId, "SHIPPED", `Shipped with ${carrier}, tracking number ${trackingNumber}.`, sellerUserId);
+    await addEvent(tx, orderId, "SHIPPED", { carrier, tracking: trackingNumber }, sellerUserId);
     return { orderId, tags: tagsFor(order) };
   });
 }
@@ -190,30 +204,23 @@ export async function confirmDelivery(orderId: string, buyerId: string | null): 
     const order = await loadOrder(tx, orderId);
     if (buyerId) assertBuyer(order, buyerId);
     await setStatus(tx, orderId, order.status, "DELIVERED", { deliveredAt: new Date() });
-    const window = order.returnWindowDays > 0 ? ` You have ${order.returnWindowDays} days to inspect the item and request a return.` : "";
-    await addEvent(
-      tx,
-      orderId,
-      "DELIVERED",
-      buyerId ? `Buyer confirmed delivery.${window}` : `Marked delivered automatically after carrier transit time.${window}`,
-      buyerId,
-    );
+    await addEvent(tx, orderId, "DELIVERED", { auto: !buyerId, returnDays: order.returnWindowDays }, buyerId);
     return { orderId, tags: tagsFor(order) };
   });
 }
 
-async function completeInTx(tx: Tx, order: { id: string; status: string; listingId: string; sellerId: string; paymentRef: string | null; totalIdr: number; platformFeeIdr: number; refundIdr: number }, actorId: string | null, message: string) {
+async function completeInTx(tx: Tx, order: { id: string; status: string; listingId: string; sellerId: string; paymentRef: string | null; totalIdr: number; platformFeeIdr: number; refundIdr: number }, actorId: string | null, by: "buyer" | "window") {
   await setStatus(tx, order.id, order.status, "COMPLETED", { completedAt: new Date() });
   await tx.listing.update({ where: { id: order.listingId }, data: { status: "SOLD" } });
   await tx.sellerProfile.update({ where: { id: order.sellerId }, data: { salesCount: { increment: 1 } } });
-  await addEvent(tx, order.id, "COMPLETED", message, actorId);
+  await addEvent(tx, order.id, "COMPLETED", { by }, actorId);
 }
 
 export async function acceptOrder(orderId: string, buyerId: string): Promise<Result> {
   const result = await db.$transaction(async (tx) => {
     const order = await loadOrder(tx, orderId);
     assertBuyer(order, buyerId);
-    await completeInTx(tx, order, buyerId, "Buyer accepted the item. Payment released to the seller.");
+    await completeInTx(tx, order, buyerId, "buyer");
     return { order, result: { orderId, tags: [...tagsFor(order), TAGS.seller(order.sellerId)] } };
   });
   await payments.payout({
@@ -228,7 +235,7 @@ export async function autoCompleteOrder(orderId: string) {
   const order = await db.$transaction(async (tx) => {
     const o = await tx.order.findUnique({ where: { id: orderId } });
     if (!o || o.status !== "DELIVERED") return null;
-    await completeInTx(tx, o, null, "Return window closed. Order completed and payment released to the seller.");
+    await completeInTx(tx, o, null, "window");
     return o;
   });
   if (order) {
@@ -243,11 +250,11 @@ export async function requestReturn(orderId: string, buyerId: string, reason: st
   return db.$transaction(async (tx) => {
     const order = await loadOrder(tx, orderId);
     assertBuyer(order, buyerId);
-    if (!isWithinReturnWindow(order)) throw new DomainError("The return window for this order has closed.");
-    if (order.returnRequest) throw new DomainError("A return was already requested for this order.");
+    if (!isWithinReturnWindow(order)) throw new DomainError("returnWindowClosed");
+    if (order.returnRequest) throw new DomainError("returnAlreadyRequested");
     await setStatus(tx, orderId, "DELIVERED", "RETURN_IN_PROGRESS");
     await tx.returnRequest.create({ data: { orderId, reason, details } });
-    await addEvent(tx, orderId, "RETURN_REQUESTED", "Buyer requested a return. Waiting for the seller to respond.", buyerId);
+    await addEvent(tx, orderId, "RETURN_REQUESTED", {}, buyerId);
     return { orderId, tags: tagsFor(order) };
   });
 }
@@ -256,15 +263,15 @@ export async function respondToReturn(orderId: string, sellerUserId: string, app
   return db.$transaction(async (tx) => {
     const order = await loadOrder(tx, orderId);
     assertSeller(order, sellerUserId);
-    if (order.returnRequest?.status !== "REQUESTED") throw new DomainError("There is no pending return request.");
+    if (order.returnRequest?.status !== "REQUESTED") throw new DomainError("noPendingReturn");
     if (approve) {
       await tx.returnRequest.update({ where: { orderId }, data: { status: "APPROVED", sellerNote: note || null } });
-      await addEvent(tx, orderId, "RETURN_APPROVED", "Seller approved the return. Please ship the item back and add tracking.", sellerUserId);
+      await addEvent(tx, orderId, "RETURN_APPROVED", {}, sellerUserId);
     } else {
-      if (note.length < 10) throw new DomainError("Explain why the return is rejected (at least 10 characters).");
+      if (note.length < 10) throw new DomainError("rejectReasonShort");
       await tx.returnRequest.update({ where: { orderId }, data: { status: "REJECTED", sellerNote: note } });
       await setStatus(tx, orderId, "RETURN_IN_PROGRESS", "DELIVERED");
-      await addEvent(tx, orderId, "RETURN_REJECTED", `Seller rejected the return: ${note}. The buyer can escalate by opening a dispute.`, sellerUserId);
+      await addEvent(tx, orderId, "RETURN_REJECTED", { note }, sellerUserId);
     }
     return { orderId, tags: tagsFor(order) };
   });
@@ -275,13 +282,13 @@ export async function shipReturn(orderId: string, buyerId: string, carrier: stri
     const order = await loadOrder(tx, orderId);
     assertBuyer(order, buyerId);
     if (order.status !== "RETURN_IN_PROGRESS" || order.returnRequest?.status !== "APPROVED") {
-      throw new DomainError("This return is not awaiting shipment.");
+      throw new DomainError("returnNotAwaitingShipment");
     }
     await tx.returnRequest.update({
       where: { orderId },
       data: { status: "SHIPPED_BACK", returnCarrier: carrier, returnTracking: tracking },
     });
-    await addEvent(tx, orderId, "RETURN_SHIPPED", `Buyer shipped the item back with ${carrier}, tracking ${tracking}.`, buyerId);
+    await addEvent(tx, orderId, "RETURN_SHIPPED", { carrier, tracking }, buyerId);
     return { orderId, tags: tagsFor(order) };
   });
 }
@@ -290,7 +297,7 @@ export async function receiveReturn(orderId: string, sellerUserId: string): Prom
   const order = await db.$transaction((tx) => loadOrder(tx, orderId));
   assertSeller(order, sellerUserId);
   if (order.status !== "RETURN_IN_PROGRESS" || order.returnRequest?.status !== "SHIPPED_BACK") {
-    throw new DomainError("This return has not been shipped back yet.");
+    throw new DomainError("returnNotShippedBack");
   }
   if (order.paymentRef) await payments.refund({ ref: order.paymentRef, amountIdr: order.totalIdr });
   return db.$transaction(async (tx) => {
@@ -298,7 +305,7 @@ export async function receiveReturn(orderId: string, sellerUserId: string): Prom
     await setStatus(tx, orderId, "RETURN_IN_PROGRESS", "REFUNDED", { refundedAt: new Date(), refundIdr: order.totalIdr });
     // Item is back with the seller; they must review it before relisting.
     await tx.listing.update({ where: { id: order.listingId }, data: { status: "DRAFT" } });
-    await addEvent(tx, orderId, "REFUNDED", "Seller received the returned item. Full refund issued to the buyer.", sellerUserId);
+    await addEvent(tx, orderId, "REFUNDED", {}, sellerUserId);
     return { orderId, tags: tagsFor(order) };
   });
 }
@@ -309,11 +316,11 @@ export async function openDispute(orderId: string, userId: string, reason: strin
   return db.$transaction(async (tx) => {
     const order = await loadOrder(tx, orderId);
     const role = order.buyerId === userId ? "BUYER" : order.seller.userId === userId ? "SELLER" : null;
-    if (!role) throw new DomainError("Order not found");
-    if (order.dispute) throw new DomainError("A dispute is already open for this order.");
-    if (!canOpenDispute(order)) throw new DomainError("A dispute cannot be opened for this order at its current stage.");
+    if (!role) throw new DomainError("orderNotFound");
+    if (order.dispute) throw new DomainError("disputeAlreadyOpen");
+    if (!canOpenDispute(order)) throw new DomainError("disputeNotAllowed");
     if (reason === "NOT_RECEIVED" && order.status !== "SHIPPED" && order.status !== "PAID") {
-      throw new DomainError("'Not received' disputes are only possible before delivery is confirmed.");
+      throw new DomainError("notReceivedBeforeDelivery");
     }
     await setStatus(tx, orderId, order.status, "DISPUTED");
     const dispute = await tx.dispute.create({
@@ -325,7 +332,7 @@ export async function openDispute(orderId: string, userId: string, reason: strin
         messages: { create: { authorId: userId, authorRole: role, body: description } },
       },
     });
-    await addEvent(tx, orderId, "DISPUTE_OPENED", `${role === "BUYER" ? "Buyer" : "Seller"} opened a dispute. Payment is frozen until ReGear resolves it.`, userId);
+    await addEvent(tx, orderId, "DISPUTE_OPENED", { by: role === "BUYER" ? "buyer" : "seller" }, userId);
     return { orderId, disputeId: dispute.id, tags: tagsFor(order) };
   });
 }
@@ -338,16 +345,16 @@ export async function resolveDispute(
   partialIdr = 0,
 ): Promise<Result> {
   const dispute = await db.dispute.findUnique({ where: { id: disputeId }, include: { order: true } });
-  if (!dispute) throw new DomainError("Dispute not found");
-  if (dispute.status === "RESOLVED") throw new DomainError("Dispute already resolved");
+  if (!dispute) throw new DomainError("disputeNotFound");
+  if (dispute.status === "RESOLVED") throw new DomainError("disputeResolved");
   const order = dispute.order;
-  if (order.status !== "DISPUTED") throw new DomainError("Order is not in dispute");
+  if (order.status !== "DISPUTED") throw new DomainError("orderNotInDispute");
 
   let refundIdr = 0;
   if (resolution === "REFUND_BUYER") refundIdr = order.totalIdr;
   if (resolution === "PARTIAL_REFUND") {
     if (partialIdr <= 0 || partialIdr >= order.totalIdr) {
-      throw new DomainError("Partial refund must be greater than 0 and less than the order total.");
+      throw new DomainError("partialRefundRange");
     }
     refundIdr = partialIdr;
   }
@@ -367,7 +374,7 @@ export async function resolveDispute(
     if (resolution === "REFUND_BUYER") {
       await setStatus(tx, order.id, "DISPUTED", "REFUNDED", { refundedAt: new Date(), refundIdr });
       await tx.listing.update({ where: { id: order.listingId }, data: { status: "DRAFT" } });
-      await addEvent(tx, order.id, "DISPUTE_RESOLVED", "Dispute resolved in the buyer's favour. Full refund issued.", adminId);
+      await addEvent(tx, order.id, "DISPUTE_RESOLVED", { outcome: "buyer" }, adminId);
     } else {
       await setStatus(tx, order.id, "DISPUTED", "COMPLETED", {
         completedAt: new Date(),
@@ -379,9 +386,7 @@ export async function resolveDispute(
         tx,
         order.id,
         "DISPUTE_RESOLVED",
-        resolution === "PARTIAL_REFUND"
-          ? "Dispute resolved with a partial refund to the buyer; the remainder was released to the seller."
-          : "Dispute resolved in the seller's favour. Payment released to the seller.",
+        { outcome: resolution === "PARTIAL_REFUND" ? "partial" : "seller" },
         adminId,
       );
     }
@@ -395,9 +400,9 @@ export async function leaveReview(orderId: string, buyerId: string, rating: numb
   return db.$transaction(async (tx) => {
     const order = await loadOrder(tx, orderId);
     assertBuyer(order, buyerId);
-    if (order.status !== "COMPLETED") throw new DomainError("You can review the seller once the order is completed.");
+    if (order.status !== "COMPLETED") throw new DomainError("reviewAfterCompletion");
     const existing = await tx.review.findUnique({ where: { orderId } });
-    if (existing) throw new DomainError("You already reviewed this order.");
+    if (existing) throw new DomainError("alreadyReviewed");
     await tx.review.create({ data: { orderId, sellerId: order.sellerId, buyerId, rating, comment } });
     const agg = await tx.review.aggregate({ where: { sellerId: order.sellerId }, _avg: { rating: true }, _count: true });
     await tx.sellerProfile.update({

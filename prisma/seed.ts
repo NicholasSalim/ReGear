@@ -6,6 +6,7 @@ import sharp from "sharp";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { hashPassword } from "../src/lib/auth/password";
+import { en } from "../src/i18n/dictionaries/en";
 import { applicableChecks, categorySearchTerms, getCategory } from "../src/lib/catalog";
 import { functionalScore, type ConditionCheckEntry } from "../src/lib/condition";
 import type { CheckStatus, ConditionGrade } from "../src/lib/constants";
@@ -230,10 +231,28 @@ async function main() {
   }
 
   console.log("Creating sample orders…");
-  async function order(listingIndex: number, buyerId: string, status: string, extra: { daysAgo: number; events: [string, string][] }) {
+  type SeedEvent = "PAID" | "SHIPPED" | "DELIVERED" | "COMPLETED" | "DISPUTE_OPENED";
+  async function order(listingIndex: number, buyerId: string, status: string, extra: { daysAgo: number; events: SeedEvent[] }) {
     const listing = await db.listing.findUniqueOrThrow({ where: { id: listingIds[listingIndex] }, include: { images: { take: 1, orderBy: { position: "asc" } } } });
     const fees = calculateFees(listing.priceIdr, listing.shippingIdr, 500);
     const t = (d: number) => new Date(Date.now() - d * 86_400_000);
+    const shipped = ["SHIPPED", "DELIVERED", "COMPLETED", "DISPUTED"].includes(status);
+    const tracking = shipped ? `JNE${randomBytes(5).toString("hex").toUpperCase()}` : null;
+    // Same shape the order service stores: details as params, English text alongside.
+    const eventData = (type: SeedEvent) => {
+      const params =
+        type === "SHIPPED"
+          ? { carrier: "JNE", tracking: tracking ?? "" }
+          : type === "DELIVERED"
+            ? { auto: false, returnDays: listing.returnWindowDays }
+            : type === "COMPLETED"
+              ? ({ by: "buyer" } as const)
+              : type === "DISPUTE_OPENED"
+                ? ({ by: "buyer" } as const)
+                : {};
+      const wording = en.events[type] as (p: typeof params) => string;
+      return { type, message: wording(params), params: JSON.stringify(params) };
+    };
     const o = await db.order.create({
       data: {
         number: generateOrderNumber(Date.now() - extra.daysAgo * 86_400_000),
@@ -250,13 +269,13 @@ async function main() {
         listingSnapshot: JSON.stringify({ title: listing.title, slug: listing.slug, conditionGrade: listing.conditionGrade, imageKey: listing.images[0]?.key ?? null, warrantyType: listing.warrantyType, warrantyMonths: listing.warrantyMonths, warrantyTerms: listing.warrantyTerms }),
         paymentRef: `sim_ch_${randomBytes(6).toString("hex")}`,
         paidAt: t(extra.daysAgo),
-        shippedAt: ["SHIPPED", "DELIVERED", "COMPLETED", "DISPUTED"].includes(status) ? t(extra.daysAgo - 1) : null,
-        carrier: ["SHIPPED", "DELIVERED", "COMPLETED", "DISPUTED"].includes(status) ? "JNE" : null,
-        trackingNumber: ["SHIPPED", "DELIVERED", "COMPLETED", "DISPUTED"].includes(status) ? `JNE${randomBytes(5).toString("hex").toUpperCase()}` : null,
+        shippedAt: shipped ? t(extra.daysAgo - 1) : null,
+        carrier: shipped ? "JNE" : null,
+        trackingNumber: tracking,
         deliveredAt: ["DELIVERED", "COMPLETED", "DISPUTED"].includes(status) ? t(extra.daysAgo - 3) : null,
         completedAt: status === "COMPLETED" ? t(extra.daysAgo - 5) : null,
         createdAt: t(extra.daysAgo),
-        events: { create: extra.events.map(([type, message], i) => ({ type, message, createdAt: t(extra.daysAgo - i) })) },
+        events: { create: extra.events.map((type, i) => ({ ...eventData(type), createdAt: t(extra.daysAgo - i) })) },
       },
     });
     await db.listing.update({ where: { id: listing.id }, data: { status: status === "COMPLETED" ? "SOLD" : "RESERVED" } });
@@ -265,17 +284,17 @@ async function main() {
 
   const completed = await order(12, buyer.id, "COMPLETED", {
     daysAgo: 20,
-    events: [["PAID", "Payment received and held securely by ReGear."], ["SHIPPED", "Shipped with JNE."], ["DELIVERED", "Buyer confirmed delivery."], ["COMPLETED", "Buyer accepted the item. Payment released to the seller."]],
+    events: ["PAID", "SHIPPED", "DELIVERED", "COMPLETED"],
   });
   await db.review.create({ data: { orderId: completed.id, sellerId: sellers.techhaven.id, buyerId: buyer.id, rating: 5, comment: "Exactly as described — the condition report was spot on. Fast shipping too!" } });
   await db.sellerProfile.update({ where: { id: sellers.techhaven.id }, data: { ratingAvg: 5, ratingCount: 1, salesCount: 1 } });
 
-  await order(7, buyer.id, "SHIPPED", { daysAgo: 2, events: [["PAID", "Payment received and held securely by ReGear."], ["SHIPPED", "Shipped with JNE."]] });
-  await order(14, buyer2.id, "PAID", { daysAgo: 1, events: [["PAID", "Payment received and held securely by ReGear."]] });
+  await order(7, buyer.id, "SHIPPED", { daysAgo: 2, events: ["PAID", "SHIPPED"] });
+  await order(14, buyer2.id, "PAID", { daysAgo: 1, events: ["PAID"] });
 
   const disputed = await order(10, buyer2.id, "DISPUTED", {
     daysAgo: 6,
-    events: [["PAID", "Payment received."], ["SHIPPED", "Shipped with JNE."], ["DELIVERED", "Buyer confirmed delivery."], ["DISPUTE_OPENED", "Buyer opened a dispute. Payment is frozen until ReGear resolves it."]],
+    events: ["PAID", "SHIPPED", "DELIVERED", "DISPUTE_OPENED"],
   });
   await db.dispute.create({
     data: {

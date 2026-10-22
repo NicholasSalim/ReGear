@@ -1,6 +1,6 @@
 import Image from "next/image";
-import { getLocale } from "@/i18n/server";
-import Link from "next/link";
+import { Link } from "@/i18n/client";
+import { getDictionary, getLocale } from "@/i18n/server";
 import { formatDate, formatMoney } from "@/lib/format";
 import { mediaUrl } from "@/lib/media";
 import type { OrderSnapshot } from "@/lib/data/orders";
@@ -9,7 +9,7 @@ import { OrderStatusBadge } from "@/components/badges";
 type Row = { id: string; number: string; status: string; totalIdr: number; createdAt: Date; snapshot: OrderSnapshot; counterpart?: string };
 
 export async function OrderList({ orders, basePath }: { orders: Row[]; basePath: string }) {
-  const locale = await getLocale();
+  const [locale, t] = await Promise.all([getLocale(), getDictionary()]);
   return (
     <ul className="card divide-y divide-slate-100">
       {orders.map((o) => (
@@ -22,7 +22,7 @@ export async function OrderList({ orders, basePath }: { orders: Row[]; basePath:
               <p className="truncate font-semibold text-ink">{o.snapshot.title}</p>
               <p className="text-xs text-slate-500">
                 {o.counterpart ? `${o.counterpart}, ` : ""}
-                order {o.number}, {formatDate(o.createdAt, locale)}
+                {t.orders.listLine(o.number, formatDate(o.createdAt, locale))}
               </p>
             </div>
             <div className="flex flex-col items-end gap-1">

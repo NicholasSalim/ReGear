@@ -230,7 +230,8 @@ model OrderEvent {
   id        String   @id @default(cuid())
   orderId   String
   type      String
-  message   String
+  message   String // English text, for logs and events created before params existed
+  params    String? // JSON details for building the text in the viewer's language; null on older events
   actorId   String?
   createdAt DateTime @default(now())
 

@@ -1,9 +1,10 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { localePath } from "@/i18n/locales";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
-import { formToObject, runAction, type ActionState } from "@/lib/action";
+import { actionI18n, formToObject, runAction, type ActionState } from "@/lib/action";
 import { getDummyHash, hashPassword, verifyPassword } from "@/lib/auth/password";
 import { createSession, destroyAllSessions, destroyCurrentSession, readSessionToken, renewSessionIfNeeded } from "@/lib/auth/session";
 import { getCurrentUser, requireUserStrict } from "@/lib/auth/dal";
@@ -15,33 +16,35 @@ const LOCK_AFTER_FAILURES = 5;
 const LOCK_MINUTES = 15;
 
 export async function registerAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { locale, t } = await actionI18n();
   const ip = await getClientIp();
   const limited = await rateLimit(`register:${ip}`, 10, 3600);
-  if (!limited.ok) return { error: "Too many sign-up attempts. Please try again later." };
+  if (!limited.ok) return { error: t.actions.signupLimit };
 
   const parsed = registerSchema.safeParse(formToObject(formData));
-  if (!parsed.success) return { fieldErrors: fieldErrors(parsed.error) };
+  if (!parsed.success) return { fieldErrors: fieldErrors(parsed.error, t, locale) };
   const { name, email, password } = parsed.data;
 
   const existing = await db.user.findUnique({ where: { email }, select: { id: true } });
-  if (existing) return { fieldErrors: { email: "An account with this email already exists. Try signing in." } };
+  if (existing) return { fieldErrors: { email: t.actions.emailTaken } };
 
   const user = await db.user.create({ data: { name, email, passwordHash: await hashPassword(password) } });
   await createSession(user.id, { ip, userAgent: await getUserAgent() });
   await audit(user.id, "user.register", "User", user.id);
-  redirect(safeRedirectPath(formData.get("next"), "/account"));
+  redirect(safeRedirectPath(formData.get("next"), localePath("/account", locale)));
 }
 
 export async function loginAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { locale, t } = await actionI18n();
   const ip = await getClientIp();
   const parsed = loginSchema.safeParse(formToObject(formData));
-  if (!parsed.success) return { fieldErrors: fieldErrors(parsed.error) };
+  if (!parsed.success) return { fieldErrors: fieldErrors(parsed.error, t, locale) };
   const { email, password } = parsed.data;
 
   const [byIp, byEmail] = await Promise.all([rateLimit(`login-ip:${ip}`, 30, 900), rateLimit(`login-email:${email}`, 10, 900)]);
-  if (!byIp.ok || !byEmail.ok) return { error: "Too many sign-in attempts. Please wait a few minutes and try again." };
+  if (!byIp.ok || !byEmail.ok) return { error: t.actions.loginLimit };
 
-  const generic = { error: "Incorrect email or password." };
+  const generic = { error: t.actions.badCredentials };
   const user = await db.user.findUnique({ where: { email } });
   // Google-only accounts have no password; answer exactly like an unknown email.
   if (!user || !user.passwordHash) {
@@ -50,7 +53,7 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
     return generic;
   }
   if (user.lockedUntil && user.lockedUntil > new Date()) {
-    return { error: "This account is temporarily locked after repeated failed sign-ins. Try again in a few minutes." };
+    return { error: t.actions.locked };
   }
 
   const { ok, needsRehash } = await verifyPassword(password, user.passwordHash);
@@ -77,39 +80,42 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
   });
   await createSession(user.id, { ip, userAgent: await getUserAgent() });
   await audit(user.id, "user.login", "User", user.id);
-  redirect(safeRedirectPath(formData.get("next"), user.role === "ADMIN" ? "/admin" : "/account"));
+  redirect(safeRedirectPath(formData.get("next"), localePath(user.role === "ADMIN" ? "/admin" : "/account", locale)));
 }
 
 export async function logoutAction() {
+  const { locale } = await actionI18n();
   const user = await getCurrentUser();
   await destroyCurrentSession();
   if (user) await audit(user.id, "user.logout", "User", user.id);
-  redirect("/");
+  redirect(localePath("/", locale));
 }
 
 export async function updateProfileAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   return runAction(async () => {
     const user = await requireUserStrict();
+    const { t } = await actionI18n();
     const { name } = profileSchema.parse(formToObject(formData));
     await db.user.update({ where: { id: user.id }, data: { name } });
     const token = await readSessionToken();
     if (token) await renewSessionIfNeeded(token, user.sessionExpiresAt);
-    return { ok: true, message: "Profile updated." };
+    return { ok: true, message: t.actions.profileUpdated };
   });
 }
 
 export async function changePasswordAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   return runAction(async () => {
     const user = await requireUserStrict();
+    const { t } = await actionI18n();
     const limited = await rateLimit(`pwchange:${user.id}`, 5, 900);
-    if (!limited.ok) return { error: "Too many attempts. Try again later." };
+    if (!limited.ok) return { error: t.actions.passwordLimit };
 
     const data = changePasswordSchema.parse(formToObject(formData));
     const row = await db.user.findUniqueOrThrow({ where: { id: user.id } });
     // Accounts created with Google can add a first password without one.
     if (row.passwordHash) {
       const { ok } = await verifyPassword(data.currentPassword, row.passwordHash);
-      if (!ok) return { fieldErrors: { currentPassword: "Current password is incorrect." } };
+      if (!ok) return { fieldErrors: { currentPassword: t.actions.currentPasswordWrong } };
     }
 
     // Rotating the password invalidates every existing session, then we
@@ -121,6 +127,6 @@ export async function changePasswordAction(_prev: ActionState, formData: FormDat
     await destroyAllSessions(user.id);
     await createSession(user.id, { ip: await getClientIp(), userAgent: await getUserAgent() });
     await audit(user.id, "user.password_changed", "User", user.id);
-    return { ok: true, message: row.passwordHash ? "Password changed. Other devices have been signed out." : "Password set. You can now also sign in with your email." };
+    return { ok: true, message: row.passwordHash ? t.actions.passwordChanged : t.actions.passwordSet };
   });
 }

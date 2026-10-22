@@ -30,9 +30,7 @@ async function assertCanPublish(seller: { id: string; verificationStatus: string
     where: { sellerId: seller.id, status: "ACTIVE", ...(excludeId ? { id: { not: excludeId } } : {}) },
   });
   if (active >= UNVERIFIED_ACTIVE_LIMIT) {
-    throw new DomainError(
-      `Unverified sellers can have up to ${UNVERIFIED_ACTIVE_LIMIT} active listings. Verify your account to list more.`,
-    );
+    throw new DomainError("unverifiedLimit", UNVERIFIED_ACTIVE_LIMIT);
   }
 }
 

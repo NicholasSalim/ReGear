@@ -1,6 +1,8 @@
 import { generateCodeVerifier, generateState } from "arctic";
 import { cookies } from "next/headers";
 import { connection, NextResponse } from "next/server";
+import { localePath } from "@/i18n/locales";
+import { getRequestLocale } from "@/i18n/server";
 import { env, isHttps } from "@/lib/env";
 import { audit } from "@/lib/audit";
 import { authReturnPage, GOOGLE_SCOPES, googleClient, isGoogleConfigured } from "@/lib/auth/google";
@@ -20,7 +22,7 @@ export async function GET(req: Request) {
 
   const fail = async (code: string) => {
     await audit(null, "auth.google_failed", "OAuth", "google", { stage: "start", code });
-    const url = new URL(`/${from}`, env.NEXT_PUBLIC_SITE_URL);
+    const url = new URL(localePath(`/${from}`, await getRequestLocale()), env.NEXT_PUBLIC_SITE_URL);
     url.searchParams.set("error", code);
     if (next) url.searchParams.set("next", next);
     return NextResponse.redirect(url);

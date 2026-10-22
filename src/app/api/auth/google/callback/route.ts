@@ -2,6 +2,8 @@ import { timingSafeEqual } from "node:crypto";
 import { ArcticFetchError, decodeIdToken, OAuth2RequestError } from "arctic";
 import { cookies } from "next/headers";
 import { connection, NextResponse } from "next/server";
+import { localePath } from "@/i18n/locales";
+import { getRequestLocale } from "@/i18n/server";
 import { env } from "@/lib/env";
 import { audit } from "@/lib/audit";
 import { createSession } from "@/lib/auth/session";
@@ -51,7 +53,7 @@ export async function GET(req: Request) {
   const fail = async (code: string, reason: string) => {
     console.warn(`[google] sign-in failed: ${code} (${reason})`);
     await audit(null, "auth.google_failed", "OAuth", "google", { stage: "callback", code, reason });
-    const url = new URL(`/${from}`, env.NEXT_PUBLIC_SITE_URL);
+    const url = new URL(localePath(`/${from}`, await getRequestLocale()), env.NEXT_PUBLIC_SITE_URL);
     url.searchParams.set("error", code);
     if (next) url.searchParams.set("next", next);
     return NextResponse.redirect(url);
@@ -93,7 +95,7 @@ export async function GET(req: Request) {
     await createSession(user.id, { ip: await getClientIp(), userAgent: await getUserAgent() });
     await audit(user.id, created ? "user.register_google" : linked ? "user.link_google" : "user.login_google", "User", user.id);
 
-    return NextResponse.redirect(new URL(next || (user.role === "ADMIN" ? "/admin" : "/account"), env.NEXT_PUBLIC_SITE_URL));
+    return NextResponse.redirect(new URL(next || localePath(user.role === "ADMIN" ? "/admin" : "/account", await getRequestLocale()), env.NEXT_PUBLIC_SITE_URL));
   } catch (err) {
     if (err instanceof GoogleSignInError) return fail("google_rejected", err.message);
     console.error("[google] account setup failed", err);

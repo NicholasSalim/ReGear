@@ -58,3 +58,54 @@ describe("proxy", () => {
     expect(proxy(request("/en/account", { regear_session: "x" })).headers.get("location")).toBeNull();
   });
 });
+
+describe("server messages in the visitor's language", () => {
+  it("translates validation messages, including bilingual labels", async () => {
+    const { en } = await import("@/i18n/dictionaries/en");
+    const { id } = await import("@/i18n/dictionaries/id");
+    const { fieldErrors, registerSchema, listingSchema } = await import("@/lib/validation");
+    const res = registerSchema.safeParse({ name: "A", email: "nope", password: "short" });
+    expect(res.success).toBe(false);
+    if (res.success) return;
+    expect(fieldErrors(res.error, id, "id")).toEqual({ name: "Minimal 2 karakter", email: "Masukkan alamat email yang valid", password: "Gunakan minimal 8 karakter" });
+    expect(fieldErrors(res.error, en, "en").name).toBe("Must be at least 2 characters");
+
+    const base = {
+      title: "iPhone 13 128GB Midnight", category: "phones", brand: "Apple", model: "iPhone 13",
+      description: "Well kept phone, used with a case and screen protector since day one.",
+      priceIdr: "7.999.000", shippingIdr: "0", location: "Jakarta", conditionGrade: "EXCELLENT", warrantyType: "NONE",
+      warrantyMonths: "0", warrantyTerms: "", returnWindowDays: "7", specs: {}, batteryHealth: "88", cosmeticScore: "9",
+      checks: [{ key: "screen", status: "PASS" }], includedAccessories: [], knownIssues: "", serialVerified: false,
+      originalBox: false, imageIds: ["clx0000000000000000000000"], publish: true,
+    };
+    const listing = listingSchema.safeParse(base);
+    if (listing.success) throw new Error("expected failure");
+    expect(fieldErrors(listing.error, id, "id")["specs.storage"]).toBe("Penyimpanan wajib diisi");
+    expect(fieldErrors(listing.error, en, "en")["specs.storage"]).toBe("Storage is required");
+    const grade = listingSchema.safeParse({ ...base, conditionGrade: "MINT" });
+    if (grade.success) throw new Error("expected failure");
+    expect(fieldErrors(grade.error, id, "id").conditionGrade).toBe("Pilih salah satu");
+  });
+
+  it("keeps domain errors in English for logs but carries a code for the UI", async () => {
+    const { DomainError } = await import("@/lib/orders/service");
+    const { id } = await import("@/i18n/dictionaries/id");
+    const { resolveEntry } = await import("@/i18n/messages");
+    const err = new DomainError("unverifiedLimit", 5);
+    expect(err.message).toBe("Unverified sellers can have up to 5 active listings. Verify your account to list more.");
+    expect(resolveEntry(id.domain[err.code], err.args)).toContain("5 iklan aktif");
+  });
+
+  it("words order events from their params, and keeps old events as stored", async () => {
+    const { en } = await import("@/i18n/dictionaries/en");
+    const { id } = await import("@/i18n/dictionaries/id");
+    const { eventText } = await import("@/i18n/messages");
+    const shipped = { type: "SHIPPED", message: "Shipped with JNE, tracking number AB123.", params: JSON.stringify({ carrier: "JNE", tracking: "AB123" }) };
+    expect(eventText(shipped, id)).toBe("Dikirim dengan JNE, nomor resi AB123.");
+    expect(eventText(shipped, en)).toBe(shipped.message);
+    expect(eventText({ type: "SHIPPED", message: "Shipped with JNE.", params: null }, id)).toBe("Shipped with JNE.");
+    expect(eventText({ type: "CANCELLED", message: "", params: JSON.stringify({ by: "seller", refunded: true }) }, id)).toBe(
+      "Pesanan dibatalkan oleh penjual. Dana dikembalikan penuh.",
+    );
+  });
+});

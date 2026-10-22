@@ -159,6 +159,11 @@ export const DISPUTE_REASON_LABELS: Record<(typeof DISPUTE_REASONS)[number], Loc
 };
 
 export const DISPUTE_STATUSES = ["OPEN", "UNDER_REVIEW", "RESOLVED"] as const;
+export const DISPUTE_STATUS_LABELS: Record<(typeof DISPUTE_STATUSES)[number], Localized> = {
+  OPEN: L("open", "dibuka"),
+  UNDER_REVIEW: L("under review", "sedang ditinjau"),
+  RESOLVED: L("resolved", "selesai"),
+};
 export const DISPUTE_RESOLUTIONS = ["REFUND_BUYER", "PARTIAL_REFUND", "RELEASE_TO_SELLER"] as const;
 export const DISPUTE_RESOLUTION_LABELS: Record<(typeof DISPUTE_RESOLUTIONS)[number], Localized> = {
   REFUND_BUYER: L("Full refund to buyer", "Pengembalian dana penuh ke pembeli"),

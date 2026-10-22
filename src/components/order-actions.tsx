@@ -1,10 +1,10 @@
 "use client";
 
-import { useLocale } from "@/i18n/client";
-import { pick } from "@/i18n/locales";
 import { useState } from "react";
+import { useLocale, useT } from "@/i18n/client";
+import { pick } from "@/i18n/locales";
 import type { ActionState } from "@/lib/action";
-import { CARRIERS, DISPUTE_REASON_LABELS, DISPUTE_REASONS, RETURN_REASON_LABELS, RETURN_REASONS } from "@/lib/constants";
+import { CARRIER_LABELS, CARRIERS, DISPUTE_REASON_LABELS, DISPUTE_REASONS, RETURN_REASON_LABELS, RETURN_REASONS } from "@/lib/constants";
 import { ActionButton, ActionForm, FormMessage, SubmitButton } from "@/components/forms";
 import { Button, Field } from "@/components/ui";
 
@@ -25,7 +25,10 @@ export function Reveal({ label, variant = "secondary", children }: { label: stri
   return <div className="w-full rounded-xl border border-slate-200 bg-slate-50 p-4">{children}</div>;
 }
 
-export function ShipForm({ action, title = "Add shipment tracking", submit = "Mark as shipped" }: { action: FormAction; title?: string; submit?: string }) {
+export function ShipForm({ action, title, submit }: { action: FormAction; title: string; submit: string }) {
+  const locale = useLocale();
+  const all = useT();
+  const t = all.orderActions;
   return (
     <ActionForm action={action} className="space-y-3">
       {(s) => (
@@ -33,17 +36,22 @@ export function ShipForm({ action, title = "Add shipment tracking", submit = "Ma
           <h3 className="font-semibold">{title}</h3>
           <FormMessage state={s} />
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Carrier" name="carrier" error={s.fieldErrors?.carrier}>
+            <Field label={t.carrier} name="carrier" error={s.fieldErrors?.carrier}>
               <select id="carrier" name="carrier" className="input" defaultValue="">
                 <option value="" disabled>
-                  Choose…
+                  {all.forms.choose}
                 </option>
-                {CARRIERS.map((c) => (
-                  <option key={c}>{c}</option>
-                ))}
+                {CARRIERS.map((c) => {
+                  const label = CARRIER_LABELS[c];
+                  return (
+                    <option key={c} value={c}>
+                      {label ? pick(label, locale) : c}
+                    </option>
+                  );
+                })}
               </select>
             </Field>
-            <Field label="Tracking number" name="trackingNumber" error={s.fieldErrors?.trackingNumber}>
+            <Field label={t.tracking} name="trackingNumber" error={s.fieldErrors?.trackingNumber}>
               <input id="trackingNumber" name="trackingNumber" className="input" maxLength={40} autoComplete="off" />
             </Field>
           </div>
@@ -55,15 +63,16 @@ export function ShipForm({ action, title = "Add shipment tracking", submit = "Ma
 }
 
 export function CancelForm({ action }: { action: FormAction }) {
+  const t = useT().orderActions;
   return (
     <ActionForm action={action} className="space-y-3">
       {(s) => (
         <>
           <FormMessage state={s} />
-          <Field label="Reason (optional)" name="reason">
+          <Field label={t.reasonOptional} name="reason">
             <input id="reason" name="reason" maxLength={300} className="input" />
           </Field>
-          <SubmitButton variant="danger">Confirm cancellation</SubmitButton>
+          <SubmitButton variant="danger">{t.confirmCancel}</SubmitButton>
         </>
       )}
     </ActionForm>
@@ -72,17 +81,19 @@ export function CancelForm({ action }: { action: FormAction }) {
 
 export function ReturnRequestForm({ action, daysLeft }: { action: FormAction; daysLeft: number }) {
   const locale = useLocale();
+  const all = useT();
+  const t = all.orderActions;
   return (
     <ActionForm action={action} className="space-y-3">
       {(s) => (
         <>
-          <h3 className="font-semibold">Request a return</h3>
-          <p className="text-sm text-slate-600">{daysLeft} day(s) left in your return window.</p>
+          <h3 className="font-semibold">{t.requestReturn}</h3>
+          <p className="text-sm text-slate-600">{t.daysLeft(daysLeft)}</p>
           <FormMessage state={s} />
-          <Field label="Reason" name="reason" error={s.fieldErrors?.reason}>
+          <Field label={t.reason} name="reason" error={s.fieldErrors?.reason}>
             <select id="reason" name="reason" className="input" defaultValue="">
               <option value="" disabled>
-                Choose…
+                {all.forms.choose}
               </option>
               {RETURN_REASONS.map((r) => (
                 <option key={r} value={r}>
@@ -91,10 +102,10 @@ export function ReturnRequestForm({ action, daysLeft }: { action: FormAction; da
               ))}
             </select>
           </Field>
-          <Field label="Details" name="details" error={s.fieldErrors?.details} hint="Reference specific items from the condition report.">
+          <Field label={t.details} name="details" error={s.fieldErrors?.details} hint={t.detailsHint}>
             <textarea id="details" name="details" rows={4} maxLength={2000} className="input" />
           </Field>
-          <SubmitButton>Submit return request</SubmitButton>
+          <SubmitButton>{t.submitReturn}</SubmitButton>
         </>
       )}
     </ActionForm>
@@ -102,20 +113,21 @@ export function ReturnRequestForm({ action, daysLeft }: { action: FormAction; da
 }
 
 export function ReturnResponseForm({ action }: { action: FormAction }) {
+  const t = useT().orderActions;
   return (
     <ActionForm action={action} className="space-y-3">
       {(s) => (
         <>
           <FormMessage state={s} />
-          <Field label="Note to buyer" name="note" error={s.fieldErrors?.note} hint="Required when rejecting. Include the return address when approving.">
+          <Field label={t.noteToBuyer} name="note" error={s.fieldErrors?.note} hint={t.noteHint}>
             <textarea id="note" name="note" rows={3} maxLength={1000} className="input" />
           </Field>
           <div className="flex gap-2">
             <SubmitButton name="decision" value="approve">
-              Approve return
+              {t.approve}
             </SubmitButton>
             <SubmitButton name="decision" value="reject" variant="danger">
-              Reject
+              {t.reject}
             </SubmitButton>
           </div>
         </>
@@ -126,17 +138,19 @@ export function ReturnResponseForm({ action }: { action: FormAction }) {
 
 export function DisputeForm({ action, allowNotReceived }: { action: FormAction; allowNotReceived: boolean }) {
   const locale = useLocale();
+  const all = useT();
+  const t = all.orderActions;
   return (
     <ActionForm action={action} className="space-y-3">
       {(s) => (
         <>
-          <h3 className="font-semibold">Open a dispute</h3>
-          <p className="text-sm text-slate-600">Payment is frozen while a ReGear specialist reviews the case. Both parties can add evidence.</p>
+          <h3 className="font-semibold">{t.openDispute}</h3>
+          <p className="text-sm text-slate-600">{t.disputeIntro}</p>
           <FormMessage state={s} />
-          <Field label="What went wrong?" name="reason" error={s.fieldErrors?.reason}>
+          <Field label={t.whatWentWrong} name="reason" error={s.fieldErrors?.reason}>
             <select id="reason" name="reason" className="input" defaultValue="">
               <option value="" disabled>
-                Choose…
+                {all.forms.choose}
               </option>
               {DISPUTE_REASONS.filter((r) => allowNotReceived || r !== "NOT_RECEIVED").map((r) => (
                 <option key={r} value={r}>
@@ -145,10 +159,10 @@ export function DisputeForm({ action, allowNotReceived }: { action: FormAction; 
               ))}
             </select>
           </Field>
-          <Field label="Describe the problem" name="description" error={s.fieldErrors?.description}>
+          <Field label={t.describe} name="description" error={s.fieldErrors?.description}>
             <textarea id="description" name="description" rows={5} maxLength={3000} className="input" />
           </Field>
-          <SubmitButton variant="danger">Open dispute</SubmitButton>
+          <SubmitButton variant="danger">{t.openDisputeButton}</SubmitButton>
         </>
       )}
     </ActionForm>
@@ -156,14 +170,15 @@ export function DisputeForm({ action, allowNotReceived }: { action: FormAction; 
 }
 
 export function ReviewForm({ action }: { action: FormAction }) {
+  const t = useT().orderActions;
   return (
     <ActionForm action={action} className="space-y-3">
       {(s) => (
         <>
-          <h3 className="font-semibold">Rate the seller</h3>
+          <h3 className="font-semibold">{t.rateSeller}</h3>
           <FormMessage state={s} />
           <fieldset>
-            <legend className="label">Rating</legend>
+            <legend className="label">{t.rating}</legend>
             <div className="flex gap-3">
               {[5, 4, 3, 2, 1].map((n) => (
                 <label key={n} className="flex items-center gap-1 text-sm">
@@ -173,13 +188,12 @@ export function ReviewForm({ action }: { action: FormAction }) {
               ))}
             </div>
           </fieldset>
-          <Field label="Comment (optional)" name="comment" error={s.fieldErrors?.comment}>
+          <Field label={t.commentOptional} name="comment" error={s.fieldErrors?.comment}>
             <textarea id="comment" name="comment" rows={3} maxLength={1000} className="input" />
           </Field>
-          <SubmitButton>Submit review</SubmitButton>
+          <SubmitButton>{t.submitReview}</SubmitButton>
         </>
       )}
     </ActionForm>
   );
 }
-

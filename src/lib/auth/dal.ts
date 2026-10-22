@@ -1,6 +1,8 @@
 import "server-only";
 import { cache } from "react";
 import { forbidden, redirect, unauthorized } from "next/navigation";
+import { localePath } from "@/i18n/locales";
+import { getRequestLocale } from "@/i18n/server";
 import { db } from "@/lib/db";
 import { readSessionToken, validateSessionToken } from "@/lib/auth/session";
 
@@ -24,10 +26,14 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   return { id, email, name, role, sessionExpiresAt: session.expiresAt };
 });
 
-/** For pages: redirect to login (preserving destination). */
+/** For pages: redirect to login (preserving destination and language). */
 export async function requireUser(next?: string): Promise<CurrentUser> {
   const user = await getCurrentUser();
-  if (!user) redirect(next ? `/login?next=${encodeURIComponent(next)}` : "/login");
+  if (!user) {
+    const locale = await getRequestLocale();
+    const login = localePath("/login", locale);
+    redirect(next ? `${login}?next=${encodeURIComponent(localePath(next, locale))}` : login);
+  }
   return user;
 }
 
@@ -40,7 +46,7 @@ export async function requireUserStrict(): Promise<CurrentUser> {
 
 export async function requireAdmin(): Promise<CurrentUser> {
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(localePath("/login", await getRequestLocale()));
   if (user.role !== "ADMIN") forbidden();
   return user;
 }
@@ -53,6 +59,6 @@ export const getSellerProfile = cache(async (userId: string) =>
 export async function requireSeller(next = "/sell") {
   const user = await requireUser(next);
   const seller = await getSellerProfile(user.id);
-  if (!seller) redirect("/sell/onboarding");
+  if (!seller) redirect(localePath("/sell/onboarding", await getRequestLocale()));
   return { user, seller };
 }

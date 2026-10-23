@@ -95,6 +95,7 @@ export const registerSchema = z.object({
   name: text(2, 60),
   email,
   password,
+  acceptTerms: z.literal("on", { error: vmsg("acceptTerms") }),
 });
 
 export const loginSchema = z.object({
@@ -129,6 +130,8 @@ export const verificationSchema = z.object({
     .string()
     .trim()
     .regex(/^[A-Za-z0-9-]{4,30}$/, vmsg("idNumber")),
+  // Identity documents are processed on explicit consent (UU PDP).
+  consent: z.literal("on", { error: vmsg("verificationConsent") }),
 });
 
 // Listings -----------------------------------------------------------------

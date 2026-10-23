@@ -2,6 +2,7 @@ import "server-only";
 import { Google } from "arctic";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
+import { LEGAL_VERSION } from "@/lib/legal";
 
 // Google sign-in via OAuth 2.0 Authorization Code flow with PKCE + state,
 // using OpenID Connect to identify the user. After the callback succeeds we
@@ -76,6 +77,9 @@ export async function findOrCreateGoogleUser(claims: GoogleClaims) {
       email: claims.email,
       name: name.length >= 2 ? name : `${name} user`,
       passwordHash: null,
+      // The Google button states that continuing accepts the Terms and Privacy Policy.
+      termsVersion: LEGAL_VERSION,
+      termsAcceptedAt: new Date(),
       oauthAccounts: { create: { provider: "google", providerAccountId: claims.sub, email: claims.email } },
     },
   });

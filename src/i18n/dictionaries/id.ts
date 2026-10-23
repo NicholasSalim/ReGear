@@ -58,6 +58,10 @@ export const id: typeof en = {
     grading: "Penilaian kondisi",
     protection: "Perlindungan pembeli",
     copyright: "© ReGear. Elektronik bekas, dinilai dengan jujur.",
+    legal: "Legal",
+    privacy: "Kebijakan Privasi",
+    terms: "Syarat & Ketentuan",
+    prohibited: "Barang terlarang",
   },
   home: {
     heading: "Ketahui kondisinya sebelum membeli.",
@@ -298,6 +302,8 @@ export const id: typeof en = {
     warrantyMonths: "Masukkan lama garansi dalam bulan",
     failedGrade: "Barang dengan pengecekan yang gagal tidak bisa dinilai Seperti Baru atau Sangat Baik",
     describeIssue: "Jelaskan masalahnya",
+    acceptTerms: "Setujui Syarat & Ketentuan dan Kebijakan Privasi untuk membuat akun",
+    verificationConsent: "Berikan persetujuan Anda untuk mengirim identitas untuk verifikasi",
   },
   domain: {
     genericError: "Terjadi kesalahan. Silakan coba lagi.",
@@ -432,6 +438,7 @@ export const id: typeof en = {
       locked: "Akun ini dikunci sementara karena terlalu sering gagal masuk. Coba lagi dalam beberapa menit.",
       rate_limited: "Terlalu banyak percobaan masuk. Tunggu beberapa menit lalu coba lagi.",
     },
+    googleNotice: "Dengan melanjutkan dengan Google, Anda menyetujui [Syarat & Ketentuan](/terms) dan [Kebijakan Privasi](/privacy).",
   },
   checkout: {
     metaTitle: "Checkout",
@@ -699,5 +706,13 @@ export const id: typeof en = {
     body: "Data pribadi, toko, iklan, barang tersimpan, dan dokumen identitas Anda sudah dihapus, dan Anda sudah dikeluarkan dari semua perangkat. Catatan pesanan sebelumnya tetap disimpan tanpa nama Anda, agar riwayat orang yang bertransaksi dengan Anda tetap utuh.",
     again: "Anda bisa kembali kapan saja dengan membuat akun baru memakai email yang sama.",
     home: "Kembali ke beranda",
+  },
+  legal: {
+    effective: (date: string, version: string) => `Berlaku sejak ${date} · Versi ${version}`,
+    contents: "Daftar isi",
+    draft: "Draf: nama badan hukum, alamat, dan kontak pengelola masih perlu dilengkapi sebelum peluncuran.",
+    privacyDescription: "Data pribadi apa yang dikumpulkan ReGear, untuk apa, siapa yang bisa melihatnya, berapa lama disimpan, dan hak Anda menurut UU PDP.",
+    termsDescription: "Aturan jual beli di ReGear: iklan, barang terlarang, penahanan pembayaran, pengembalian, sengketa, dan biaya.",
+    otherDocument: { privacy: "Baca Syarat & Ketentuan", terms: "Baca Kebijakan Privasi" },
   },
 };

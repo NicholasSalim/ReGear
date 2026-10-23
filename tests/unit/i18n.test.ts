@@ -67,7 +67,12 @@ describe("server messages in the visitor's language", () => {
     const res = registerSchema.safeParse({ name: "A", email: "nope", password: "short" });
     expect(res.success).toBe(false);
     if (res.success) return;
-    expect(fieldErrors(res.error, id, "id")).toEqual({ name: "Minimal 2 karakter", email: "Masukkan alamat email yang valid", password: "Gunakan minimal 8 karakter" });
+    expect(fieldErrors(res.error, id, "id")).toEqual({
+      name: "Minimal 2 karakter",
+      email: "Masukkan alamat email yang valid",
+      password: "Gunakan minimal 8 karakter",
+      acceptTerms: "Setujui Syarat & Ketentuan dan Kebijakan Privasi untuk membuat akun",
+    });
     expect(fieldErrors(res.error, en, "en").name).toBe("Must be at least 2 characters");
 
     const base = {

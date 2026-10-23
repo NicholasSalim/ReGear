@@ -10,7 +10,7 @@ export async function SiteFooter() {
   const [locale, t] = await Promise.all([getLocale(), getDictionary()]);
   return (
     <footer className="mt-16 border-t border-slate-200 bg-white">
-      <div className="container-page grid gap-8 py-12 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="container-page grid gap-8 py-12 sm:grid-cols-2 lg:grid-cols-5">
         <div>
           <Logo />
           <p className="mt-3 text-sm text-slate-600">{t.footer.tagline}</p>
@@ -37,6 +37,11 @@ export async function SiteFooter() {
           <FooterLink href="/how-it-works">{t.footer.howItWorks}</FooterLink>
           <FooterLink href="/how-it-works#grading">{t.footer.grading}</FooterLink>
           <FooterLink href="/how-it-works#protection">{t.footer.protection}</FooterLink>
+        </FooterCol>
+        <FooterCol title={t.footer.legal}>
+          <FooterLink href="/privacy">{t.footer.privacy}</FooterLink>
+          <FooterLink href="/terms">{t.footer.terms}</FooterLink>
+          <FooterLink href="/terms#prohibited">{t.footer.prohibited}</FooterLink>
         </FooterCol>
       </div>
       <div className="border-t border-slate-100 py-5 text-center text-xs text-slate-500">{t.footer.copyright}</div>

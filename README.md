@@ -92,7 +92,7 @@ Call this endpoint every ~5 minutes from cron or your platform scheduler:
 curl -X POST -H "Authorization: Bearer $CRON_SECRET" https://your-host/api/cron/maintenance
 ```
 
-It expires unpaid orders, auto-delivers long-shipped orders, auto-completes orders after the return window, and purges expired sessions, rate-limit rows and orphaned uploads.
+It expires unpaid orders, auto-delivers long-shipped orders, auto-completes orders after the return window, and purges expired sessions, rate-limit rows, orphaned uploads and security logs older than 2 years.
 
 ## Architecture
 
@@ -127,6 +127,13 @@ The app is fully available in Indonesian (default) and English.
 - **Catalogue labels** (categories, spec fields, checks, grades, statuses) are `{ en, id }` pairs next to their definitions in `src/lib/catalog.ts` and `src/lib/constants.ts`, read with `pick()`. Stored values such as slugs and status codes never change between languages.
 - **Server messages.** Validation messages are stored as keys (`vmsg()`), business-rule errors carry a code (`DomainError`), and order events store their details as JSON. All three are worded in the visitor's language when shown (`src/i18n/messages.ts`). Seller-written text (titles, descriptions, notes) is shown as written.
 - **Adding a language** means adding it to `LOCALES` in `src/i18n/locales.ts`, writing its dictionaries, and adding its text to the `{ en, id }` labels.
+
+## Privacy and legal pages
+
+- **Pages.** The Privacy Policy (`/privacy`) and Terms & Conditions (`/terms`, with a prohibited-items section) are linked from the footer, in both languages. The text lives in `src/lib/legal-documents.ts` and describes what the code actually does: its two cookies, session length, what Google sign-in shares, who sees which data and how long each kind is kept. When that behaviour changes (a new cookie, provider or retention period), update the text and `LEGAL_VERSION` in `src/lib/legal.ts`.
+- **Before launch**, fill in the operator's legal name, address, privacy contact email and court in `LEGAL_DETAILS` (`src/lib/legal.ts`). Until then the pages show a draft notice. Have an Indonesian lawyer review both documents.
+- **Consent.** Registration requires ticking the Terms and Privacy Policy, and the account stores the version accepted and when (`termsVersion`, `termsAcceptedAt`). Google sign-up records the same, with the terms stated under the button. Seller verification asks for explicit consent before an ID document is sent. Checkout says the address goes to the seller after payment, and publishing a listing states what the seller confirms.
+- **Retention.** The maintenance endpoint also deletes security logs older than `AUDIT_RETENTION_DAYS` (2 years), as the Privacy Policy states.
 
 ## Security
 

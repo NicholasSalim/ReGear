@@ -4,6 +4,7 @@ import { Link, useT } from "@/i18n/client";
 import { loginAction, registerAction } from "@/actions/auth";
 import { FormMessage, SubmitButton, useActionForm } from "@/components/forms";
 import { Field } from "@/components/ui";
+import { RichText } from "@/components/rich-text";
 
 export function LoginForm({ next, googleEnabled }: { next?: string; googleEnabled?: boolean }) {
   const { state, pending, formProps } = useActionForm(loginAction);
@@ -48,6 +49,19 @@ export function RegisterForm({ next }: { next?: string }) {
       <Field label={t.password} name="password" error={state.fieldErrors?.password} hint={t.passwordHint}>
         <input id="password" name="password" type="password" autoComplete="new-password" required minLength={8} maxLength={128} className="input" aria-invalid={!!state.fieldErrors?.password} />
       </Field>
+      <div>
+        <label className="flex items-start gap-2 text-sm text-slate-700">
+          <input type="checkbox" name="acceptTerms" required className="mt-0.5 size-4 shrink-0 accent-brand-600" aria-invalid={!!state.fieldErrors?.acceptTerms} aria-describedby={state.fieldErrors?.acceptTerms ? "acceptTerms-error" : undefined} />
+          <span>
+            <RichText text={t.acceptTerms} newTab />
+          </span>
+        </label>
+        {state.fieldErrors?.acceptTerms && (
+          <p id="acceptTerms-error" className="mt-1 text-xs font-medium text-rose-600">
+            {state.fieldErrors.acceptTerms}
+          </p>
+        )}
+      </div>
       <SubmitButton pending={pending} className="w-full" pendingText={t.creatingAccount}>
         {t.createAccount}
       </SubmitButton>

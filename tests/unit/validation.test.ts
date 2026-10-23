@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getCategory } from "@/lib/catalog";
-import { browseSchema, listingSchema, parseRupiah, registerSchema } from "@/lib/validation";
+import { browseSchema, listingSchema, parseRupiah, registerSchema, verificationSchema } from "@/lib/validation";
 import { safeRedirectPath } from "@/lib/security/request";
 
 const phoneChecks = getCategory("phones")!.checks.map((c) => ({ key: c.key, status: "PASS" as const }));
@@ -75,15 +75,24 @@ describe("listing validation", () => {
 
 describe("auth validation", () => {
   it("normalises email and enforces password policy", () => {
-    const ok = registerSchema.safeParse({ name: "Ann", email: "  Ann@Example.COM ", password: "pass#word1" });
+    const ok = registerSchema.safeParse({ name: "Ann", email: "  Ann@Example.COM ", password: "pass#word1", acceptTerms: "on" });
     expect(ok.success && ok.data.email).toBe("ann@example.com");
-    const accepts = (password: string) => registerSchema.safeParse({ name: "Ann", email: "ann@example.com", password }).success;
+    const accepts = (password: string) => registerSchema.safeParse({ name: "Ann", email: "ann@example.com", password, acceptTerms: "on" }).success;
     expect(accepts("ab1!cdef")).toBe(true); // exactly 8
     expect(accepts("ab1!cde")).toBe(false); // too short
     expect(accepts("nodigits!here")).toBe(false);
     expect(accepts("12345678!")).toBe(false); // no letter
     expect(accepts("Password123")).toBe(false); // no symbol
     expect(accepts("pass word1")).toBe(false); // a space is not a symbol
+  });
+
+  it("requires agreeing to the Terms to register, and consent to send an ID", () => {
+    const res = registerSchema.safeParse({ name: "Ann", email: "ann@example.com", password: "pass#word1" });
+    expect(res.success).toBe(false);
+    expect(res.error?.issues.map((i) => i.path.join("."))).toEqual(["acceptTerms"]);
+    const id = { legalName: "Ann Lee", phone: "+62 812 3456 7890", address: "Jl. Merdeka No. 10, Jakarta", idType: "NATIONAL_ID", idNumber: "3171234567890001" };
+    expect(verificationSchema.safeParse(id).success).toBe(false);
+    expect(verificationSchema.safeParse({ ...id, consent: "on" }).success).toBe(true);
   });
 });
 

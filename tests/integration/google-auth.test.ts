@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 const { db } = await import("@/lib/db");
 const { findOrCreateGoogleUser, parseGoogleClaims, GoogleSignInError } = await import("@/lib/auth/google");
+const { LEGAL_VERSION } = await import("@/lib/legal");
 
 const CLIENT_ID = "test-client-id.apps.googleusercontent.com";
 const future = Math.floor(Date.now() / 1000) + 600;
@@ -41,6 +42,8 @@ describe("Google account linking", () => {
     expect(first.created).toBe(true);
     expect(first.user.passwordHash).toBeNull();
     expect(first.user.name).toBe("Pat Person");
+    expect(first.user.termsVersion).toBe(LEGAL_VERSION); // the Google button states the Terms apply
+    expect(first.user.termsAcceptedAt).toBeInstanceOf(Date);
 
     const again = await findOrCreateGoogleUser(parseGoogleClaims(claims({ email: "changed@example.com" }), CLIENT_ID));
     expect(again.user.id).toBe(first.user.id); // matched by Google's stable id, not email

@@ -37,6 +37,7 @@ export const clientEn = {
     createAccount: "Create account",
     creatingAccount: "Creating account…",
     haveAccount: "Already have an account?",
+    acceptTerms: "I agree to ReGear's [Terms & Conditions](/terms) and [Privacy Policy](/privacy).",
   },
   settings: {
     profile: "Profile",
@@ -69,6 +70,7 @@ export const clientEn = {
     continue: "Continue to payment",
     reserving: "Reserving item…",
     reservedNote: (minutes: number) => `The item is reserved for ${minutes} minutes while you complete payment.`,
+    privacyNote: "After you pay, the recipient name, phone number and address are shared with the seller so they can ship. By continuing you agree to the [Terms & Conditions](/terms#buying).",
   },
   orderActions: {
     carrier: "Carrier",
@@ -120,6 +122,7 @@ export const clientEn = {
     documentPhotoHint: "JPEG/PNG/WebP up to 8MB. Kept in private storage that only ReGear reviewers can access; never shown to buyers.",
     uploading: "Uploading…",
     submit: "Submit for review",
+    consent: "I consent to ReGear processing my identity details and document photo to verify me as a seller, as described in the [Privacy Policy](/privacy#collect). I can withdraw this consent later.",
   },
   rowActions: {
     locked: "Locked while an order is in progress",
@@ -205,6 +208,7 @@ export const clientEn = {
     saveDraft: "Save draft",
     saving: "Saving…",
     publish: "Publish listing",
+    publishNote: "By publishing, you confirm the item is yours, the condition report is accurate, and the listing follows the [Terms & Conditions](/terms#selling), including the [prohibited items](/terms#prohibited).",
   },
   adminForms: {
     noteToSeller: "Note to seller",

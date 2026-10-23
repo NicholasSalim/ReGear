@@ -57,6 +57,10 @@ export const en = {
     grading: "Condition grading",
     protection: "Buyer protection",
     copyright: "© ReGear. Pre-owned electronics, honestly graded.",
+    legal: "Legal",
+    privacy: "Privacy Policy",
+    terms: "Terms & Conditions",
+    prohibited: "Prohibited items",
   },
   home: {
     heading: "Know the condition before you buy.",
@@ -296,6 +300,8 @@ export const en = {
     warrantyMonths: "Enter the warranty length in months",
     failedGrade: "Items with failed checks cannot be graded Like New or Excellent",
     describeIssue: "Describe the issue",
+    acceptTerms: "Agree to the Terms & Conditions and Privacy Policy to create an account",
+    verificationConsent: "Give your consent to submit your ID for verification",
   },
   domain: {
     genericError: "Something went wrong. Please try again.",
@@ -427,6 +433,7 @@ export const en = {
       locked: "This account is temporarily locked after repeated failed sign-ins. Try again in a few minutes.",
       rate_limited: "Too many sign-in attempts. Wait a few minutes and try again.",
     } as Record<string, string>,
+    googleNotice: "By continuing with Google, you agree to the [Terms & Conditions](/terms) and [Privacy Policy](/privacy).",
   },
   checkout: {
     metaTitle: "Checkout",
@@ -694,5 +701,13 @@ export const en = {
     body: "Your personal details, shop, listings, saved items and ID documents have been removed, and you've been signed out on every device. Records of past orders are kept without your name, so the people you traded with still have their history.",
     again: "You're welcome back any time: you can create a new account with the same email.",
     home: "Back to home",
+  },
+  legal: {
+    effective: (date: string, version: string) => `Effective ${date} · Version ${version}`,
+    contents: "Contents",
+    draft: "Draft: the operator's legal name, address and contact details are still to be filled in before launch.",
+    privacyDescription: "What personal data ReGear collects, why, who can see it, how long it's kept and your rights under UU PDP.",
+    termsDescription: "The rules for buying and selling on ReGear: listings, prohibited items, held payments, returns, disputes and fees.",
+    otherDocument: { privacy: "Read the Terms & Conditions", terms: "Read the Privacy Policy" },
   },
 };

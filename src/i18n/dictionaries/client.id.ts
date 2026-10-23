@@ -38,6 +38,7 @@ export const clientId: typeof clientEn = {
     createAccount: "Buat akun",
     creatingAccount: "Membuat akun…",
     haveAccount: "Sudah punya akun?",
+    acceptTerms: "Saya menyetujui [Syarat & Ketentuan](/terms) dan [Kebijakan Privasi](/privacy) ReGear.",
   },
   settings: {
     profile: "Profil",
@@ -70,6 +71,7 @@ export const clientId: typeof clientEn = {
     continue: "Lanjut ke pembayaran",
     reserving: "Memesan barang…",
     reservedNote: (minutes: number) => `Barang dipesan untuk Anda selama ${minutes} menit sambil Anda menyelesaikan pembayaran.`,
+    privacyNote: "Setelah Anda membayar, nama penerima, nomor telepon, dan alamat ini dibagikan ke penjual untuk pengiriman. Dengan melanjutkan, Anda menyetujui [Syarat & Ketentuan](/terms#buying).",
   },
   orderActions: {
     carrier: "Kurir",
@@ -121,6 +123,7 @@ export const clientId: typeof clientEn = {
     documentPhotoHint: "JPEG/PNG/WebP maksimal 8MB. Disimpan di penyimpanan privat yang hanya bisa diakses peninjau ReGear; tidak pernah ditampilkan ke pembeli.",
     uploading: "Mengunggah…",
     submit: "Kirim untuk ditinjau",
+    consent: "Saya menyetujui ReGear memproses data identitas dan foto dokumen saya untuk verifikasi penjual, sebagaimana dijelaskan di [Kebijakan Privasi](/privacy#collect). Saya bisa menarik persetujuan ini nanti.",
   },
   rowActions: {
     locked: "Terkunci selama ada pesanan berjalan",
@@ -206,6 +209,7 @@ export const clientId: typeof clientEn = {
     saveDraft: "Simpan draf",
     saving: "Menyimpan…",
     publish: "Terbitkan iklan",
+    publishNote: "Dengan menerbitkan, Anda menyatakan barang ini milik Anda, laporan kondisinya akurat, dan iklan ini mematuhi [Syarat & Ketentuan](/terms#selling), termasuk [barang yang dilarang](/terms#prohibited).",
   },
   adminForms: {
     noteToSeller: "Catatan untuk penjual",

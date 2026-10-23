@@ -1,5 +1,6 @@
 import { getDictionary } from "@/i18n/server";
 import { DropSearchParam } from "@/components/drop-search-param";
+import { RichText } from "@/components/rich-text";
 
 // "Continue with Google" follows Google's sign-in branding guidelines (official
 // "G" mark on a neutral button). A plain link: the OAuth flow starts with a GET.
@@ -22,6 +23,9 @@ export async function GoogleButton({ next, from }: { next?: string; from: "login
         </svg>
         {t.auth.continueWithGoogle}
       </a>
+      <p className="mt-2 text-center text-xs text-slate-500">
+        <RichText text={t.auth.googleNotice} />
+      </p>
       <div className="my-5 flex items-center gap-3 text-xs text-slate-500">
         <span className="h-px flex-1 bg-rule" />
         {t.auth.orUseEmail}

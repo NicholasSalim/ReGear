@@ -4,6 +4,7 @@ import { useT } from "@/i18n/client";
 import type { ActionState } from "@/lib/action";
 import { FormMessage, SubmitButton, useActionForm } from "@/components/forms";
 import { Field } from "@/components/ui";
+import { RichText } from "@/components/rich-text";
 
 const FIELDS = [
   { name: "fullName", autoComplete: "name" },
@@ -49,6 +50,9 @@ export function CheckoutForm({
           </div>
         ))}
       </div>
+      <p className="text-xs text-slate-600">
+        <RichText text={t.privacyNote} newTab />
+      </p>
       <SubmitButton pending={pending} className="w-full py-3" pendingText={t.reserving}>
         {t.continue}
       </SubmitButton>

@@ -24,6 +24,7 @@ import {
 import { Button, Field } from "@/components/ui";
 import { formatMoney } from "@/lib/format";
 import type { ListingFormValues } from "./listing-form-values";
+import { RichText } from "@/components/rich-text";
 
 export function ListingForm({ listingId, initial }: { listingId: string | null; initial: ListingFormValues }) {
   const locale = useLocale();
@@ -521,7 +522,10 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
         </div>
       </Section>
 
-      <div className="sticky bottom-4 z-10 flex flex-wrap justify-end gap-3 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-lg backdrop-blur">
+      <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-end gap-3 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-lg backdrop-blur">
+        <p className="mr-auto max-w-xl text-xs text-slate-600">
+          <RichText text={t.publishNote} newTab />
+        </p>
         <Button type="button" variant="secondary" disabled={saving || uploading > 0} onClick={() => submit(false)}>
           {t.saveDraft}
         </Button>

@@ -6,6 +6,7 @@ import { localePath } from "@/i18n/locales";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { invalidate, TAGS } from "@/lib/cache";
+import { LEGAL_VERSION } from "@/lib/legal";
 import { deleteAccount, getDeletionBlockers, isBlocked } from "@/lib/account/delete";
 import { actionI18n, formToObject, runAction, type ActionState } from "@/lib/action";
 import { getDummyHash, hashPassword, verifyPassword } from "@/lib/auth/password";
@@ -31,7 +32,9 @@ export async function registerAction(_prev: ActionState, formData: FormData): Pr
   const existing = await db.user.findUnique({ where: { email }, select: { id: true } });
   if (existing) return { fieldErrors: { email: t.actions.emailTaken } };
 
-  const user = await db.user.create({ data: { name, email, passwordHash: await hashPassword(password) } });
+  const user = await db.user.create({
+    data: { name, email, passwordHash: await hashPassword(password), termsVersion: LEGAL_VERSION, termsAcceptedAt: new Date() },
+  });
   await createSession(user.id, { ip, userAgent: await getUserAgent() });
   await audit(user.id, "user.register", "User", user.id);
   redirect(safeRedirectPath(formData.get("next"), localePath("/account", locale)));

@@ -6,6 +6,7 @@ import type { ActionState } from "@/lib/action";
 import { ID_TYPE_LABELS, ID_TYPES } from "@/lib/constants";
 import { ActionForm, FormMessage, SubmitButton } from "@/components/forms";
 import { Field } from "@/components/ui";
+import { RichText } from "@/components/rich-text";
 
 type FormAction = (state: ActionState, formData: FormData) => Promise<ActionState>;
 
@@ -78,6 +79,19 @@ export function VerificationForm({ action }: { action: FormAction }) {
               <Field label={t.documentPhoto} name="document" error={s.fieldErrors?.document} hint={t.documentPhotoHint}>
                 <input id="document" name="document" type="file" accept="image/jpeg,image/png,image/webp" className="block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:font-medium" />
               </Field>
+              <div>
+                <label className="flex items-start gap-2 text-sm text-slate-700">
+                  <input type="checkbox" name="consent" required className="mt-0.5 size-4 shrink-0 accent-brand-600" aria-invalid={!!s.fieldErrors?.consent} aria-describedby={s.fieldErrors?.consent ? "consent-error" : undefined} />
+                  <span>
+                    <RichText text={t.consent} newTab />
+                  </span>
+                </label>
+                {s.fieldErrors?.consent && (
+                  <p id="consent-error" className="mt-1 text-xs font-medium text-rose-600">
+                    {s.fieldErrors.consent}
+                  </p>
+                )}
+              </div>
               <SubmitButton pendingText={t.uploading}>{t.submit}</SubmitButton>
             </>
           )}

@@ -6,6 +6,7 @@ import { invalidate } from "@/lib/cache";
 import { runOrderMaintenance } from "@/lib/orders/service";
 import { purgeExpiredRateLimits } from "@/lib/security/rate-limit";
 import { deletePublicImage } from "@/lib/storage";
+import { AUDIT_RETENTION_DAYS } from "@/lib/legal";
 
 // Periodic maintenance. Call from a scheduler (cron, systemd timer, platform
 // cron) every ~5 minutes:  curl -X POST -H "Authorization: Bearer $CRON_SECRET" .../api/cron/maintenance
@@ -36,11 +37,14 @@ export async function POST(req: Request) {
   });
   await Promise.all(orphanRows.map((o) => deletePublicImage(o.key)));
   const orphans = await db.upload.deleteMany({ where: { id: { in: orphanRows.map((o) => o.id) } } });
+  // Security logs are kept as long as the Privacy Policy says, then dropped.
+  const oldLogs = await db.auditLog.deleteMany({ where: { createdAt: { lt: new Date(now.getTime() - AUDIT_RETENTION_DAYS * 86_400_000) } } });
 
   return NextResponse.json({
     expiredOrders: result.expired,
     autoDelivered: result.autoDelivered,
     purgedSessions: sessions.count,
     purgedOrphanUploads: orphans.count,
+    purgedAuditLogs: oldLogs.count,
   });
 }

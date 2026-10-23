@@ -1,4 +1,5 @@
 import { getDictionary } from "@/i18n/server";
+import { DropSearchParam } from "@/components/drop-search-param";
 
 // "Continue with Google" follows Google's sign-in branding guidelines (official
 // "G" mark on a neutral button). A plain link: the OAuth flow starts with a GET.
@@ -37,6 +38,7 @@ export async function AuthError({ code }: { code?: string }) {
   return (
     <p role="alert" className="mb-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
       {message}
+      <DropSearchParam name="error" />
     </p>
   );
 }

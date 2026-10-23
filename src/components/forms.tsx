@@ -1,11 +1,14 @@
 "use client";
 
-import { useActionState, useEffect, useRef, type ReactNode } from "react";
+import { createContext, startTransition, useActionState, useContext, useEffect, useRef, type FormEvent, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 import { CheckCircle2, AlertCircle } from "lucide-react";
 import { useT } from "@/i18n/client";
 import type { ActionState } from "@/lib/action";
 import { buttonClass, type ButtonVariant } from "@/components/ui";
+
+// Pending state of an ActionForm, which useFormStatus does not see (see useActionForm).
+const PendingContext = createContext(false);
 
 export function SubmitButton({
   children,
@@ -14,6 +17,7 @@ export function SubmitButton({
   className,
   name,
   value,
+  pending: pendingProp,
 }: {
   children: ReactNode;
   pendingText?: string;
@@ -21,8 +25,11 @@ export function SubmitButton({
   className?: string;
   name?: string;
   value?: string;
+  /** For forms using useActionForm directly; ActionForm provides it automatically. */
+  pending?: boolean;
 }) {
-  const { pending } = useFormStatus();
+  const { pending: submitting } = useFormStatus();
+  const pending = useContext(PendingContext) || pendingProp || submitting;
   const t = useT();
   return (
     <button type="submit" name={name} value={value} disabled={pending} className={buttonClass(variant, className)} aria-busy={pending}>
@@ -52,8 +59,25 @@ export function FormMessage({ state }: { state: ActionState }) {
 type FormAction = (state: ActionState, formData: FormData) => Promise<ActionState>;
 
 /**
+ * useActionState for a form that keeps what was typed. React clears a form
+ * after its action runs, so one wrong field would wipe all the others;
+ * submitting from onSubmit inside a transition keeps the values. The action
+ * stays on the form, so it still works before hydration.
+ */
+export function useActionForm(action: FormAction) {
+  const [state, dispatch, pending] = useActionState(action, {});
+  function onSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const data = new FormData(e.currentTarget, (e.nativeEvent as SubmitEvent).submitter);
+    startTransition(() => dispatch(data));
+  }
+  return { state, pending, formProps: { action: dispatch, onSubmit, noValidate: true } };
+}
+
+/**
  * Progressive-enhancement form bound to a Server Action via useActionState.
- * Renders field errors through a render prop and optionally resets on success.
+ * Renders field errors through a render prop, keeps the typed values after an
+ * error, and optionally resets on success.
  */
 export function ActionForm({
   action,
@@ -66,14 +90,14 @@ export function ActionForm({
   className?: string;
   resetOnSuccess?: boolean;
 }) {
-  const [state, formAction] = useActionState(action, {});
+  const { state, pending, formProps } = useActionForm(action);
   const ref = useRef<HTMLFormElement>(null);
   useEffect(() => {
     if (resetOnSuccess && state.ok) ref.current?.reset();
   }, [state, resetOnSuccess]);
   return (
-    <form ref={ref} action={formAction} className={className} noValidate>
-      {children(state)}
+    <form ref={ref} {...formProps} className={className}>
+      <PendingContext value={pending}>{children(state)}</PendingContext>
     </form>
   );
 }

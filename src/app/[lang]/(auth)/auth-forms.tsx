@@ -1,16 +1,15 @@
 "use client";
 
-import { useActionState } from "react";
 import { Link, useT } from "@/i18n/client";
 import { loginAction, registerAction } from "@/actions/auth";
-import { FormMessage, SubmitButton } from "@/components/forms";
+import { FormMessage, SubmitButton, useActionForm } from "@/components/forms";
 import { Field } from "@/components/ui";
 
 export function LoginForm({ next, googleEnabled }: { next?: string; googleEnabled?: boolean }) {
-  const [state, action] = useActionState(loginAction, {});
+  const { state, pending, formProps } = useActionForm(loginAction);
   const t = useT().auth;
   return (
-    <form action={action} className="space-y-4" noValidate>
+    <form {...formProps} className="space-y-4">
       {next && <input type="hidden" name="next" value={next} />}
       <FormMessage state={state} />
       <Field label={t.email} name="email" error={state.fieldErrors?.email}>
@@ -19,7 +18,7 @@ export function LoginForm({ next, googleEnabled }: { next?: string; googleEnable
       <Field label={t.password} name="password" error={state.fieldErrors?.password}>
         <input id="password" name="password" type="password" autoComplete="current-password" required className="input" aria-invalid={!!state.fieldErrors?.password} />
       </Field>
-      <SubmitButton className="w-full" pendingText={t.signingIn}>
+      <SubmitButton pending={pending} className="w-full" pendingText={t.signingIn}>
         {t.signIn}
       </SubmitButton>
       {googleEnabled && <p className="text-center text-xs text-slate-500">{t.googleHint}</p>}
@@ -34,10 +33,10 @@ export function LoginForm({ next, googleEnabled }: { next?: string; googleEnable
 }
 
 export function RegisterForm({ next }: { next?: string }) {
-  const [state, action] = useActionState(registerAction, {});
+  const { state, pending, formProps } = useActionForm(registerAction);
   const t = useT().auth;
   return (
-    <form action={action} className="space-y-4" noValidate>
+    <form {...formProps} className="space-y-4">
       {next && <input type="hidden" name="next" value={next} />}
       <FormMessage state={state} />
       <Field label={t.fullName} name="name" error={state.fieldErrors?.name}>
@@ -49,7 +48,7 @@ export function RegisterForm({ next }: { next?: string }) {
       <Field label={t.password} name="password" error={state.fieldErrors?.password} hint={t.passwordHint}>
         <input id="password" name="password" type="password" autoComplete="new-password" required minLength={8} maxLength={128} className="input" aria-invalid={!!state.fieldErrors?.password} />
       </Field>
-      <SubmitButton className="w-full" pendingText={t.creatingAccount}>
+      <SubmitButton pending={pending} className="w-full" pendingText={t.creatingAccount}>
         {t.createAccount}
       </SubmitButton>
       <p className="text-center text-sm text-slate-600">

@@ -1,9 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
 import { useT } from "@/i18n/client";
 import type { ActionState } from "@/lib/action";
-import { FormMessage, SubmitButton } from "@/components/forms";
+import { FormMessage, SubmitButton, useActionForm } from "@/components/forms";
 import { Field } from "@/components/ui";
 
 const FIELDS = [
@@ -26,10 +25,10 @@ export function CheckoutForm({
   defaultName: string;
   holdMinutes: number;
 }) {
-  const [state, formAction] = useActionState(action, {});
+  const { state, pending, formProps } = useActionForm(action);
   const t = useT().checkoutForm;
   return (
-    <form action={formAction} className="card space-y-4 p-6" noValidate>
+    <form {...formProps} className="card space-y-4 p-6">
       <h2 className="font-bold">{t.shippingAddress}</h2>
       <FormMessage state={state} />
       <div className="grid gap-4 sm:grid-cols-2">
@@ -50,7 +49,7 @@ export function CheckoutForm({
           </div>
         ))}
       </div>
-      <SubmitButton className="w-full py-3" pendingText={t.reserving}>
+      <SubmitButton pending={pending} className="w-full py-3" pendingText={t.reserving}>
         {t.continue}
       </SubmitButton>
       <p className="text-center text-xs text-slate-500">{t.reservedNote(holdMinutes)}</p>

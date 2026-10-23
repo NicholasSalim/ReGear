@@ -50,7 +50,7 @@ export const id: typeof en = {
     tagline: "Marketplace elektronik bekas dengan laporan kondisi terstruktur, penjual terverifikasi, dan perlindungan pembeli.",
     shop: "Belanja",
     sell: "Jual",
-    regear: "ReGear",
+    help: "Bantuan",
     sellerDashboard: "Dasbor penjual",
     listItem: "Pasang iklan",
     getVerified: "Verifikasi akun",

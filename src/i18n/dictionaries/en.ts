@@ -49,7 +49,7 @@ export const en = {
     tagline: "The marketplace for pre-owned electronics with structured condition reports, verified sellers and buyer protection.",
     shop: "Shop",
     sell: "Sell",
-    regear: "ReGear",
+    help: "Help",
     sellerDashboard: "Seller dashboard",
     listItem: "List an item",
     getVerified: "Get verified",

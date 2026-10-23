@@ -33,6 +33,8 @@ export const en = {
     compare: "Compare",
     howItWorks: "How it works",
     sell: "Sell",
+    buy: "Buy",
+    mainNav: "Buy and sell",
     signIn: "Sign in",
     join: "Join",
     myAccount: "My account",

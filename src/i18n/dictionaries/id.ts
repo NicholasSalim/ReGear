@@ -34,6 +34,8 @@ export const id: typeof en = {
     compare: "Bandingkan",
     howItWorks: "Cara kerja",
     sell: "Jual",
+    buy: "Beli",
+    mainNav: "Beli dan jual",
     signIn: "Masuk",
     join: "Daftar",
     myAccount: "Akun saya",

@@ -11,10 +11,7 @@ export async function UserMenu() {
   if (!user) {
     return (
       <>
-        <Link href="/sell" className={buttonClass("ghost", "max-sm:hidden")}>
-          {t.nav.sell}
-        </Link>
-        <Link href="/login" className={buttonClass("secondary")}>
+        <Link href="/login" className={buttonClass("secondary", "max-sm:px-3")}>
           {t.nav.signIn}
         </Link>
         <Link href="/register" className={buttonClass("primary", "max-sm:hidden")}>
@@ -26,7 +23,7 @@ export async function UserMenu() {
 
   return (
     <details className="group relative">
-      <summary className="flex cursor-pointer list-none items-center gap-2 rounded-full py-1 pr-3 pl-1 hover:bg-slate-100 [&::-webkit-details-marker]:hidden">
+      <summary className="flex cursor-pointer list-none items-center gap-2 rounded-full p-1 hover:bg-slate-100 sm:pr-3 [&::-webkit-details-marker]:hidden">
         <span className="grid size-8 place-items-center rounded-full bg-brand-100 text-sm font-bold text-brand-800" aria-hidden>
           {user.name.charAt(0).toUpperCase()}
         </span>

@@ -68,7 +68,7 @@ export default async function SellerPage({ params }: PageProps<"/[lang]/sellers/
                   <span className="text-xs text-slate-500">{formatDate(r.createdAt, locale)}</span>
                 </div>
                 {r.comment && <p className="mt-2 text-sm text-slate-700">{r.comment}</p>}
-                <p className="mt-2 text-xs text-slate-500">{t.seller.verifiedPurchase(r.buyer.name)}</p>
+                <p className="mt-2 text-xs text-slate-500">{t.seller.verifiedPurchase(r.buyer.name || t.common.deletedUser)}</p>
               </li>
             ))}
           </ul>

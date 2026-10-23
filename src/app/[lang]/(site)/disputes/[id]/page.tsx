@@ -72,7 +72,7 @@ async function Dispute({ params }: { params: PageProps<"/[lang]/disputes/[id]">[
             <li key={m.id} className="card p-4">
               <div className="mb-2 flex items-center gap-2 text-xs">
                 <Badge className={ROLE_STYLE[m.authorRole]}>{t.roles[m.authorRole] ?? m.authorRole}</Badge>
-                <span className="font-medium text-slate-700">{m.authorRole === "ADMIN" ? t.specialist : m.author.name}</span>
+                <span className="font-medium text-slate-700">{m.authorRole === "ADMIN" ? t.specialist : m.author.name || dict.common.deletedUser}</span>
                 <span className="text-slate-400">{formatDateTime(m.createdAt, locale)}</span>
               </div>
               <p className="text-sm whitespace-pre-line text-slate-800">{disputeMessageText(m, dict)}</p>
@@ -93,8 +93,8 @@ async function Dispute({ params }: { params: PageProps<"/[lang]/disputes/[id]">[
             {t.order} <OrderStatusBadge status={dispute.order.status} />
           </p>
           <p>{t.total(formatMoney(dispute.order.totalIdr))}</p>
-          <p>{t.buyer(dispute.order.buyer.name)}</p>
-          <p>{t.seller(dispute.order.seller.displayName)}</p>
+          <p>{t.buyer(dispute.order.buyer.name || dict.common.deletedUser)}</p>
+          <p>{t.seller(dispute.order.seller.displayName || dict.common.deletedShop)}</p>
           {dispute.order.trackingNumber && (
             <p>
               {t.tracking} {dispute.order.carrier} <span className="num font-semibold">{dispute.order.trackingNumber}</span>

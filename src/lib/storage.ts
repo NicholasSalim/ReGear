@@ -115,3 +115,11 @@ export async function deletePublicImage(key: string) {
     /* already gone */
   }
 }
+
+export async function deletePrivateDocument(key: string) {
+  try {
+    await unlink(resolveKey(PRIVATE_DIR, key));
+  } catch {
+    /* already gone */
+  }
+}

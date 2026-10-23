@@ -12,8 +12,8 @@ export default async function AdminOverviewPage() {
   const [locale, dict] = await Promise.all([getLocale(), getDictionary()]);
   const t = dict.admin;
   const [users, sellers, activeListings, pendingVerifications, openDisputes, gmv, fees, ordersByStatus] = await Promise.all([
-    db.user.count(),
-    db.sellerProfile.count(),
+    db.user.count({ where: { deletedAt: null } }),
+    db.sellerProfile.count({ where: { user: { deletedAt: null } } }),
     db.listing.count({ where: { status: "ACTIVE" } }),
     db.verificationRequest.count({ where: { status: "PENDING" } }),
     db.dispute.count({ where: { status: { not: "RESOLVED" } } }),

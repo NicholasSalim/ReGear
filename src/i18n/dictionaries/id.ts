@@ -17,6 +17,8 @@ export const id: typeof en = {
     none: "Tidak ada",
     notApplicable: "t/a",
     browseListings: "Lihat iklan",
+    deletedUser: "Pengguna dihapus",
+    deletedShop: "Toko dihapus",
   },
   language: {
     label: "Bahasa",
@@ -322,6 +324,8 @@ export const id: typeof en = {
     reviewAfterCompletion: "Anda bisa memberi ulasan penjual setelah pesanan selesai.",
     alreadyReviewed: "Anda sudah memberi ulasan untuk pesanan ini.",
     unverifiedLimit: (n: number) => `Penjual yang belum terverifikasi hanya bisa memiliki ${n} iklan aktif. Verifikasi akun Anda untuk menambah iklan.`,
+    accountBusy: "Anda masih punya pesanan yang berjalan. Selesaikan dulu sebelum menghapus akun.",
+    adminAccount: "Akun admin tidak bisa dihapus.",
   },
   actions: {
     signupLimit: "Terlalu banyak percobaan pendaftaran. Silakan coba lagi nanti.",
@@ -373,6 +377,9 @@ export const id: typeof en = {
     disputeResolved: "Sengketa diselesaikan.",
     moderationLocked: "Iklan dengan pesanan yang sedang berjalan tidak bisa dihapus; selesaikan lewat pesanannya.",
     listingRemoved: "Iklan dihapus.",
+    deleteLimit: "Terlalu banyak percobaan. Coba lagi dalam beberapa menit.",
+    deleteEmailMismatch: "Email ini tidak sesuai dengan email akun Anda.",
+    passwordWrong: "Kata sandi salah.",
   },
   events: {
     CREATED: (p: { minutes: number }) => `Pesanan dibuat. Barang dipesan selama ${p.minutes} menit sambil menunggu pembayaran.`,
@@ -678,9 +685,17 @@ export const id: typeof en = {
       "user.password_changed": "Kata sandi diubah",
       "user.register": "Akun dibuat",
       "user.register_google": "Akun dibuat dengan Google",
+      "user.delete": "Akun dihapus",
       "verification.approve": "Verifikasi disetujui",
       "verification.document_view": "Dokumen identitas dilihat",
       "verification.reject": "Verifikasi ditolak",
     } as Record<string, string>,
+  },
+  goodbye: {
+    metaTitle: "Akun dihapus",
+    heading: "Akun Anda sudah dihapus",
+    body: "Data pribadi, toko, iklan, barang tersimpan, dan dokumen identitas Anda sudah dihapus, dan Anda sudah dikeluarkan dari semua perangkat. Catatan pesanan sebelumnya tetap disimpan tanpa nama Anda, agar riwayat orang yang bertransaksi dengan Anda tetap utuh.",
+    again: "Anda bisa kembali kapan saja dengan membuat akun baru memakai email yang sama.",
+    home: "Kembali ke beranda",
   },
 };

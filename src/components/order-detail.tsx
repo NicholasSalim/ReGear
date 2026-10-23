@@ -100,10 +100,15 @@ export async function OrderDetail({ order, now }: { order: OrderForUser; now: Da
               <p className="text-sm text-slate-600">
                 {isBuyer ? (
                   <>
-                    {t.soldBy} <Link className="font-medium hover:text-brand-700" href={`/sellers/${order.seller.slug}`}>{order.seller.displayName}</Link>
+                    {t.soldBy}{" "}
+                    {order.seller.displayName ? (
+                      <Link className="font-medium hover:text-brand-700" href={`/sellers/${order.seller.slug}`}>{order.seller.displayName}</Link>
+                    ) : (
+                      <span className="font-medium">{dict.common.deletedShop}</span>
+                    )}
                   </>
                 ) : (
-                  <>{t.buyer(order.buyer.name)}</>
+                  <>{t.buyer(order.buyer.name || dict.common.deletedUser)}</>
                 )}
               </p>
             </div>
@@ -262,22 +267,20 @@ export async function OrderDetail({ order, now }: { order: OrderForUser; now: Da
             <section className="card p-5 text-sm">
               <h2 className="mb-2 font-bold">{t.shipTo}</h2>
               <address className="text-slate-700 not-italic">
-                {order.address.fullName}
-                <br />
-                {order.address.line1}
-                {order.address.line2 && (
-                  <>
-                    <br />
-                    {order.address.line2}
-                  </>
-                )}
-                <br />
-                {order.address.city}
-                {order.address.region ? `, ${order.address.region}` : ""} {order.address.postalCode}
-                <br />
-                {order.address.country}
-                <br />
-                {order.address.phone}
+                {[
+                  order.address.fullName,
+                  order.address.line1,
+                  order.address.line2,
+                  [order.address.city, order.address.region].filter(Boolean).join(", ") + (order.address.postalCode ? ` ${order.address.postalCode}` : ""),
+                  order.address.country,
+                  order.address.phone,
+                ]
+                  .filter(Boolean)
+                  .map((line, i) => (
+                    <span key={i} className="block">
+                      {line}
+                    </span>
+                  ))}
               </address>
             </section>
           )}

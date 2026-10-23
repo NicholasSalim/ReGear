@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, startTransition, useActionState, useContext, useEffect, useRef, type FormEvent, type ReactNode } from "react";
+import { createContext, startTransition, useActionState, useContext, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 import { CheckCircle2, AlertCircle } from "lucide-react";
 import { useT } from "@/i18n/client";
@@ -58,20 +58,41 @@ export function FormMessage({ state }: { state: ActionState }) {
 
 type FormAction = (state: ActionState, formData: FormData) => Promise<ActionState>;
 
+const SUCCESS_MESSAGE_MS = 6000;
+
 /**
  * useActionState for a form that keeps what was typed. React clears a form
  * after its action runs, so one wrong field would wipe all the others;
  * submitting from onSubmit inside a transition keeps the values. The action
  * stays on the form, so it still works before hydration.
+ *
+ * A success message goes away after a few seconds or once the form is edited
+ * again, since the page itself doesn't reload.
  */
-export function useActionForm(action: FormAction) {
+export function useActionForm(action: FormAction, { confirm, resetOnSuccess }: { confirm?: string; resetOnSuccess?: boolean } = {}) {
   const [state, dispatch, pending] = useActionState(action, {});
+  const ref = useRef<HTMLFormElement>(null);
+  const [dismissed, setDismissed] = useState<ActionState | null>(null);
+  useEffect(() => {
+    if (resetOnSuccess && state.ok) ref.current?.reset();
+  }, [state, resetOnSuccess]);
+  useEffect(() => {
+    if (!state.ok || !state.message) return;
+    const timer = setTimeout(() => setDismissed(state), SUCCESS_MESSAGE_MS);
+    return () => clearTimeout(timer);
+  }, [state]);
+
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (confirm && !window.confirm(confirm)) return;
     const data = new FormData(e.currentTarget, (e.nativeEvent as SubmitEvent).submitter);
     startTransition(() => dispatch(data));
   }
-  return { state, pending, formProps: { action: dispatch, onSubmit, noValidate: true } };
+  function onInput() {
+    if (state.ok && state.message) setDismissed(state);
+  }
+  const shown = dismissed === state ? { ...state, message: undefined } : state;
+  return { state: shown, pending, formProps: { ref, action: dispatch, onSubmit, onInput, noValidate: true } };
 }
 
 /**
@@ -84,19 +105,18 @@ export function ActionForm({
   children,
   className,
   resetOnSuccess,
+  confirm,
 }: {
   action: FormAction;
   children: (state: ActionState) => ReactNode;
   className?: string;
   resetOnSuccess?: boolean;
+  /** Asks the user before submitting. */
+  confirm?: string;
 }) {
-  const { state, pending, formProps } = useActionForm(action);
-  const ref = useRef<HTMLFormElement>(null);
-  useEffect(() => {
-    if (resetOnSuccess && state.ok) ref.current?.reset();
-  }, [state, resetOnSuccess]);
+  const { state, pending, formProps } = useActionForm(action, { confirm, resetOnSuccess });
   return (
-    <form ref={ref} {...formProps} className={className}>
+    <form {...formProps} className={className}>
       <PendingContext value={pending}>{children(state)}</PendingContext>
     </form>
   );
@@ -120,16 +140,10 @@ export function ActionButton({
   confirm?: string;
   className?: string;
 }) {
-  const [state, formAction] = useActionState(action, {});
+  const { state, pending, formProps } = useActionForm(action, { confirm });
   return (
-    <form
-      action={formAction}
-      onSubmit={(e) => {
-        if (confirm && !window.confirm(confirm)) e.preventDefault();
-      }}
-      className="space-y-2"
-    >
-      <SubmitButton variant={variant} className={className}>
+    <form {...formProps} className="space-y-2">
+      <SubmitButton variant={variant} className={className} pending={pending}>
         {children}
       </SubmitButton>
       <FormMessage state={state} />

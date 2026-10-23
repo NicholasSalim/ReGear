@@ -16,6 +16,8 @@ export const en = {
     none: "None",
     notApplicable: "n/a",
     browseListings: "Browse listings",
+    deletedUser: "Deleted user",
+    deletedShop: "Deleted shop",
   },
   language: {
     label: "Language",
@@ -320,6 +322,8 @@ export const en = {
     reviewAfterCompletion: "You can review the seller once the order is completed.",
     alreadyReviewed: "You already reviewed this order.",
     unverifiedLimit: (n: number) => `Unverified sellers can have up to ${n} active listings. Verify your account to list more.`,
+    accountBusy: "You still have orders in progress. Finish them before deleting your account.",
+    adminAccount: "Admin accounts can't be deleted.",
   },
   actions: {
     signupLimit: "Too many sign-up attempts. Please try again later.",
@@ -371,6 +375,9 @@ export const en = {
     disputeResolved: "Dispute resolved.",
     moderationLocked: "Listings with an order in progress cannot be removed; resolve via the order instead.",
     listingRemoved: "Listing removed.",
+    deleteLimit: "Too many attempts. Try again in a few minutes.",
+    deleteEmailMismatch: "This doesn't match your account's email.",
+    passwordWrong: "Password is incorrect.",
   },
   events: {
     CREATED: (p: { minutes: number }) => `Order placed. Item reserved for ${p.minutes} minutes pending payment.`,
@@ -673,9 +680,17 @@ export const en = {
       "user.password_changed": "Password changed",
       "user.register": "Account created",
       "user.register_google": "Account created with Google",
+      "user.delete": "Account deleted",
       "verification.approve": "Verification approved",
       "verification.document_view": "ID document viewed",
       "verification.reject": "Verification rejected",
     } as Record<string, string>,
+  },
+  goodbye: {
+    metaTitle: "Account deleted",
+    heading: "Your account has been deleted",
+    body: "Your personal details, shop, listings, saved items and ID documents have been removed, and you've been signed out on every device. Records of past orders are kept without your name, so the people you traded with still have their history.",
+    again: "You're welcome back any time: you can create a new account with the same email.",
+    home: "Back to home",
   },
 };

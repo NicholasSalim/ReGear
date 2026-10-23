@@ -1,9 +1,12 @@
 "use server";
 
+import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { localePath } from "@/i18n/locales";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
+import { invalidate, TAGS } from "@/lib/cache";
+import { deleteAccount, getDeletionBlockers, isBlocked } from "@/lib/account/delete";
 import { actionI18n, formToObject, runAction, type ActionState } from "@/lib/action";
 import { getDummyHash, hashPassword, verifyPassword } from "@/lib/auth/password";
 import { createSession, destroyAllSessions, destroyCurrentSession, readSessionToken, renewSessionIfNeeded } from "@/lib/auth/session";
@@ -99,6 +102,8 @@ export async function updateProfileAction(_prev: ActionState, formData: FormData
     await db.user.update({ where: { id: user.id }, data: { name } });
     const token = await readSessionToken();
     if (token) await renewSessionIfNeeded(token, user.sessionExpiresAt);
+    // The header shows the name; re-render the page with it.
+    refresh();
     return { ok: true, message: t.actions.profileUpdated };
   });
 }
@@ -127,6 +132,46 @@ export async function changePasswordAction(_prev: ActionState, formData: FormDat
     await destroyAllSessions(user.id);
     await createSession(user.id, { ip: await getClientIp(), userAgent: await getUserAgent() });
     await audit(user.id, "user.password_changed", "User", user.id);
+    // A first password changes the form (it now asks for the current one).
+    refresh();
     return { ok: true, message: row.passwordHash ? t.actions.passwordChanged : t.actions.passwordSet };
   });
+}
+
+/**
+ * Deletes the signed-in user's account after they confirm with their email
+ * (and password, if they have one). Refused while any order is still open.
+ */
+export async function deleteAccountAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const result = await runAction(async (): Promise<ActionState | void> => {
+    const user = await requireUserStrict();
+    const { t } = await actionI18n();
+    const limited = await rateLimit(`delete-account:${user.id}`, 5, 900);
+    if (!limited.ok) return { error: t.actions.deleteLimit };
+
+    const blockers = await getDeletionBlockers(user.id);
+    if (blockers.admin) return { error: t.domain.adminAccount };
+    if (isBlocked(blockers)) return { error: t.domain.accountBusy };
+
+    const confirmEmail = String(formData.get("confirmEmail") ?? "").trim().toLowerCase();
+    if (confirmEmail !== user.email.toLowerCase()) return { fieldErrors: { confirmEmail: t.actions.deleteEmailMismatch } };
+    const row = await db.user.findUniqueOrThrow({ where: { id: user.id }, select: { passwordHash: true } });
+    if (row.passwordHash) {
+      const { ok } = await verifyPassword(String(formData.get("password") ?? ""), row.passwordHash);
+      if (!ok) return { fieldErrors: { password: t.actions.passwordWrong } };
+    }
+
+    const { sellerId, listingIds } = await deleteAccount(user.id);
+    invalidate([
+      TAGS.listings,
+      TAGS.stats,
+      `favorites-${user.id}`,
+      ...(sellerId ? [TAGS.seller(sellerId)] : []),
+      ...listingIds.map((id) => TAGS.listing(id)),
+    ]);
+    await audit(user.id, "user.delete", "User", user.id);
+    await destroyCurrentSession();
+  });
+  if (result.ok) redirect(localePath("/goodbye", (await actionI18n()).locale));
+  return result;
 }

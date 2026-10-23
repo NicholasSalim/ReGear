@@ -32,7 +32,7 @@ export default async function SellerOrdersPage({ searchParams }: PageProps<"/[la
         ))}
       </nav>
       {orders.length ? (
-        <OrderList basePath="/sell/orders" orders={orders.map((o) => ({ ...o, counterpart: o.buyer.name }))} />
+        <OrderList basePath="/sell/orders" orders={orders.map((o) => ({ ...o, counterpart: o.buyer.name || dict.common.deletedUser }))} />
       ) : (
         <EmptyState title={t.noSales} />
       )}

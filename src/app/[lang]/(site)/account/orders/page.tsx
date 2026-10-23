@@ -16,7 +16,7 @@ export default async function PurchasesPage() {
     <>
       <PageHeader title={t.account.purchasesTitle} description={t.account.purchasesIntro} />
       {orders.length ? (
-        <OrderList basePath="/account/orders" orders={orders.map((o) => ({ ...o, counterpart: o.seller.displayName }))} />
+        <OrderList basePath="/account/orders" orders={orders.map((o) => ({ ...o, counterpart: o.seller.displayName || t.common.deletedShop }))} />
       ) : (
         <EmptyState title={t.account.noPurchases} action={<ButtonLink href="/listings">{t.common.browseListings}</ButtonLink>} />
       )}

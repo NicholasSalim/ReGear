@@ -28,7 +28,7 @@ export default async function AccountPage() {
           </Link>
         </div>
         {open.length ? (
-          <OrderList basePath="/account/orders" orders={open.slice(0, 5).map((o) => ({ ...o, counterpart: o.seller.displayName }))} />
+          <OrderList basePath="/account/orders" orders={open.slice(0, 5).map((o) => ({ ...o, counterpart: o.seller.displayName || t.common.deletedShop }))} />
         ) : (
           <EmptyState title={t.account.noneInProgress} action={<ButtonLink href="/listings">{t.account.findSomething}</ButtonLink>} />
         )}

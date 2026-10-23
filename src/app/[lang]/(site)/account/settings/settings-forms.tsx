@@ -1,7 +1,8 @@
 "use client";
 
-import { useT } from "@/i18n/client";
-import { changePasswordAction, updateProfileAction } from "@/actions/auth";
+import { Link, useT } from "@/i18n/client";
+import { changePasswordAction, deleteAccountAction, updateProfileAction } from "@/actions/auth";
+import type { DeletionBlockers } from "@/lib/account/delete";
 import { ActionForm, FormMessage, SubmitButton } from "@/components/forms";
 import { Field } from "@/components/ui";
 
@@ -48,5 +49,73 @@ export function SettingsForms({ name, email, hasPassword, googleEmail }: { name:
         )}
       </ActionForm>
     </div>
+  );
+}
+
+export function DeleteAccountForm({ email, hasPassword, blockers }: { email: string; hasPassword: boolean; blockers: DeletionBlockers }) {
+  const t = useT().deleteAccount;
+  const blocked = blockers.admin || blockers.purchases > 0 || blockers.sales > 0;
+  return (
+    <section className="card mt-6 space-y-4 border-rose-200 p-6" aria-labelledby="delete-account">
+      <div>
+        <h2 id="delete-account" className="font-bold text-rose-700">{t.title}</h2>
+        <p className="text-sm text-slate-600">{t.intro}</p>
+      </div>
+      <div className="grid gap-4 text-sm sm:grid-cols-2">
+        <div>
+          <h3 className="font-semibold">{t.removedTitle}</h3>
+          <ul className="mt-1 list-disc space-y-0.5 pl-5 text-slate-600">
+            {t.removed.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <h3 className="font-semibold">{t.keptTitle}</h3>
+          <p className="mt-1 text-slate-600">{t.kept}</p>
+        </div>
+      </div>
+
+      {blocked ? (
+        <div role="status" className="rounded-lg bg-amber-50 p-4 text-sm text-amber-900">
+          <p className="font-semibold">{t.blockedTitle}</p>
+          <ul className="mt-2 space-y-1">
+            {blockers.admin && <li>{t.admin}</li>}
+            {blockers.purchases > 0 && (
+              <li>
+                {t.purchases(blockers.purchases)}{" "}
+                <Link href="/account/orders" className="font-semibold underline">{t.viewPurchases}</Link>
+              </li>
+            )}
+            {blockers.sales > 0 && (
+              <li>
+                {t.sales(blockers.sales)}{" "}
+                <Link href="/sell/orders" className="font-semibold underline">{t.viewSales}</Link>
+              </li>
+            )}
+          </ul>
+          {(blockers.purchases > 0 || blockers.sales > 0) && <p className="mt-2 text-xs">{t.deliveredNote}</p>}
+        </div>
+      ) : (
+        <ActionForm action={deleteAccountAction} confirm={t.confirmDialog} className="max-w-md space-y-4">
+          {(s) => (
+            <>
+              <FormMessage state={s} />
+              <Field label={t.confirmEmail(email)} name="confirmEmail" error={s.fieldErrors?.confirmEmail}>
+                <input id="confirmEmail" name="confirmEmail" type="email" autoComplete="off" className="input" />
+              </Field>
+              {hasPassword && (
+                <Field label={t.password} name="deletePassword" error={s.fieldErrors?.password}>
+                  <input id="deletePassword" name="password" type="password" autoComplete="current-password" className="input" />
+                </Field>
+              )}
+              <SubmitButton variant="danger" pendingText={t.deleting}>
+                {t.submit}
+              </SubmitButton>
+            </>
+          )}
+        </ActionForm>
+      )}
+    </section>
   );
 }

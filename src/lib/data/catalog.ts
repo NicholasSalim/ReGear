@@ -259,9 +259,10 @@ export async function getPublicSeller(slug: string) {
       ratingCount: true,
       salesCount: true,
       createdAt: true,
+      user: { select: { deletedAt: true } },
     },
   });
-  if (!seller) {
+  if (!seller || seller.user.deletedAt) {
     cacheTag(TAGS.listings);
     return null;
   }
@@ -281,7 +282,7 @@ export async function getPublicSeller(slug: string) {
     }),
   ]);
   return {
-    seller,
+    seller: { ...seller, user: undefined },
     listings,
     // Only expose the buyer's first name publicly.
     reviews: reviews.map((r) => ({ ...r, buyer: { name: r.buyer.name.split(" ")[0] } })),

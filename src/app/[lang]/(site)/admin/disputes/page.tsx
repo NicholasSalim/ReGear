@@ -43,7 +43,7 @@ export default async function AdminDisputesPage() {
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold">{t.disputeLine(pick(DISPUTE_REASON_LABELS[d.reason as keyof typeof DISPUTE_REASON_LABELS], locale), d.order.number)}</p>
                   <p className="text-xs text-slate-500">
-                    {t.disputeMeta(d.order.buyer.name, d.order.seller.displayName, formatMoney(d.order.totalIdr), d._count.messages, formatDateTime(d.createdAt, locale))}
+                    {t.disputeMeta(d.order.buyer.name || dict.common.deletedUser, d.order.seller.displayName || dict.common.deletedShop, formatMoney(d.order.totalIdr), d._count.messages, formatDateTime(d.createdAt, locale))}
                   </p>
                 </div>
                 <Badge className={tone[d.status]}>{d.status in DISPUTE_STATUS_LABELS ? pick(DISPUTE_STATUS_LABELS[d.status as keyof typeof DISPUTE_STATUS_LABELS], locale) : d.status}</Badge>

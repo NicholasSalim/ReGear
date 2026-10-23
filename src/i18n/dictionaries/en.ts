@@ -60,7 +60,6 @@ export const en = {
     legal: "Legal",
     privacy: "Privacy Policy",
     terms: "Terms & Conditions",
-    prohibited: "Prohibited items",
   },
   home: {
     heading: "Know the condition before you buy.",

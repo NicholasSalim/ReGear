@@ -61,7 +61,6 @@ export const id: typeof en = {
     legal: "Legal",
     privacy: "Kebijakan Privasi",
     terms: "Syarat & Ketentuan",
-    prohibited: "Barang terlarang",
   },
   home: {
     heading: "Ketahui kondisinya sebelum membeli.",

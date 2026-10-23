@@ -41,7 +41,6 @@ export async function SiteFooter() {
         <FooterCol title={t.footer.legal}>
           <FooterLink href="/privacy">{t.footer.privacy}</FooterLink>
           <FooterLink href="/terms">{t.footer.terms}</FooterLink>
-          <FooterLink href="/terms#prohibited">{t.footer.prohibited}</FooterLink>
         </FooterCol>
       </div>
       <div className="border-t border-slate-100 py-5 text-center text-xs text-slate-500">{t.footer.copyright}</div>

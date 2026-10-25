@@ -839,4 +839,21 @@ export const id: typeof en = {
       rejected: { subject: "Verifikasi Anda belum disetujui", body: (note: string) => `Peninjau kami belum bisa menyetujui verifikasi Anda: ${note}. Anda bisa mengajukan lagi dari dasbor penjual.`, button: "Ajukan lagi" },
     },
   },
+  notFound: {
+    heading: "Halaman ini tidak ditemukan",
+    body: "Alamatnya mungkin salah ketik, atau tautannya sudah lama. Cari barang yang Anda inginkan, atau mulai dari salah satu kategori.",
+    searchLabel: "Cari di ReGear",
+    searchButton: "Cari",
+    browseAll: "Lihat semua iklan",
+    categories: "Kategori",
+    reportTitle: "Laporan kondisi halaman ini",
+    code: "Kode 404",
+    requested: "Alamat yang dibuka",
+    stripLabel: "1 pemeriksaan gagal, 1 perlu dicek, 1 lolos",
+    rows: {
+      address: { check: "Alamat halaman", result: "Tidak ditemukan", note: "Periksa ejaannya, atau buka lagi dari halaman sebelumnya." },
+      listing: { check: "Iklan", result: "Mungkin sudah tidak ada", note: "Jika ini tautan iklan, penjual mungkin sudah menghapusnya." },
+      site: { check: "ReGear", result: "Berfungsi normal", note: "Pencarian, kategori, dan akun Anda tetap bisa dipakai." },
+    },
+  },
 };

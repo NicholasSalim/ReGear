@@ -834,4 +834,21 @@ export const en = {
       rejected: { subject: "Your verification wasn't approved", body: (note: string) => `Our reviewer couldn't approve your verification: ${note}. You can apply again from your seller dashboard.`, button: "Apply again" },
     },
   },
+  notFound: {
+    heading: "This page doesn't exist",
+    body: "The address may have a typo, or the link is old. Search for what you're after, or start from one of the categories.",
+    searchLabel: "Search ReGear",
+    searchButton: "Search",
+    browseAll: "Browse all listings",
+    categories: "Categories",
+    reportTitle: "Condition report for this page",
+    code: "Code 404",
+    requested: "Address you opened",
+    stripLabel: "1 check failed, 1 to look into, 1 passed",
+    rows: {
+      address: { check: "Page address", result: "Not found", note: "Check the spelling, or open it again from the previous page." },
+      listing: { check: "Listing", result: "May be gone", note: "If this was a listing link, the seller may have removed it." },
+      site: { check: "ReGear", result: "Working normally", note: "Search, categories and your account still work." },
+    },
+  },
 };

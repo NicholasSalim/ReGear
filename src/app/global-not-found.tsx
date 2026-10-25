@@ -1,31 +1,52 @@
 import type { Metadata } from "next";
 import { Archivo } from "next/font/google";
-import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+import { LocaleProvider } from "@/i18n/client";
+import { LOCALES, localePath } from "@/i18n/locales";
+import { dictionaryFor } from "@/i18n/server";
+import { LogoMark } from "@/components/condition-strip";
+import { NotFoundContent } from "@/components/not-found-content";
 import "./globals.css";
 
-// Shown for URLs that match no route. It renders outside app/[lang], so it
-// can't know the visitor's language: Indonesian first, English below.
+// Shown for addresses that match no route. It renders outside app/[lang] and
+// is served as static HTML, so it holds both languages; the script below
+// picks one from the address (/en/... is English) before the page paints.
+// Without JavaScript the Indonesian version shows.
 const archivo = Archivo({ variable: "--font-archivo", subsets: ["latin"], axes: ["wdth"], display: "swap" });
 
 export const metadata: Metadata = { title: "404 · ReGear", robots: { index: false } };
 
+const PICK_LANGUAGE = `(function(){var p=location.pathname;if(p==="/en"||p.indexOf("/en/")===0){var d=document.documentElement;d.lang="en";d.dataset.lang="en";}})();`;
+
 export default function GlobalNotFound() {
   return (
-    <html lang="id" className={`${archivo.variable} h-full`}>
-      <body className="flex min-h-full flex-col items-center justify-center px-4 text-center">
-        <p className="text-sm font-semibold text-brand-700">404</p>
-        <h1 className="mt-2 text-3xl font-bold">Halaman tidak ditemukan</h1>
-        <p className="mt-1 text-slate-600" lang="en">
-          We couldn&apos;t find that page
-        </p>
-        <div className="mt-6 flex gap-3">
-          <Link href="/" className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">
-            Ke beranda
-          </Link>
-          <Link href="/en" lang="en" className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 ring-1 ring-rule hover:ring-slate-400">
-            Go home
-          </Link>
-        </div>
+    <html lang="id" className={`${archivo.variable} h-full`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: PICK_LANGUAGE }} />
+      </head>
+      <body className="flex min-h-full flex-col">
+        {LOCALES.map((locale) => {
+          const t = dictionaryFor(locale);
+          return (
+            <div key={locale} data-locale-block={locale} lang={locale} className="flex flex-1 flex-col">
+              <LocaleProvider locale={locale}>
+                <header className="container-page flex h-16 items-center justify-between">
+                  <a href={localePath("/", locale)} className="flex items-center gap-2.5 text-ink" aria-label={t.nav.homeAria}>
+                    <LogoMark />
+                    <span className="wide text-[1.35rem] leading-none font-extrabold tracking-[-0.03em]">ReGear</span>
+                  </a>
+                  <a href={localePath("/", locale)} className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-ink">
+                    <ArrowLeft className="size-4" aria-hidden />
+                    {t.nav.backToHome}
+                  </a>
+                </header>
+                <main className="flex flex-1 flex-col">
+                  <NotFoundContent locale={locale} />
+                </main>
+              </LocaleProvider>
+            </div>
+          );
+        })}
       </body>
     </html>
   );

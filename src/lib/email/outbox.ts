@@ -2,7 +2,7 @@ import "server-only";
 import { after } from "next/server";
 import { db } from "@/lib/db";
 import { isLocale, type Locale } from "@/i18n/locales";
-import type { Prisma } from "@/generated/prisma/client";
+import type { EmailOutbox, Prisma } from "@/generated/prisma/client";
 import { renderEmail, SENSITIVE_TEMPLATES, type EmailPayload, type EmailTemplate } from "@/lib/email/templates";
 import { EmailNotConfiguredError, sendEmail } from "@/lib/email/transport";
 
@@ -41,37 +41,41 @@ export function scheduleDelivery() {
 }
 
 /** Send queued emails. Safe to run concurrently: each row is claimed before it's sent. */
+type Recipient = { id: string; email: string; name: string; deletedAt: Date | null; emailVerifiedAt: Date | null };
+
 export async function deliverPendingEmails(limit = 50) {
   const now = new Date();
-  const due = await db.emailOutbox.findMany({
-    where: {
-      OR: [
-        { status: "PENDING", sendAfter: { lte: now } },
-        { status: "SENDING", claimedAt: { lt: new Date(now.getTime() - STALE_CLAIM_MS) } },
-      ],
-    },
-    orderBy: { createdAt: "asc" },
-    take: limit,
-    select: { id: true, status: true, claimedAt: true },
-  });
+  const stale = new Date(now.getTime() - STALE_CLAIM_MS);
+  // Claim a batch in one statement. SKIP LOCKED lets several workers run at
+  // once without sending the same email twice.
+  const claimed = await db.$queryRaw<EmailOutbox[]>`
+    UPDATE "EmailOutbox" SET "status" = 'SENDING', "claimedAt" = ${now}
+    WHERE "id" IN (
+      SELECT "id" FROM "EmailOutbox"
+      WHERE ("status" = 'PENDING' AND "sendAfter" <= ${now}) OR ("status" = 'SENDING' AND "claimedAt" < ${stale})
+      ORDER BY "createdAt"
+      LIMIT ${limit}
+      FOR UPDATE SKIP LOCKED
+    )
+    RETURNING *`;
+  if (claimed.length === 0) return { sent: 0, considered: 0 };
+
+  // Every recipient in one query.
+  const userIds = [...new Set(claimed.flatMap((r) => (r.userId ? [r.userId] : [])))];
+  const users = new Map<string, Recipient>(
+    (await db.user.findMany({ where: { id: { in: userIds } }, select: { id: true, email: true, name: true, deletedAt: true, emailVerifiedAt: true } })).map((u) => [u.id, u]),
+  );
 
   let sent = 0;
-  for (const row of due) {
-    const claimed = await db.emailOutbox.updateMany({
-      where: { id: row.id, status: row.status, claimedAt: row.claimedAt },
-      data: { status: "SENDING", claimedAt: now },
-    });
-    if (claimed.count === 1 && (await deliverOne(row.id))) sent++;
+  for (const row of claimed.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())) {
+    if (await deliverOne(row, row.userId ? (users.get(row.userId) ?? null) : null)) sent++;
   }
-  return { sent, considered: due.length };
+  return { sent, considered: claimed.length };
 }
 
-async function deliverOne(id: string): Promise<boolean> {
-  const row = await db.emailOutbox.findUniqueOrThrow({ where: { id } });
+async function deliverOne(row: EmailOutbox, user: Recipient | null): Promise<boolean> {
+  const { id } = row;
   const sensitive = SENSITIVE_TEMPLATES.includes(row.template as EmailTemplate);
-  const user = row.userId
-    ? await db.user.findUnique({ where: { id: row.userId }, select: { email: true, name: true, deletedAt: true, emailVerifiedAt: true } })
-    : null;
 
   // Account emails go to the address they were written for; everything else
   // only to a live account's verified address.

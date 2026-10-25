@@ -92,6 +92,14 @@ describe("order emails", () => {
     expect(await outbox()).toHaveLength(0);
   });
 
+  it("sends each email once when two deliveries run at the same time", async () => {
+    for (let i = 0; i < 6; i++) await enqueueEmail(db, { userId: f.buyer.id, locale: "id" }, { template: "verification-approved", params: {} });
+    const [a, b] = await Promise.all([deliverPendingEmails(), deliverPendingEmails()]);
+    expect(a.sent + b.sent).toBe(6);
+    expect(await sentFiles()).toHaveLength(6);
+    expect((await outbox()).every((r) => r.status === "SENT")).toBe(true);
+  });
+
   it("skips unverified or deleted recipients", async () => {
     await db.user.update({ where: { id: f.buyer.id }, data: { emailVerifiedAt: null } });
     await db.user.update({ where: { id: f.sellerUser.id }, data: { deletedAt: new Date() } });

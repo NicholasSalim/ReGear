@@ -78,17 +78,12 @@ export async function deleteAccount(userId: string) {
     const verifications = sellerId ? await tx.verificationRequest.findMany({ where: { sellerId }, select: { documentKey: true } }) : [];
     if (sellerId) await tx.verificationRequest.deleteMany({ where: { sellerId } });
 
-    // 5. The buyer's shipping details on past orders.
-    const purchases = await tx.order.findMany({ where: { buyerId: userId }, select: { id: true, shippingAddress: true } });
-    for (const order of purchases) {
-      let address: Record<string, unknown> = {};
-      try {
-        address = JSON.parse(order.shippingAddress);
-      } catch {
-        /* unreadable: replace entirely */
-      }
-      await tx.order.update({ where: { id: order.id }, data: { shippingAddress: JSON.stringify({ ...address, ...REDACTED_ADDRESS }) } });
-    }
+    // 5. The buyer's shipping details on past orders, in one statement however
+    //    many orders there are. Addresses are always written as JSON objects
+    //    (checkout stores the validated form), so the cast is safe.
+    await tx.$executeRaw`
+      UPDATE "Order" SET "shippingAddress" = ("shippingAddress"::jsonb || ${JSON.stringify(REDACTED_ADDRESS)}::jsonb)::text
+      WHERE "buyerId" = ${userId}`;
 
     // 6. Everything else personal.
     await tx.favorite.deleteMany({ where: { userId } });

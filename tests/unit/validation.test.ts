@@ -114,6 +114,14 @@ describe("redirect safety", () => {
     expect(safeRedirectPath("https://evil.com")).toBe("/");
     expect(safeRedirectPath(undefined, "/x")).toBe("/x");
   });
+
+  it("refuses targets a browser would turn into another site", () => {
+    for (const t of ["/\t/evil.com", "/\n/evil.com", "/\r\n/evil.com", "/ /evil.com".replace(" ", "\u0000"), "/\\/evil.com", "\\evil.com", "/\\evil.com"]) {
+      expect(safeRedirectPath(t), JSON.stringify(t)).toBe("/");
+    }
+    expect(safeRedirectPath("/en/account/orders/abc?pay=1#top")).toBe("/en/account/orders/abc?pay=1#top");
+    expect(safeRedirectPath("/%2F/evil.com")).toBe("/%2F/evil.com"); // stays a path on our site
+  });
 });
 
 describe("rupiah amounts", () => {

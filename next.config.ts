@@ -46,7 +46,7 @@ const nextConfig: NextConfig = {
   partialPrefetching: true,
   poweredByHeader: false,
   reactStrictMode: true,
-  serverExternalPackages: ["better-sqlite3", "sharp"],
+  serverExternalPackages: ["sharp"],
   experimental: {
     authInterrupts: true,
     // The root layout lives under app/[lang]; unmatched URLs need a 404 of their own.
@@ -75,11 +75,12 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
-      {
-        // Authenticated areas must never be stored by shared caches.
-        source: "/(account|sell|admin|checkout|disputes|login|register)(.*)",
+      // Authenticated areas and pages that carry one-time tokens must never be
+      // stored by shared caches, in either language.
+      ...["", "/en"].map((prefix) => ({
+        source: `${prefix}/(account|sell|admin|checkout|disputes|login|register|forgot-password|reset-password|verify-email|goodbye)(.*)`,
         headers: [{ key: "Cache-Control", value: "private, no-store" }],
-      },
+      })),
     ];
   },
 };

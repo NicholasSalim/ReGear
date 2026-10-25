@@ -9,17 +9,14 @@ export async function rateLimit(key: string, limit: number, windowSec: number): 
   const now = new Date();
   const resetAt = new Date(now.getTime() + windowSec * 1000);
 
-  const row = await db.$transaction(async (tx) => {
-    const existing = await tx.rateLimit.findUnique({ where: { key } });
-    if (!existing || existing.resetAt <= now) {
-      return tx.rateLimit.upsert({
-        where: { key },
-        create: { key, count: 1, resetAt },
-        update: { count: 1, resetAt },
-      });
-    }
-    return tx.rateLimit.update({ where: { key }, data: { count: { increment: 1 } } });
-  });
+  // One statement: concurrent requests each get their own count, and an
+  // expired window restarts exactly once.
+  const [row] = await db.$queryRaw<{ count: number; resetAt: Date }[]>`
+    INSERT INTO "RateLimit" ("key", "count", "resetAt") VALUES (${key}, 1, ${resetAt})
+    ON CONFLICT ("key") DO UPDATE SET
+      "count" = CASE WHEN "RateLimit"."resetAt" <= ${now} THEN 1 ELSE "RateLimit"."count" + 1 END,
+      "resetAt" = CASE WHEN "RateLimit"."resetAt" <= ${now} THEN ${resetAt} ELSE "RateLimit"."resetAt" END
+    RETURNING "count", "resetAt"`;
 
   const remaining = Math.max(0, limit - row.count);
   return {

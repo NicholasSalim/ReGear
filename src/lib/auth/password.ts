@@ -2,10 +2,12 @@ import { randomBytes, scrypt as scryptCb, timingSafeEqual, type ScryptOptions } 
 
 // scrypt (memory-hard KDF from Node core, no native addon to maintain).
 // Parameters are encoded in the hash so they can be raised later; verify()
-// reports when a stored hash should be upgraded.
+// reports when a stored hash should be upgraded, and sign-in re-hashes it.
+// N=2^15, r=8, p=3 is one of the OWASP Password Storage Cheat Sheet's minimum
+// settings (equivalent to N=2^17, r=8, p=1) and needs 32 MB per hash.
 const N = 1 << 15;
 const R = 8;
-const P = 1;
+const P = 3;
 const KEY_LEN = 64;
 const MAXMEM = 128 * N * R * 2;
 
@@ -35,7 +37,7 @@ export async function verifyPassword(
     maxmem: 128 * params.N * params.r * 2,
   });
   const ok = actual.length === expected.length && timingSafeEqual(actual, expected);
-  return { ok, needsRehash: ok && (params.N < N || params.r !== R || params.p !== P) };
+  return { ok, needsRehash: ok && (params.N < N || params.r !== R || params.p < P) };
 }
 
 // A precomputed hash used to keep login timing uniform for unknown emails.

@@ -45,7 +45,8 @@ function NavLinks({ items, pathname }: { items: NavItem[]; pathname: string | nu
 
 export function DashboardShell({ title, nav, children }: { title: string; nav: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="container-page grid gap-6 py-8 lg:grid-cols-[13rem_1fr]">
+    // minmax(0, 1fr): the sidebar's scrolling link row must not widen the column past the screen.
+    <div className="container-page grid grid-cols-1 gap-6 py-8 lg:grid-cols-[13rem_minmax(0,1fr)]">
       <aside>
         <p className="mb-2 hidden px-3 text-sm font-semibold text-ink lg:block">{title}</p>
         {nav}

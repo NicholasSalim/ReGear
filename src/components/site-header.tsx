@@ -57,7 +57,7 @@ export async function SiteHeader() {
             </Suspense>
           </div>
           <nav className="flex items-center gap-1" aria-label={t.nav.accountNav}>
-            <Suspense fallback={<Skeleton className="h-9 w-40" />}>
+            <Suspense fallback={<Skeleton className="h-9 w-16 sm:w-40" />}>
               <UserMenu />
             </Suspense>
           </nav>

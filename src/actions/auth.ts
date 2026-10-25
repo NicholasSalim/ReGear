@@ -7,6 +7,11 @@ import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { invalidate, TAGS } from "@/lib/cache";
 import { LEGAL_VERSION } from "@/lib/legal";
+import { issueEmailToken, resetPasswordWithToken } from "@/lib/auth/email-tokens";
+import { enqueueEmail } from "@/lib/email/outbox";
+import { siteUrl } from "@/lib/email/templates";
+import type { Locale } from "@/i18n/locales";
+import type { Prisma } from "@/generated/prisma/client";
 import { deleteAccount, getDeletionBlockers, isBlocked } from "@/lib/account/delete";
 import { actionI18n, formToObject, runAction, type ActionState } from "@/lib/action";
 import { getDummyHash, hashPassword, verifyPassword } from "@/lib/auth/password";
@@ -14,7 +19,14 @@ import { createSession, destroyAllSessions, destroyCurrentSession, readSessionTo
 import { getCurrentUser, requireUserStrict } from "@/lib/auth/dal";
 import { rateLimit } from "@/lib/security/rate-limit";
 import { getClientIp, getUserAgent, safeRedirectPath } from "@/lib/security/request";
-import { changePasswordSchema, fieldErrors, loginSchema, profileSchema, registerSchema } from "@/lib/validation";
+import { changePasswordSchema, fieldErrors, forgotPasswordSchema, loginSchema, profileSchema, registerSchema, resetPasswordSchema } from "@/lib/validation";
+
+/** Queue the "confirm your email" message with a fresh one-time link. */
+async function sendVerificationEmail(tx: Prisma.TransactionClient, user: { id: string; email: string; name: string }, locale: Locale) {
+  const token = await issueEmailToken(tx, user.id, "VERIFY_EMAIL");
+  const url = `${siteUrl("/api/auth/verify-email", "id")}?token=${token}&lang=${locale}`;
+  await enqueueEmail(tx, { userId: user.id, to: user.email, locale }, { template: "verify-email", params: { url, name: user.name } });
+}
 
 const LOCK_AFTER_FAILURES = 5;
 const LOCK_MINUTES = 15;
@@ -32,8 +44,14 @@ export async function registerAction(_prev: ActionState, formData: FormData): Pr
   const existing = await db.user.findUnique({ where: { email }, select: { id: true } });
   if (existing) return { fieldErrors: { email: t.actions.emailTaken } };
 
-  const user = await db.user.create({
-    data: { name, email, passwordHash: await hashPassword(password), termsVersion: LEGAL_VERSION, termsAcceptedAt: new Date() },
+  const passwordHash = await hashPassword(password);
+  // The account and its confirmation email are saved together.
+  const user = await db.$transaction(async (tx) => {
+    const created = await tx.user.create({
+      data: { name, email, passwordHash, locale, termsVersion: LEGAL_VERSION, termsAcceptedAt: new Date() },
+    });
+    await sendVerificationEmail(tx, created, locale);
+    return created;
   });
   await createSession(user.id, { ip, userAgent: await getUserAgent() });
   await audit(user.id, "user.register", "User", user.id);
@@ -81,6 +99,8 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
     data: {
       failedLoginCount: 0,
       lockedUntil: null,
+      // Emails follow the language the user last signed in with.
+      locale,
       ...(needsRehash ? { passwordHash: await hashPassword(password) } : {}),
     },
   });
@@ -177,4 +197,55 @@ export async function deleteAccountAction(_prev: ActionState, formData: FormData
   });
   if (result.ok) redirect(localePath("/goodbye", (await actionI18n()).locale));
   return result;
+}
+
+/** Sends the email confirmation link again (from the banner). */
+export async function resendVerificationAction(_prev?: ActionState, _formData?: FormData): Promise<ActionState> {
+  return runAction(async () => {
+    const user = await requireUserStrict();
+    const { locale, t } = await actionI18n();
+    if (user.emailVerified) return { ok: true, message: t.actions.emailAlreadyVerified };
+    const limited = await rateLimit(`verify-email:${user.id}`, 3, 900);
+    if (!limited.ok) return { error: t.actions.emailVerificationLimit };
+    await db.$transaction((tx) => sendVerificationEmail(tx, user, locale));
+    return { ok: true, message: t.actions.verificationSent(user.email) };
+  });
+}
+
+/**
+ * Emails a password reset link. The answer is the same whether or not the
+ * email has an account, so this can't be used to find out who is registered.
+ */
+export async function requestPasswordResetAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { locale, t } = await actionI18n();
+  const parsed = forgotPasswordSchema.safeParse(formToObject(formData));
+  if (!parsed.success) return { fieldErrors: fieldErrors(parsed.error, t, locale) };
+  const { email } = parsed.data;
+  const ip = await getClientIp();
+  const [byIp, byEmail] = await Promise.all([rateLimit(`reset-ip:${ip}`, 10, 900), rateLimit(`reset-email:${email}`, 3, 3600)]);
+  if (!byIp.ok || !byEmail.ok) return { error: t.actions.resetLimit };
+
+  const user = await db.user.findUnique({ where: { email }, select: { id: true, email: true, name: true, deletedAt: true } });
+  if (user && !user.deletedAt) {
+    await db.$transaction(async (tx) => {
+      const token = await issueEmailToken(tx, user.id, "RESET_PASSWORD");
+      const url = `${siteUrl("/reset-password", locale)}?token=${token}`;
+      await enqueueEmail(tx, { userId: user.id, to: user.email, locale }, { template: "reset-password", params: { url, name: user.name } });
+    });
+    await audit(user.id, "user.password_reset_requested", "User", user.id);
+  }
+  return { ok: true, message: t.actions.resetSent };
+}
+
+/** Sets a new password from the emailed link, signs out everywhere, then asks the user to sign in. */
+export async function resetPasswordAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { locale, t } = await actionI18n();
+  const parsed = resetPasswordSchema.safeParse(formToObject(formData));
+  // A weak password is reported before the link is used up.
+  if (!parsed.success) return { fieldErrors: fieldErrors(parsed.error, t, locale) };
+  const userId = await resetPasswordWithToken(parsed.data.token, parsed.data.newPassword);
+  if (!userId) return { error: t.actions.resetInvalid };
+  await audit(userId, "user.password_reset", "User", userId);
+  await destroyCurrentSession();
+  redirect(`${localePath("/login", locale)}?notice=password_reset`);
 }

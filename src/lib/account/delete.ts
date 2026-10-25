@@ -92,6 +92,8 @@ export async function deleteAccount(userId: string) {
 
     // 6. Everything else personal.
     await tx.favorite.deleteMany({ where: { userId } });
+    await tx.emailToken.deleteMany({ where: { userId } });
+    await tx.emailOutbox.deleteMany({ where: { userId } });
     await tx.oAuthAccount.deleteMany({ where: { userId } });
     if (sellerId) {
       await tx.sellerProfile.update({

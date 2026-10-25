@@ -331,6 +331,7 @@ export const en = {
     unverifiedLimit: (n: number) => `Unverified sellers can have up to ${n} active listings. Verify your account to list more.`,
     accountBusy: "You still have orders in progress. Finish them before deleting your account.",
     adminAccount: "Admin accounts can't be deleted.",
+    emailUnverified: "Confirm your email address first. We sent a confirmation link to your inbox.",
   },
   actions: {
     signupLimit: "Too many sign-up attempts. Please try again later.",
@@ -385,6 +386,12 @@ export const en = {
     deleteLimit: "Too many attempts. Try again in a few minutes.",
     deleteEmailMismatch: "This doesn't match your account's email.",
     passwordWrong: "Password is incorrect.",
+    resetSent: "If an account uses that email, we've sent it a link to reset the password. Check your spam folder too.",
+    resetLimit: "Too many requests. Try again in a few minutes.",
+    resetInvalid: "This reset link is invalid or has expired. Request a new one.",
+    verificationSent: (email: string) => `We sent a confirmation link to ${email}.`,
+    emailVerificationLimit: "You've asked for several emails already. Try again in a few minutes.",
+    emailAlreadyVerified: "Your email is already confirmed.",
   },
   events: {
     CREATED: (p: { minutes: number }) => `Order placed. Item reserved for ${p.minutes} minutes pending payment.`,
@@ -433,6 +440,26 @@ export const en = {
       rate_limited: "Too many sign-in attempts. Wait a few minutes and try again.",
     } as Record<string, string>,
     googleNotice: "By continuing with Google, you agree to the [Terms & Conditions](/terms) and [Privacy Policy](/privacy).",
+    forgotLink: "Forgot password?",
+    forgotMetaTitle: "Forgot password",
+    forgotHeading: "Reset your password",
+    forgotIntro: "Enter the email address of your account and we'll send you a link to choose a new password.",
+    backToSignIn: "Back to sign in",
+    resetMetaTitle: "Choose a new password",
+    resetHeading: "Choose a new password",
+    resetIntro: "Your new password signs you out on every other device.",
+    resetInvalidTitle: "This link doesn't work any more",
+    resetInvalidBody: "Reset links work once and expire after an hour. Request a new one to continue.",
+    requestNewLink: "Request a new link",
+    notices: { password_reset: "Your password has been changed. Sign in with the new one." } as Record<string, string>,
+    verifyMetaTitle: "Confirm your email",
+    verifiedTitle: "Your email is confirmed",
+    verifiedBody: "Thanks! You can now buy and publish listings on ReGear.",
+    verifyInvalidTitle: "This confirmation link doesn't work",
+    verifyInvalidBody: "The link is invalid or has expired. Sign in and send a new confirmation email from the banner at the top of the page.",
+    continueToAccount: "Go to my account",
+    verifyBanner: (email: string) => `Confirm your email address (${email}) to buy and publish listings. Check your inbox for our link.`,
+    resendVerification: "Send the link again",
   },
   checkout: {
     metaTitle: "Checkout",
@@ -449,6 +476,8 @@ export const en = {
     total: "Total",
     protection: "Buyer protection: payment is held until you accept the item.",
     returnWindow: (days: number) => ` ${days}-day return window.`,
+    verifyFirst: "Confirm your email to buy",
+    verifyFirstHint: (email: string) => `We sent a confirmation link to ${email}. Click it, then come back to this item. You can send the link again from the banner at the top of the page.`,
   },
   account: {
     metaTitle: "My account",
@@ -689,6 +718,9 @@ export const en = {
       "user.register": "Account created",
       "user.register_google": "Account created with Google",
       "user.delete": "Account deleted",
+      "user.email_verified": "Email confirmed",
+      "user.password_reset_requested": "Password reset requested",
+      "user.password_reset": "Password reset by email link",
       "verification.approve": "Verification approved",
       "verification.document_view": "ID document viewed",
       "verification.reject": "Verification rejected",
@@ -708,5 +740,98 @@ export const en = {
     privacyDescription: "What personal data ReGear collects, why, who can see it, how long it's kept and your rights under UU PDP.",
     termsDescription: "The rules for buying and selling on ReGear: listings, prohibited items, held payments, returns, disputes and fees.",
     otherDocument: { privacy: "Read the Terms & Conditions", terms: "Read the Privacy Policy" },
+  },
+  emails: {
+    greeting: (name: string) => `Hi ${name},`,
+    greetingNoName: "Hi,",
+    buttonFallback: "If the button doesn't work, copy this link into your browser:",
+    footer: "This email was sent automatically by ReGear about your account or orders. Never share the links in it with anyone.",
+    privacy: "Privacy Policy",
+    orderLine: (title: string, number: string) => `${title} · order ${number}`,
+    viewOrder: "View order",
+    verify: {
+      subject: "Confirm your email for ReGear",
+      body: "Click the button below to confirm that this email address is yours. You'll then be able to buy and publish listings.",
+      button: "Confirm email",
+      note: "The link works for 24 hours. If you didn't create a ReGear account, you can ignore this email.",
+    },
+    reset: {
+      subject: "Reset your ReGear password",
+      body: "We received a request to reset the password of your ReGear account.",
+      button: "Choose a new password",
+      note: "The link works once, for 1 hour. If you didn't ask for this, ignore this email; your password hasn't changed.",
+    },
+    order: {
+      PAID: {
+        buyer: { subject: (n: string) => `Payment received for order ${n}`, body: () => "We've received your payment and are holding it until you accept the item. We'll let you know when the seller ships it." },
+        seller: { subject: (n: string) => `New order ${n}: please ship it`, body: () => "The buyer has paid. Pack the item, ship it with a courier and add the tracking number on the order page. You're paid once the buyer accepts the item." },
+      },
+      CANCELLED: {
+        buyer: { subject: (n: string) => `Order ${n} was cancelled`, body: (p: { reason?: string; refunded?: boolean }) => `The seller cancelled this order${p.reason ? `: ${p.reason}` : "."}${p.refunded ? " Your payment has been refunded in full." : ""}` },
+        seller: { subject: (n: string) => `Order ${n} was cancelled`, body: (p: { reason?: string; refunded?: boolean }) => `The buyer cancelled this order${p.reason ? `: ${p.reason}` : "."} Your listing is back on sale; don't ship the item.` },
+      },
+      EXPIRED: {
+        buyer: { subject: (n: string) => `Order ${n}: time to pay ran out`, body: () => "The payment wasn't completed in time, so the order was cancelled and the item went back on sale. You can order it again if it's still available." },
+      },
+      SHIPPED: {
+        buyer: { subject: (n: string) => `Order ${n} has shipped`, body: (p: { carrier: string; tracking: string }) => `The seller shipped your item with ${p.carrier}, tracking number ${p.tracking}. Confirm delivery on the order page once it arrives.` },
+      },
+      DELIVERED: {
+        buyer: {
+          subject: (n: string) => `Order ${n} was marked as delivered`,
+          body: (p: { returnDays: number }) =>
+            `The order was marked as delivered automatically. ${p.returnDays > 0 ? `You have ${p.returnDays} days to check the item and request a return if something's wrong.` : "Check the item against its condition report."}`,
+        },
+        seller: {
+          subject: (n: string) => `Order ${n} was delivered`,
+          body: (p: { auto: boolean; returnDays: number }) =>
+            `${p.auto ? "The order was marked as delivered automatically." : "The buyer confirmed the item arrived."} You're paid once the buyer accepts it${p.returnDays > 0 ? ` or the ${p.returnDays}-day return window closes` : ""}.`,
+        },
+      },
+      COMPLETED: {
+        buyer: { subject: (n: string) => `Order ${n} is complete`, body: () => "Thanks! This order is complete and the payment has been released to the seller. How did it go? You can review the seller on the order page." },
+        seller: { subject: (n: string) => `You've been paid for order ${n}`, body: () => "This order is complete. The payment, minus ReGear's fee, has been released to you." },
+      },
+      RETURN_REQUESTED: {
+        seller: { subject: (n: string) => `Return requested for order ${n}`, body: () => "The buyer has asked to return the item. Open the order page to see why, then approve or reject the request." },
+      },
+      RETURN_APPROVED: {
+        buyer: { subject: (n: string) => `Return approved for order ${n}`, body: () => "The seller approved your return. Ship the item back to the address the seller gave, then add the tracking number on the order page." },
+      },
+      RETURN_REJECTED: {
+        buyer: { subject: (n: string) => `Return rejected for order ${n}`, body: (p: { note: string }) => `The seller rejected the return: ${p.note}. If the item doesn't match its condition report, you can open a dispute on the order page.` },
+      },
+      RETURN_SHIPPED: {
+        seller: { subject: (n: string) => `Return on its way for order ${n}`, body: (p: { carrier: string; tracking: string }) => `The buyer shipped the item back with ${p.carrier}, tracking number ${p.tracking}. Confirm on the order page once it arrives; the buyer is then refunded.` },
+      },
+      REFUNDED: {
+        buyer: { subject: (n: string) => `Refund for order ${n}`, body: () => "The seller received the returned item and your payment has been refunded in full." },
+      },
+      DISPUTE_OPENED: {
+        buyer: { subject: (n: string) => `A dispute was opened for order ${n}`, body: () => "The seller opened a dispute about this order. The payment is frozen until ReGear decides. Reply and add evidence on the dispute page." },
+        seller: { subject: (n: string) => `A dispute was opened for order ${n}`, body: () => "The buyer opened a dispute about this order. The payment is frozen until ReGear decides. Reply and add evidence on the dispute page." },
+      },
+      DISPUTE_RESOLVED: {
+        buyer: {
+          subject: (n: string) => `Dispute decided for order ${n}`,
+          body: (p: { outcome: "buyer" | "partial" | "seller" }): string =>
+            p.outcome === "buyer" ? "ReGear decided the dispute in your favour. Your payment has been refunded in full." : p.outcome === "partial" ? "ReGear decided the dispute with a partial refund to you." : "ReGear decided the dispute in the seller's favour, and the payment has been released to the seller.",
+        },
+        seller: {
+          subject: (n: string) => `Dispute decided for order ${n}`,
+          body: (p: { outcome: "buyer" | "partial" | "seller" }): string =>
+            p.outcome === "buyer" ? "ReGear decided the dispute in the buyer's favour, and the buyer was refunded in full." : p.outcome === "partial" ? "ReGear decided the dispute with a partial refund to the buyer; the rest has been released to you." : "ReGear decided the dispute in your favour. The payment has been released to you.",
+        },
+      },
+    },
+    disputeMessage: {
+      subject: (n: string) => `New message in the dispute for order ${n}`,
+      body: (from: "BUYER" | "SELLER" | "ADMIN"): string => `${from === "ADMIN" ? "A ReGear specialist" : from === "BUYER" ? "The buyer" : "The seller"} added a message to this dispute.`,
+      button: "Open the dispute",
+    },
+    verification: {
+      approved: { subject: "Your shop is verified", body: "Good news: your verification was approved. The verified badge now shows on your shop and every listing.", button: "Open seller dashboard" },
+      rejected: { subject: "Your verification wasn't approved", body: (note: string) => `Our reviewer couldn't approve your verification: ${note}. You can apply again from your seller dashboard.`, button: "Apply again" },
+    },
   },
 };

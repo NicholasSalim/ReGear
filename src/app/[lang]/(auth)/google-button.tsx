@@ -46,3 +46,16 @@ export async function AuthError({ code }: { code?: string }) {
     </p>
   );
 }
+
+/** One-time confirmations passed as ?notice= (for example after a password reset). */
+export async function AuthNotice({ code }: { code?: string }) {
+  const t = await getDictionary();
+  const message = code ? t.auth.notices[code] : undefined;
+  if (!message) return null;
+  return (
+    <p role="status" className="mb-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+      {message}
+      <DropSearchParam name="notice" />
+    </p>
+  );
+}

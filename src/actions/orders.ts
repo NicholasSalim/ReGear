@@ -10,6 +10,7 @@ import { actionI18n, formToObject, runAction, type ActionState } from "@/lib/act
 import { requireUserStrict } from "@/lib/auth/dal";
 import { rateLimit } from "@/lib/security/rate-limit";
 import * as orders from "@/lib/orders/service";
+import { enqueueDisputeMessageEmails } from "@/lib/email/notify";
 import {
   addressSchema,
   disputeMessageSchema,
@@ -21,13 +22,16 @@ import {
   text,
 } from "@/lib/validation";
 
-type ActionMessage = keyof Dictionary["actions"];
+type Messages = Dictionary["actions"];
+/** Keys of the plain-text action messages (some messages take values). */
+type ActionMessage = { [K in keyof Messages]: Messages[K] extends string ? K : never }[keyof Messages];
 
 export async function checkoutAction(listingId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
   let orderId: string | undefined;
   const result = await runAction(async () => {
     const user = await requireUserStrict();
     const { t } = await actionI18n();
+    if (!user.emailVerified) return { error: t.domain.emailUnverified };
     idSchema.parse(listingId);
     const limited = await rateLimit(`checkout:${user.id}`, 20, 3600);
     if (!limited.ok) return { error: t.actions.checkoutLimit };
@@ -162,8 +166,11 @@ export async function postDisputeMessageAction(disputeId: string, _prev: ActionS
     if (!role) return { error: t.actions.disputeNotFound };
     if (dispute.status === "RESOLVED") return { error: t.actions.disputeClosed };
 
-    await db.disputeMessage.create({ data: { disputeId, authorId: user.id, authorRole: role, body } });
-    await db.dispute.update({ where: { id: disputeId }, data: { updatedAt: new Date() } });
+    await db.$transaction(async (tx) => {
+      await tx.disputeMessage.create({ data: { disputeId, authorId: user.id, authorRole: role, body } });
+      await tx.dispute.update({ where: { id: disputeId }, data: { updatedAt: new Date() } });
+      await enqueueDisputeMessageEmails(tx, disputeId, role);
+    });
     return { ok: true };
   });
 }

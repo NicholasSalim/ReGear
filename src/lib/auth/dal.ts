@@ -14,6 +14,8 @@ export type CurrentUser = {
   email: string;
   name: string;
   role: string;
+  /** Checkout and publishing need a confirmed address. */
+  emailVerified: boolean;
   sessionExpiresAt: Date;
 };
 
@@ -22,8 +24,8 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   if (!token) return null;
   const session = await validateSessionToken(token);
   if (!session) return null;
-  const { id, email, name, role } = session.user;
-  return { id, email, name, role, sessionExpiresAt: session.expiresAt };
+  const { id, email, name, role, emailVerifiedAt } = session.user;
+  return { id, email, name, role, emailVerified: !!emailVerifiedAt, sessionExpiresAt: session.expiresAt };
 });
 
 /** For pages: redirect to login (preserving destination and language). */

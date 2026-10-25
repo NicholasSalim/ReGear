@@ -7,6 +7,9 @@ import { en } from "@/i18n/dictionaries/en";
 import { actionI18n, formToObject, runAction, type ActionState } from "@/lib/action";
 import { requireUserStrict } from "@/lib/auth/dal";
 import { resolveDispute } from "@/lib/orders/service";
+import { enqueueEmail } from "@/lib/email/outbox";
+import { enqueueDisputeMessageEmails } from "@/lib/email/notify";
+import { isLocale } from "@/i18n/locales";
 import { disputeResolutionSchema, id as idSchema, text } from "@/lib/validation";
 import { forbidden } from "next/navigation";
 
@@ -29,18 +32,22 @@ export async function reviewVerificationAction(requestId: string, _prev: ActionS
     const request = await db.verificationRequest.findUnique({ where: { id: requestId } });
     if (!request || request.status !== "PENDING") return { error: t.actions.verificationReviewed };
 
-    await db.$transaction([
-      db.verificationRequest.update({
+    await db.$transaction(async (tx) => {
+      await tx.verificationRequest.update({
         where: { id: requestId },
         data: { status: approve ? "APPROVED" : "REJECTED", reviewNote: note || null, reviewerId: admin.id, reviewedAt: new Date() },
-      }),
-      db.sellerProfile.update({
+      });
+      const seller = await tx.sellerProfile.update({
         where: { id: request.sellerId },
-        data: approve
-          ? { verificationStatus: "VERIFIED", verifiedAt: new Date() }
-          : { verificationStatus: "REJECTED" },
-      }),
-    ]);
+        data: approve ? { verificationStatus: "VERIFIED", verifiedAt: new Date() } : { verificationStatus: "REJECTED" },
+        select: { user: { select: { id: true, locale: true } } },
+      });
+      await enqueueEmail(
+        tx,
+        { userId: seller.user.id, locale: isLocale(seller.user.locale) ? seller.user.locale : "id" },
+        approve ? { template: "verification-approved", params: {} } : { template: "verification-rejected", params: { note } },
+      );
+    });
     invalidate([TAGS.seller(request.sellerId), TAGS.listings, TAGS.stats]);
     await audit(admin.id, approve ? "verification.approve" : "verification.reject", "VerificationRequest", requestId, { note });
     return { ok: true, message: approve ? t.actions.sellerVerified : t.actions.verificationRejected };
@@ -51,11 +58,14 @@ export async function markDisputeUnderReviewAction(disputeId: string, _prev?: Ac
   return runAction(async () => {
     const admin = await requireAdminStrict();
     idSchema.parse(disputeId);
-    const res = await db.dispute.updateMany({ where: { id: disputeId, status: "OPEN" }, data: { status: "UNDER_REVIEW" } });
-    if (res.count === 0) return { error: (await actionI18n()).t.actions.disputeNotOpen };
-    await db.disputeMessage.create({
-      data: { disputeId, authorId: admin.id, authorRole: "ADMIN", body: en.disputes.system.reviewing },
+    const updated = await db.$transaction(async (tx) => {
+      const res = await tx.dispute.updateMany({ where: { id: disputeId, status: "OPEN" }, data: { status: "UNDER_REVIEW" } });
+      if (res.count === 0) return false;
+      await tx.disputeMessage.create({ data: { disputeId, authorId: admin.id, authorRole: "ADMIN", body: en.disputes.system.reviewing } });
+      await enqueueDisputeMessageEmails(tx, disputeId, "ADMIN");
+      return true;
     });
+    if (!updated) return { error: (await actionI18n()).t.actions.disputeNotOpen };
     await audit(admin.id, "dispute.review", "Dispute", disputeId);
     return { ok: true };
   });

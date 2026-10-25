@@ -6,7 +6,8 @@ import { invalidate } from "@/lib/cache";
 import { runOrderMaintenance } from "@/lib/orders/service";
 import { purgeExpiredRateLimits } from "@/lib/security/rate-limit";
 import { deletePublicImage } from "@/lib/storage";
-import { AUDIT_RETENTION_DAYS } from "@/lib/legal";
+import { AUDIT_RETENTION_DAYS, EMAIL_LOG_RETENTION_DAYS } from "@/lib/legal";
+import { deliverPendingEmails } from "@/lib/email/outbox";
 
 // Periodic maintenance. Call from a scheduler (cron, systemd timer, platform
 // cron) every ~5 minutes:  curl -X POST -H "Authorization: Bearer $CRON_SECRET" .../api/cron/maintenance
@@ -39,6 +40,12 @@ export async function POST(req: Request) {
   const orphans = await db.upload.deleteMany({ where: { id: { in: orphanRows.map((o) => o.id) } } });
   // Security logs are kept as long as the Privacy Policy says, then dropped.
   const oldLogs = await db.auditLog.deleteMany({ where: { createdAt: { lt: new Date(now.getTime() - AUDIT_RETENTION_DAYS * 86_400_000) } } });
+  // Emails: send what's due (including retries), then drop finished rows and old links.
+  const emails = await deliverPendingEmails(200);
+  const oldEmails = await db.emailOutbox.deleteMany({
+    where: { status: { in: ["SENT", "SKIPPED", "FAILED"] }, createdAt: { lt: new Date(now.getTime() - EMAIL_LOG_RETENTION_DAYS * 86_400_000) } },
+  });
+  await db.emailToken.deleteMany({ where: { OR: [{ expiresAt: { lt: now } }, { usedAt: { not: null } }] } });
 
   return NextResponse.json({
     expiredOrders: result.expired,
@@ -46,5 +53,7 @@ export async function POST(req: Request) {
     purgedSessions: sessions.count,
     purgedOrphanUploads: orphans.count,
     purgedAuditLogs: oldLogs.count,
+    emailsSent: emails.sent,
+    purgedEmails: oldEmails.count,
   });
 }

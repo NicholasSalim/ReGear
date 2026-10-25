@@ -84,6 +84,16 @@ How accounts are matched: an already-linked Google account signs straight in; ot
 
 Note: `NEXT_PUBLIC_SITE_URL` is inlined at build time and defines the redirect URI, so rebuild after changing it.
 
+### Email
+
+ReGear sends account and order emails: email confirmation, password reset, order, return and dispute updates, and seller verification results. Each email is worded in the recipient's language (the one they last signed in with).
+
+- **Delivery.** Set `SMTP_URL` (for example `smtps://user:pass@smtp.example.com:465`) and `EMAIL_FROM`; any SMTP provider works (Brevo, Mailgun, Amazon SES, Resend, ...). Use a domain with SPF, DKIM and DMARC set up so mail isn't marked as spam.
+- **Development.** Without `SMTP_URL`, emails are written to `STORAGE_DIR/dev-mail` and listed at http://localhost:3000/api/dev/mail, so you can click confirmation and reset links. That page doesn't exist in production. In production without `SMTP_URL`, emails stay queued and an error is logged.
+- **How it works.** Emails are written to the `EmailOutbox` table in the same transaction as the change that causes them (`src/lib/email/`), so a rolled-back change sends nothing. They're delivered right after the response, and the maintenance job retries failures (up to 5 attempts, with backoff). Order notifications only go to confirmed addresses. Who gets which order email is defined in `src/lib/email/notify.ts`.
+- **Email confirmation.** New accounts get a confirmation link (valid 24 hours). Buying and publishing listings need a confirmed address; drafts and browsing don't. Google sign-ins count as confirmed. A banner offers to resend the link.
+- **Password reset.** "Lupa kata sandi?" on the sign-in page emails a link that works once, for 1 hour. The answer is the same whether or not the email has an account. Setting the new password ends every session and clears a sign-in lockout.
+
 ### Scheduled maintenance
 
 Call this endpoint every ~5 minutes from cron or your platform scheduler:
@@ -92,7 +102,7 @@ Call this endpoint every ~5 minutes from cron or your platform scheduler:
 curl -X POST -H "Authorization: Bearer $CRON_SECRET" https://your-host/api/cron/maintenance
 ```
 
-It expires unpaid orders, auto-delivers long-shipped orders, auto-completes orders after the return window, and purges expired sessions, rate-limit rows, orphaned uploads and security logs older than 2 years.
+It expires unpaid orders, auto-delivers long-shipped orders, auto-completes orders after the return window, and purges expired sessions, rate-limit rows, orphaned uploads and security logs older than 2 years. It also sends queued emails, retries failed ones, and deletes the sent-email record after 30 days and used or expired email links.
 
 ## Architecture
 

@@ -58,7 +58,7 @@ export async function validateSessionToken(token: string) {
       id: true,
       expiresAt: true,
       createdAt: true,
-      user: { select: { id: true, email: true, name: true, role: true, passwordChangedAt: true } },
+      user: { select: { id: true, email: true, name: true, role: true, passwordChangedAt: true, emailVerifiedAt: true } },
     },
   });
   if (!session || session.expiresAt.getTime() <= Date.now()) return null;

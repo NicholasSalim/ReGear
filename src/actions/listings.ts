@@ -55,6 +55,7 @@ export async function saveListingAction(listingId: string | null, payload: unkno
     if (existing && !["DRAFT", "ACTIVE"].includes(existing.status)) {
       return { error: t.actions.listingLocked };
     }
+    if (data.publish && !user.emailVerified) return { error: t.domain.emailUnverified };
     if (data.publish) await assertCanPublish(seller, existing?.id);
 
     // Every photo must belong to this user and be unattached or already on this listing.
@@ -154,6 +155,7 @@ export async function setListingStatusAction(listingId: string, status: "ACTIVE"
     if (!seller || !listing || listing.sellerId !== seller.id) return { error: t.actions.listingNotFound };
     if (!["DRAFT", "ACTIVE"].includes(listing.status)) return { error: t.actions.listingUnchangeable };
     if (status === "ACTIVE") {
+      if (!user.emailVerified) return { error: t.domain.emailUnverified };
       if (!listing.conditionReport || listing._count.images === 0) {
         return { error: t.actions.publishNeedsPhotos };
       }

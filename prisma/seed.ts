@@ -135,9 +135,9 @@ async function main() {
   ]);
 
   const passwordHash = await hashPassword(DEMO_PASSWORD);
-  const admin = await db.user.create({ data: { email: "admin@regear.test", name: "Ada Admin", role: "ADMIN", passwordHash } });
-  const buyer = await db.user.create({ data: { email: "buyer@regear.test", name: "Bima Buyer", passwordHash } });
-  const buyer2 = await db.user.create({ data: { email: "dana@regear.test", name: "Dana Rahman", passwordHash } });
+  const admin = await db.user.create({ data: { email: "admin@regear.test", name: "Ada Admin", role: "ADMIN", passwordHash, emailVerifiedAt: new Date() } });
+  const buyer = await db.user.create({ data: { email: "buyer@regear.test", name: "Bima Buyer", passwordHash, emailVerifiedAt: new Date() } });
+  const buyer2 = await db.user.create({ data: { email: "dana@regear.test", name: "Dana Rahman", passwordHash, emailVerifiedAt: new Date() } });
 
   const sellerDefs = [
     { key: "techhaven", email: "techhaven@regear.test", name: "Tara Haven", displayName: "TechHaven Refurb", location: "Jakarta, ID", status: "VERIFIED", bio: "Certified refurbisher since 2016. Every device goes through a 40-point inspection and is factory reset before shipping." },
@@ -147,7 +147,7 @@ async function main() {
 
   const sellers: Record<string, { id: string; userId: string }> = {};
   for (const s of sellerDefs) {
-    const user = await db.user.create({ data: { email: s.email, name: s.name, passwordHash } });
+    const user = await db.user.create({ data: { email: s.email, name: s.name, passwordHash, emailVerifiedAt: new Date() } });
     const profile = await db.sellerProfile.create({
       data: {
         userId: user.id,

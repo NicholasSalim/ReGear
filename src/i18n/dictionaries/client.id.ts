@@ -39,6 +39,7 @@ export const clientId: typeof clientEn = {
     creatingAccount: "Membuat akun…",
     haveAccount: "Sudah punya akun?",
     acceptTerms: "Saya menyetujui [Syarat & Ketentuan](/terms) dan [Kebijakan Privasi](/privacy) ReGear.",
+    forgotLink: "Lupa kata sandi?",
   },
   settings: {
     profile: "Profil",
@@ -243,5 +244,15 @@ export const clientId: typeof clientEn = {
     submit: "Hapus akun saya",
     deleting: "Menghapus…",
     confirmDialog: "Hapus akun Anda? Tindakan ini tidak bisa dibatalkan.",
+  },
+  passwordReset: {
+    email: "Email",
+    send: "Kirim tautan",
+    sending: "Mengirim…",
+    newPassword: "Kata sandi baru",
+    confirmPassword: "Ulangi kata sandi baru",
+    hint: "Minimal 8 karakter dengan huruf, angka, dan simbol.",
+    save: "Simpan kata sandi baru",
+    saving: "Menyimpan…",
   },
 };

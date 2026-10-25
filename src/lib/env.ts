@@ -11,6 +11,10 @@ const schema = z.object({
   // Google sign-in is enabled only when both values are present.
   GOOGLE_CLIENT_ID: z.string().min(10).optional(),
   GOOGLE_CLIENT_SECRET: z.string().min(10).optional(),
+  // Outgoing email over SMTP, e.g. smtps://user:pass@smtp.example.com:465. Without it,
+  // development writes emails to <STORAGE_DIR>/dev-mail and production keeps them queued.
+  SMTP_URL: z.string().regex(/^smtps?:\/\//, "must be an smtp:// or smtps:// URL").optional(),
+  EMAIL_FROM: z.string().min(3).default("ReGear <no-reply@regear.local>"),
   TRUST_PROXY: z
     .enum(["true", "false"])
     .default("false")

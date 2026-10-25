@@ -333,6 +333,7 @@ export const id: typeof en = {
     unverifiedLimit: (n: number) => `Penjual yang belum terverifikasi hanya bisa memiliki ${n} iklan aktif. Verifikasi akun Anda untuk menambah iklan.`,
     accountBusy: "Anda masih punya pesanan yang berjalan. Selesaikan dulu sebelum menghapus akun.",
     adminAccount: "Akun admin tidak bisa dihapus.",
+    emailUnverified: "Konfirmasi alamat email Anda terlebih dahulu. Kami sudah mengirim tautan konfirmasi ke email Anda.",
   },
   actions: {
     signupLimit: "Terlalu banyak percobaan pendaftaran. Silakan coba lagi nanti.",
@@ -387,6 +388,12 @@ export const id: typeof en = {
     deleteLimit: "Terlalu banyak percobaan. Coba lagi dalam beberapa menit.",
     deleteEmailMismatch: "Email ini tidak sesuai dengan email akun Anda.",
     passwordWrong: "Kata sandi salah.",
+    resetSent: "Jika ada akun dengan email itu, kami sudah mengirim tautan untuk mengatur ulang kata sandinya. Periksa juga folder spam.",
+    resetLimit: "Terlalu banyak permintaan. Coba lagi dalam beberapa menit.",
+    resetInvalid: "Tautan ini tidak valid atau sudah kedaluwarsa. Minta tautan baru.",
+    verificationSent: (email: string) => `Kami sudah mengirim tautan konfirmasi ke ${email}.`,
+    emailVerificationLimit: "Anda sudah beberapa kali meminta email. Coba lagi dalam beberapa menit.",
+    emailAlreadyVerified: "Email Anda sudah terkonfirmasi.",
   },
   events: {
     CREATED: (p: { minutes: number }) => `Pesanan dibuat. Barang dipesan selama ${p.minutes} menit sambil menunggu pembayaran.`,
@@ -438,6 +445,26 @@ export const id: typeof en = {
       rate_limited: "Terlalu banyak percobaan masuk. Tunggu beberapa menit lalu coba lagi.",
     },
     googleNotice: "Dengan melanjutkan dengan Google, Anda menyetujui [Syarat & Ketentuan](/terms) dan [Kebijakan Privasi](/privacy).",
+    forgotLink: "Lupa kata sandi?",
+    forgotMetaTitle: "Lupa kata sandi",
+    forgotHeading: "Atur ulang kata sandi",
+    forgotIntro: "Masukkan alamat email akun Anda. Kami akan mengirim tautan untuk membuat kata sandi baru.",
+    backToSignIn: "Kembali ke halaman masuk",
+    resetMetaTitle: "Buat kata sandi baru",
+    resetHeading: "Buat kata sandi baru",
+    resetIntro: "Kata sandi baru akan mengeluarkan akun Anda dari semua perangkat lain.",
+    resetInvalidTitle: "Tautan ini sudah tidak berlaku",
+    resetInvalidBody: "Tautan atur ulang hanya bisa dipakai sekali dan berlaku 1 jam. Minta tautan baru untuk melanjutkan.",
+    requestNewLink: "Minta tautan baru",
+    notices: { password_reset: "Kata sandi Anda sudah diganti. Masuk dengan kata sandi baru." } as Record<string, string>,
+    verifyMetaTitle: "Konfirmasi email",
+    verifiedTitle: "Email Anda terkonfirmasi",
+    verifiedBody: "Terima kasih! Sekarang Anda bisa membeli dan menerbitkan iklan di ReGear.",
+    verifyInvalidTitle: "Tautan konfirmasi ini tidak berlaku",
+    verifyInvalidBody: "Tautannya tidak valid atau sudah kedaluwarsa. Masuk, lalu kirim ulang email konfirmasi dari banner di bagian atas halaman.",
+    continueToAccount: "Ke akun saya",
+    verifyBanner: (email: string) => `Konfirmasi alamat email Anda (${email}) agar bisa membeli dan menerbitkan iklan. Cek kotak masuk untuk tautan dari kami.`,
+    resendVerification: "Kirim ulang tautan",
   },
   checkout: {
     metaTitle: "Checkout",
@@ -454,6 +481,8 @@ export const id: typeof en = {
     total: "Total",
     protection: "Perlindungan pembeli: pembayaran ditahan sampai Anda menerima barang.",
     returnWindow: (days: number) => ` Batas pengembalian ${days} hari.`,
+    verifyFirst: "Konfirmasi email Anda untuk membeli",
+    verifyFirstHint: (email: string) => `Kami sudah mengirim tautan konfirmasi ke ${email}. Klik tautannya, lalu kembali ke barang ini. Anda bisa mengirim ulang tautan dari banner di bagian atas halaman.`,
   },
   account: {
     metaTitle: "Akun saya",
@@ -694,6 +723,9 @@ export const id: typeof en = {
       "user.register": "Akun dibuat",
       "user.register_google": "Akun dibuat dengan Google",
       "user.delete": "Akun dihapus",
+      "user.email_verified": "Email dikonfirmasi",
+      "user.password_reset_requested": "Atur ulang kata sandi diminta",
+      "user.password_reset": "Kata sandi diatur ulang lewat tautan email",
       "verification.approve": "Verifikasi disetujui",
       "verification.document_view": "Dokumen identitas dilihat",
       "verification.reject": "Verifikasi ditolak",
@@ -713,5 +745,98 @@ export const id: typeof en = {
     privacyDescription: "Data pribadi apa yang dikumpulkan ReGear, untuk apa, siapa yang bisa melihatnya, berapa lama disimpan, dan hak Anda menurut UU PDP.",
     termsDescription: "Aturan jual beli di ReGear: iklan, barang terlarang, penahanan pembayaran, pengembalian, sengketa, dan biaya.",
     otherDocument: { privacy: "Baca Syarat & Ketentuan", terms: "Baca Kebijakan Privasi" },
+  },
+  emails: {
+    greeting: (name: string) => `Halo ${name},`,
+    greetingNoName: "Halo,",
+    buttonFallback: "Jika tombol tidak berfungsi, salin tautan ini ke peramban Anda:",
+    footer: "Email ini dikirim otomatis oleh ReGear terkait akun atau pesanan Anda. Jangan bagikan tautan di dalamnya kepada siapa pun.",
+    privacy: "Kebijakan Privasi",
+    orderLine: (title: string, number: string) => `${title} · pesanan ${number}`,
+    viewOrder: "Lihat pesanan",
+    verify: {
+      subject: "Konfirmasi email Anda untuk ReGear",
+      body: "Klik tombol di bawah untuk mengonfirmasi bahwa alamat email ini milik Anda. Setelah itu Anda bisa membeli dan menerbitkan iklan.",
+      button: "Konfirmasi email",
+      note: "Tautan berlaku 24 jam. Jika Anda tidak membuat akun ReGear, abaikan email ini.",
+    },
+    reset: {
+      subject: "Atur ulang kata sandi ReGear",
+      body: "Kami menerima permintaan untuk mengatur ulang kata sandi akun ReGear Anda.",
+      button: "Buat kata sandi baru",
+      note: "Tautan hanya bisa dipakai sekali dan berlaku 1 jam. Jika Anda tidak memintanya, abaikan email ini; kata sandi Anda tidak berubah.",
+    },
+    order: {
+      PAID: {
+        buyer: { subject: (n: string) => `Pembayaran diterima untuk pesanan ${n}`, body: () => "Pembayaran Anda sudah kami terima dan ditahan sampai Anda menerima barang. Kami akan memberi tahu Anda saat penjual mengirimkannya." },
+        seller: { subject: (n: string) => `Pesanan baru ${n}: segera kirim`, body: () => "Pembeli sudah membayar. Kemas barangnya, kirim dengan jasa ekspedisi, lalu masukkan nomor resi di halaman pesanan. Pembayaran diteruskan ke Anda setelah pembeli menerima barang." },
+      },
+      CANCELLED: {
+        buyer: { subject: (n: string) => `Pesanan ${n} dibatalkan`, body: (p: { reason?: string; refunded?: boolean }) => `Penjual membatalkan pesanan ini${p.reason ? `: ${p.reason}` : "."}${p.refunded ? " Dana Anda dikembalikan penuh." : ""}` },
+        seller: { subject: (n: string) => `Pesanan ${n} dibatalkan`, body: (p: { reason?: string; refunded?: boolean }) => `Pembeli membatalkan pesanan ini${p.reason ? `: ${p.reason}` : "."} Iklan Anda aktif kembali; jangan kirim barangnya.` },
+      },
+      EXPIRED: {
+        buyer: { subject: (n: string) => `Pesanan ${n}: waktu pembayaran habis`, body: () => "Pembayaran tidak diselesaikan tepat waktu, jadi pesanan dibatalkan dan barang dijual kembali. Anda bisa memesannya lagi jika masih tersedia." },
+      },
+      SHIPPED: {
+        buyer: { subject: (n: string) => `Pesanan ${n} sudah dikirim`, body: (p: { carrier: string; tracking: string }) => `Penjual mengirim barang Anda dengan ${p.carrier}, nomor resi ${p.tracking}. Konfirmasikan penerimaan di halaman pesanan setelah barang tiba.` },
+      },
+      DELIVERED: {
+        buyer: {
+          subject: (n: string) => `Pesanan ${n} ditandai diterima`,
+          body: (p: { returnDays: number }) =>
+            `Pesanan ini ditandai diterima secara otomatis. ${p.returnDays > 0 ? `Anda punya ${p.returnDays} hari untuk memeriksa barang dan mengajukan pengembalian jika ada masalah.` : "Periksa barang sesuai laporan kondisinya."}`,
+        },
+        seller: {
+          subject: (n: string) => `Pesanan ${n} sudah diterima`,
+          body: (p: { auto: boolean; returnDays: number }) =>
+            `${p.auto ? "Pesanan ini ditandai diterima secara otomatis." : "Pembeli mengonfirmasi barang sudah tiba."} Pembayaran diteruskan ke Anda setelah pembeli menerima barang${p.returnDays > 0 ? ` atau batas waktu pengembalian ${p.returnDays} hari berakhir` : ""}.`,
+        },
+      },
+      COMPLETED: {
+        buyer: { subject: (n: string) => `Pesanan ${n} selesai`, body: () => "Terima kasih! Pesanan ini selesai dan pembayaran sudah diteruskan ke penjual. Bagaimana pengalaman Anda? Beri ulasan untuk penjual di halaman pesanan." },
+        seller: { subject: (n: string) => `Pembayaran pesanan ${n} sudah diteruskan`, body: () => "Pesanan ini selesai. Pembayarannya, setelah dipotong biaya ReGear, sudah diteruskan ke Anda." },
+      },
+      RETURN_REQUESTED: {
+        seller: { subject: (n: string) => `Pengajuan pengembalian untuk pesanan ${n}`, body: () => "Pembeli mengajukan pengembalian barang. Buka halaman pesanan untuk melihat alasannya, lalu setujui atau tolak." },
+      },
+      RETURN_APPROVED: {
+        buyer: { subject: (n: string) => `Pengembalian disetujui untuk pesanan ${n}`, body: () => "Penjual menyetujui pengembalian Anda. Kirim barang kembali ke alamat yang diberikan penjual, lalu masukkan nomor resinya di halaman pesanan." },
+      },
+      RETURN_REJECTED: {
+        buyer: { subject: (n: string) => `Pengembalian ditolak untuk pesanan ${n}`, body: (p: { note: string }) => `Penjual menolak pengembalian: ${p.note}. Jika barang tidak sesuai laporan kondisinya, Anda bisa membuka sengketa di halaman pesanan.` },
+      },
+      RETURN_SHIPPED: {
+        seller: { subject: (n: string) => `Barang pengembalian dikirim untuk pesanan ${n}`, body: (p: { carrier: string; tracking: string }) => `Pembeli mengirim barang kembali dengan ${p.carrier}, nomor resi ${p.tracking}. Konfirmasikan di halaman pesanan setelah barang tiba; dana pembeli lalu dikembalikan.` },
+      },
+      REFUNDED: {
+        buyer: { subject: (n: string) => `Dana dikembalikan untuk pesanan ${n}`, body: () => "Penjual sudah menerima barang yang dikembalikan, dan dana Anda dikembalikan penuh." },
+      },
+      DISPUTE_OPENED: {
+        buyer: { subject: (n: string) => `Sengketa dibuka untuk pesanan ${n}`, body: () => "Penjual membuka sengketa untuk pesanan ini. Pembayaran dibekukan sampai ReGear memutuskan. Tanggapi dan tambahkan bukti di halaman sengketa." },
+        seller: { subject: (n: string) => `Sengketa dibuka untuk pesanan ${n}`, body: () => "Pembeli membuka sengketa untuk pesanan ini. Pembayaran dibekukan sampai ReGear memutuskan. Tanggapi dan tambahkan bukti di halaman sengketa." },
+      },
+      DISPUTE_RESOLVED: {
+        buyer: {
+          subject: (n: string) => `Keputusan sengketa untuk pesanan ${n}`,
+          body: (p: { outcome: "buyer" | "partial" | "seller" }): string =>
+            p.outcome === "buyer" ? "ReGear memutuskan sengketa untuk Anda. Dana Anda dikembalikan penuh." : p.outcome === "partial" ? "ReGear memutuskan sengketa dengan pengembalian dana sebagian kepada Anda." : "ReGear memutuskan sengketa untuk penjual, dan pembayaran diteruskan ke penjual.",
+        },
+        seller: {
+          subject: (n: string) => `Keputusan sengketa untuk pesanan ${n}`,
+          body: (p: { outcome: "buyer" | "partial" | "seller" }): string =>
+            p.outcome === "buyer" ? "ReGear memutuskan sengketa untuk pembeli, dan dana pembeli dikembalikan penuh." : p.outcome === "partial" ? "ReGear memutuskan sengketa dengan pengembalian dana sebagian kepada pembeli; sisanya diteruskan ke Anda." : "ReGear memutuskan sengketa untuk Anda. Pembayaran diteruskan ke Anda.",
+        },
+      },
+    },
+    disputeMessage: {
+      subject: (n: string) => `Pesan baru di sengketa pesanan ${n}`,
+      body: (from: "BUYER" | "SELLER" | "ADMIN"): string => `${from === "ADMIN" ? "Petugas ReGear" : from === "BUYER" ? "Pembeli" : "Penjual"} menambahkan pesan di sengketa ini.`,
+      button: "Buka sengketa",
+    },
+    verification: {
+      approved: { subject: "Toko Anda sudah terverifikasi", body: "Kabar baik: verifikasi Anda disetujui. Lencana terverifikasi sekarang tampil di toko dan semua iklan Anda.", button: "Buka dasbor penjual" },
+      rejected: { subject: "Verifikasi Anda belum disetujui", body: (note: string) => `Peninjau kami belum bisa menyetujui verifikasi Anda: ${note}. Anda bisa mengajukan lagi dari dasbor penjual.`, button: "Ajukan lagi" },
+    },
   },
 };

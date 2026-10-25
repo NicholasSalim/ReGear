@@ -30,6 +30,10 @@ model User {
   // Which Terms / Privacy Policy version the user agreed to at sign-up, and when.
   termsVersion      String?
   termsAcceptedAt   DateTime?
+  // Null until the owner clicks the link we email them (Google sign-ins count as verified).
+  emailVerifiedAt   DateTime?
+  // Language for emails: the one the user last signed in with.
+  locale            String    @default("id")
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
@@ -43,6 +47,44 @@ model User {
   disputeMessages DisputeMessage[]
   disputesOpened  Dispute[]        @relation("DisputeOpener")
   auditLogs       AuditLog[]
+  emailTokens     EmailToken[]
+}
+
+// One-time links sent by email (email verification, password reset). Only the
+// SHA-256 of the token is stored; a token works once and until it expires.
+model EmailToken {
+  id        String    @id @default(cuid())
+  userId    String
+  purpose   String // VERIFY_EMAIL | RESET_PASSWORD
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose])
+}
+
+// Outgoing email. Rows are written in the same transaction as the change that
+// causes them and delivered afterwards, with retries, so an email goes out
+// only for changes that were saved.
+model EmailOutbox {
+  id        String    @id @default(cuid())
+  userId    String? // recipient account; its current address is used at send time
+  to        String? // fixed address, for account emails (verification, reset)
+  template  String
+  params    String    @default("{}") // JSON; cleared after sending for emails that carry a link token
+  locale    String    @default("id")
+  status    String    @default("PENDING") // PENDING | SENDING | SENT | FAILED | SKIPPED
+  attempts  Int       @default(0)
+  lastError String?
+  sendAfter DateTime  @default(now())
+  claimedAt DateTime?
+  sentAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([status, sendAfter])
+  @@index([userId])
 }
 
 // External identities linked to a user (currently Google via OpenID Connect).

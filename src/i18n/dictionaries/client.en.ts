@@ -38,6 +38,7 @@ export const clientEn = {
     creatingAccount: "Creating account…",
     haveAccount: "Already have an account?",
     acceptTerms: "I agree to ReGear's [Terms & Conditions](/terms) and [Privacy Policy](/privacy).",
+    forgotLink: "Forgot password?",
   },
   settings: {
     profile: "Profile",
@@ -242,5 +243,15 @@ export const clientEn = {
     submit: "Delete my account",
     deleting: "Deleting…",
     confirmDialog: "Delete your account? This can't be undone.",
+  },
+  passwordReset: {
+    email: "Email",
+    send: "Send reset link",
+    sending: "Sending…",
+    newPassword: "New password",
+    confirmPassword: "Confirm new password",
+    hint: "At least 8 characters with a letter, a number and a symbol.",
+    save: "Save new password",
+    saving: "Saving…",
   },
 };

@@ -1,5 +1,5 @@
 import type { Locale } from "@/i18n/locales";
-import { AUDIT_RETENTION_DAYS } from "@/lib/legal";
+import { AUDIT_RETENTION_DAYS, EMAIL_LOG_RETENTION_DAYS } from "@/lib/legal";
 import { PAYMENT_HOLD_MINUTES, PLATFORM_FEE_BPS, AUTO_COMPLETE_DAYS_AFTER_DELIVERY_BUFFER } from "@/lib/constants";
 
 // The Privacy Policy and Terms, in both languages. Each statement describes
@@ -43,6 +43,7 @@ const privacy: Record<Locale, LegalDocument> = {
               "Penjualan: nama toko, deskripsi, dan lokasi toko; iklan, laporan kondisi, dan foto barang. Saat foto diunggah, kami membuat ulang gambarnya sehingga metadata seperti lokasi GPS dan nomor seri kamera terhapus.",
               "Verifikasi penjual (opsional): nama sesuai identitas, nomor telepon, alamat, jenis dokumen, empat karakter terakhir nomor dokumen (nomor lengkapnya tidak disimpan), dan foto dokumen identitas. Data ini hanya dikumpulkan dengan persetujuan eksplisit Anda saat mengajukan verifikasi.",
               "Pesan: pesan dan bukti yang Anda tulis dalam sengketa, catatan pengembalian, dan alasan pembatalan.",
+              `Email dari kami: kami mengirim email terkait akun dan pesanan Anda, yaitu konfirmasi alamat email, tautan atur ulang kata sandi, perkembangan pesanan, pengembalian dan sengketa, serta hasil verifikasi penjual. Kami mencatat email yang dikirim (penerima, jenis, dan waktunya) selama ${EMAIL_LOG_RETENTION_DAYS} hari.`,
               "Data teknis dan keamanan: alamat IP dan jenis peramban untuk sesi login; catatan keamanan seperti masuk, keluar, perubahan kata sandi, keputusan verifikasi, dan setiap kali dokumen identitas dilihat petugas; serta penghitung percobaan (misalnya percobaan masuk per IP atau email) untuk mencegah penyalahgunaan.",
             ],
           },
@@ -69,7 +70,7 @@ const privacy: Record<Locale, LegalDocument> = {
         blocks: [
           {
             list: [
-              "Menjalankan akun, iklan, pesanan, pembayaran yang ditahan, pengiriman, pengembalian, dan sengketa: untuk melaksanakan perjanjian dengan Anda (Syarat & Ketentuan).",
+              "Menjalankan akun, iklan, pesanan, pembayaran yang ditahan, pengiriman, pengembalian, dan sengketa, termasuk mengirim email tentang semua itu: untuk melaksanakan perjanjian dengan Anda (Syarat & Ketentuan).",
               "Memverifikasi identitas penjual: atas dasar persetujuan eksplisit Anda, yang bisa Anda tarik kembali.",
               "Menjaga keamanan, mencegah penipuan dan penyalahgunaan, serta mencatat tindakan penting: kepentingan yang sah untuk melindungi pengguna dan platform.",
               "Menyimpan catatan transaksi: kewajiban hukum, termasuk aturan pencatatan keuangan dan perpajakan.",
@@ -89,7 +90,7 @@ const privacy: Record<Locale, LegalDocument> = {
               "Pembeli dalam pesanan Anda: informasi toko dan nomor resi pengiriman.",
               "Pihak dalam sengketa: pembeli, penjual, dan petugas ReGear bisa membaca seluruh pesan sengketa.",
               "Petugas ReGear: data yang diperlukan untuk meninjau verifikasi, sengketa, dan moderasi. Setiap kali dokumen identitas dilihat, hal itu tercatat.",
-              "Penyedia layanan kami: penyedia hosting dan penyimpanan, Google (jika Anda masuk dengan Google), dan mitra pembayaran. Mereka memproses data hanya atas instruksi kami. Jasa ekspedisi menerima alamat dari penjual yang mengirim barang.",
+              "Penyedia layanan kami: penyedia hosting dan penyimpanan, penyedia pengiriman email, Google (jika Anda masuk dengan Google), dan mitra pembayaran. Mereka memproses data hanya atas instruksi kami. Jasa ekspedisi menerima alamat dari penjual yang mengirim barang.",
               "Otoritas: bila diwajibkan oleh hukum atau perintah yang sah.",
             ],
           },
@@ -107,6 +108,7 @@ const privacy: Record<Locale, LegalDocument> = {
               `Pesanan yang tidak dibayar dalam ${PAYMENT_HOLD_MINUTES} menit dibatalkan otomatis.`,
               "Foto yang diunggah tetapi tidak dipakai di iklan dihapus setelah 1 hari.",
               "Penghitung percobaan dihapus otomatis setelah masa berlakunya habis.",
+              `Tautan konfirmasi email berlaku 24 jam dan tautan atur ulang kata sandi 1 jam; keduanya hanya bisa dipakai sekali. Catatan email yang dikirim dihapus setelah ${EMAIL_LOG_RETENTION_DAYS} hari.`,
               `Catatan keamanan disimpan selama ${AUDIT_YEARS} tahun, lalu dihapus otomatis.`,
               "Data verifikasi dan foto dokumen identitas: selama akun Anda ada, agar status terverifikasi bisa dibuktikan; dihapus saat akun dihapus.",
               "Catatan pesanan, ulasan, dan sengketa: tetap disimpan setelah akun dihapus, tanpa nama dan data kontak Anda, selama diwajibkan oleh hukum dan agar riwayat pihak lain dalam transaksi tetap utuh.",
@@ -185,6 +187,7 @@ const privacy: Record<Locale, LegalDocument> = {
               "Selling: your shop name, description and location; your listings, condition reports and item photos. When a photo is uploaded we re-create the image, which removes metadata such as GPS location and camera serial numbers.",
               "Seller verification (optional): your legal name, phone number, address, document type, the last four characters of the document number (the full number is never stored) and a photo of your ID document. This is only collected with your explicit consent when you apply.",
               "Messages: what you write in disputes, return notes and cancellation reasons.",
+              `Emails from us: we email you about your account and orders: confirming your email address, password reset links, order, return and dispute updates, and seller verification results. We keep a record of the emails sent (recipient, type and time) for ${EMAIL_LOG_RETENTION_DAYS} days.`,
               "Technical and security data: IP address and browser type for sign-in sessions; security records such as sign-ins, sign-outs, password changes, verification decisions and every time staff view an ID document; and attempt counters (for example sign-in attempts per IP or email) that prevent abuse.",
             ],
           },
@@ -211,7 +214,7 @@ const privacy: Record<Locale, LegalDocument> = {
         blocks: [
           {
             list: [
-              "Running your account, listings, orders, held payments, shipping, returns and disputes: to perform our agreement with you (the Terms).",
+              "Running your account, listings, orders, held payments, shipping, returns and disputes, including emailing you about them: to perform our agreement with you (the Terms).",
               "Verifying sellers' identity: your explicit consent, which you can withdraw.",
               "Keeping the platform secure, preventing fraud and abuse, and recording important actions: our legitimate interest in protecting users and the platform.",
               "Keeping transaction records: legal obligations, including financial and tax record-keeping rules.",
@@ -231,7 +234,7 @@ const privacy: Record<Locale, LegalDocument> = {
               "The buyer in your order: your shop details and the shipment tracking number.",
               "People in a dispute: the buyer, the seller and ReGear staff can read the whole dispute thread.",
               "ReGear staff: what they need to review verifications, disputes and moderation. Every view of an ID document is recorded.",
-              "Our service providers: hosting and storage, Google (if you sign in with Google) and our payment partner. They process data only on our instructions. Couriers receive the address from the seller who ships the item.",
+              "Our service providers: hosting and storage, email delivery, Google (if you sign in with Google) and our payment partner. They process data only on our instructions. Couriers receive the address from the seller who ships the item.",
               "Authorities: when required by law or a valid order.",
             ],
           },
@@ -249,6 +252,7 @@ const privacy: Record<Locale, LegalDocument> = {
               `Orders not paid within ${PAYMENT_HOLD_MINUTES} minutes are cancelled automatically.`,
               "Photos uploaded but never used in a listing are deleted after 1 day.",
               "Attempt counters are deleted automatically once they expire.",
+              `Email confirmation links work for 24 hours and password reset links for 1 hour, once each. The record of sent emails is deleted after ${EMAIL_LOG_RETENTION_DAYS} days.`,
               `Security records are kept for ${AUDIT_YEARS} years, then deleted automatically.`,
               "Verification data and ID document photos: for as long as your account exists, so your verified status can be shown to be genuine; deleted when your account is deleted.",
               "Order, review and dispute records: kept after an account is deleted, without your name and contact details, for as long as the law requires and so the other party's history stays complete.",

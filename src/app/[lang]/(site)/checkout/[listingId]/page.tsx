@@ -59,6 +59,9 @@ async function Checkout({ params }: { params: PageProps<"/[lang]/checkout/[listi
   if (listing.status !== "ACTIVE") {
     return <EmptyState title={t.unavailable} description={t.unavailableHint} action={<ButtonLink href="/listings">{t.keepBrowsing}</ButtonLink>} />;
   }
+  if (!user.emailVerified) {
+    return <EmptyState title={t.verifyFirst} description={t.verifyFirstHint(user.email)} />;
+  }
 
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_20rem]">

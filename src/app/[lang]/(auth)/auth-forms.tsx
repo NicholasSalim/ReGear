@@ -19,6 +19,11 @@ export function LoginForm({ next, googleEnabled }: { next?: string; googleEnable
       <Field label={t.password} name="password" error={state.fieldErrors?.password}>
         <input id="password" name="password" type="password" autoComplete="current-password" required className="input" aria-invalid={!!state.fieldErrors?.password} />
       </Field>
+      <p className="-mt-2 text-right text-sm">
+        <Link href="/forgot-password" className="font-medium text-brand-700 hover:underline">
+          {t.forgotLink}
+        </Link>
+      </p>
       <SubmitButton pending={pending} className="w-full" pendingText={t.signingIn}>
         {t.signIn}
       </SubmitButton>

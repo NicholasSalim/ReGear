@@ -7,6 +7,7 @@ import { getRequestLocale } from "@/i18n/server";
 import { env } from "@/lib/env";
 import { audit } from "@/lib/audit";
 import { createSession } from "@/lib/auth/session";
+import { db } from "@/lib/db";
 import {
   authReturnPage,
   findOrCreateGoogleUser,
@@ -93,6 +94,7 @@ export async function GET(req: Request) {
     if (user.lockedUntil && user.lockedUntil > new Date()) return fail("locked", "account locked");
 
     await createSession(user.id, { ip: await getClientIp(), userAgent: await getUserAgent() });
+    await db.user.update({ where: { id: user.id }, data: { locale: await getRequestLocale() } });
     await audit(user.id, created ? "user.register_google" : linked ? "user.link_google" : "user.login_google", "User", user.id);
 
     return NextResponse.redirect(new URL(next || localePath(user.role === "ADMIN" ? "/admin" : "/account", await getRequestLocale()), env.NEXT_PUBLIC_SITE_URL));

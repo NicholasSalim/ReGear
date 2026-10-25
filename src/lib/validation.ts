@@ -111,6 +111,16 @@ export const changePasswordSchema = z
   })
   .refine((d) => d.newPassword === d.confirmPassword, { message: vmsg("passwordsMismatch"), path: ["confirmPassword"] });
 
+export const forgotPasswordSchema = z.object({ email });
+
+export const resetPasswordSchema = z
+  .object({
+    token: z.string().max(100),
+    newPassword: password,
+    confirmPassword: z.string(),
+  })
+  .refine((d) => d.newPassword === d.confirmPassword, { message: vmsg("passwordsMismatch"), path: ["confirmPassword"] });
+
 export const profileSchema = z.object({ name: text(2, 60) });
 
 // Seller -------------------------------------------------------------------

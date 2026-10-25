@@ -68,6 +68,8 @@ export async function findOrCreateGoogleUser(claims: GoogleClaims) {
     await db.oAuthAccount.create({
       data: { provider: "google", providerAccountId: claims.sub, userId: existing.id, email: claims.email },
     });
+    // Linking requires Google to have verified this same address.
+    if (!existing.emailVerifiedAt) await db.user.update({ where: { id: existing.id }, data: { emailVerifiedAt: new Date() } });
     return { user: existing, created: false, linked: true };
   }
 
@@ -80,6 +82,7 @@ export async function findOrCreateGoogleUser(claims: GoogleClaims) {
       // The Google button states that continuing accepts the Terms and Privacy Policy.
       termsVersion: LEGAL_VERSION,
       termsAcceptedAt: new Date(),
+      emailVerifiedAt: new Date(),
       oauthAccounts: { create: { provider: "google", providerAccountId: claims.sub, email: claims.email } },
     },
   });

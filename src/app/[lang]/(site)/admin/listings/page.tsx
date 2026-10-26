@@ -44,7 +44,7 @@ export default async function AdminListingsPage({ searchParams }: PageProps<"/[l
       <ul className="card divide-y divide-slate-100">
         {listings.map((l) => (
           <li key={l.id} className="flex flex-wrap items-center gap-4 p-4">
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1 basis-48">
               <Link href={`/listings/${l.slug}`} className="font-medium hover:text-brand-700">{l.title}</Link>
               <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
                 <ListingStatusBadge status={l.status} /> <span className="num">{formatMoney(l.priceIdr)}</span> {l.seller.displayName}

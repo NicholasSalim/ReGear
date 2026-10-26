@@ -118,7 +118,8 @@ export function StatCard({ label, value, hint }: { label: string; value: ReactNo
   return (
     <div className="card p-5">
       <p className="text-sm text-slate-500">{label}</p>
-      <p className="num wide mt-1 text-2xl font-extrabold text-ink">{value}</p>
+      {/* Large amounts ("Rp 125.000.000") wrap instead of spilling out of the card. */}
+      <p className="num wide mt-1 text-2xl font-extrabold [overflow-wrap:anywhere] text-ink">{value}</p>
       {hint && <p className="mt-1 text-xs text-slate-500">{hint}</p>}
     </div>
   );

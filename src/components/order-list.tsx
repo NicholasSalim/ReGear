@@ -24,8 +24,13 @@ export async function OrderList({ orders, basePath }: { orders: Row[]; basePath:
                 {o.counterpart ? `${o.counterpart}, ` : ""}
                 {t.orders.listLine(o.number, formatDate(o.createdAt, locale))}
               </p>
+              {/* On phones the total and status sit under the details; beside them there's no room. */}
+              <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 sm:hidden">
+                <span className="text-sm font-semibold">{formatMoney(o.totalIdr)}</span>
+                <OrderStatusBadge status={o.status} />
+              </div>
             </div>
-            <div className="flex flex-col items-end gap-1">
+            <div className="hidden shrink-0 flex-col items-end gap-1 sm:flex">
               <span className="text-sm font-semibold">{formatMoney(o.totalIdr)}</span>
               <OrderStatusBadge status={o.status} />
             </div>

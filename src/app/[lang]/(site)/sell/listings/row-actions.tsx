@@ -24,7 +24,7 @@ export function ListingRowActions({ id, status }: { id: string; status: string }
 
   return (
     <div className="flex flex-col items-end gap-1">
-      <div className="flex gap-2">
+      <div className="flex flex-wrap justify-end gap-2">
         <Link href={`/sell/listings/${id}/edit`} className={buttonClass("secondary", "px-3 py-1.5")}>
           {t.edit}
         </Link>

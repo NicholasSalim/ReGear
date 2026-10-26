@@ -55,7 +55,7 @@ export default async function SellerListingsPage() {
               <div className="relative size-16 shrink-0 overflow-hidden rounded-lg bg-slate-100">
                 {l.images[0] && <Image src={mediaUrl(l.images[0].key)} alt="" fill sizes="64px" className="object-cover" />}
               </div>
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 basis-48">
                 <Link href={l.status === "DRAFT" ? `/sell/listings/${l.id}/edit` : `/listings/${l.slug}`} className="block truncate font-semibold hover:text-brand-700">
                   {l.title}
                 </Link>

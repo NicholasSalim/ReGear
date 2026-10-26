@@ -39,7 +39,8 @@ export default async function SellerDashboardPage() {
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Four across only from xl: beside the sidebar, 1024px leaves cards too narrow for amounts in rupiah. */}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label={t.activeListings} value={d.listings.active} hint={t.listingsHint(d.listings.draft, d.listings.reserved)} />
         <StatCard label={t.toShip} value={d.orders.toShip} hint={t.inTransit(d.orders.inTransit)} />
         <StatCard label={t.completedSales} value={d.orders.completed} />

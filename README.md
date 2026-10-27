@@ -53,6 +53,11 @@ create. `ALLOW_SEED=true` overrides that, for a deliberate wipe.
 Run production behind a reverse proxy with `TRUST_PROXY=true` (and `TRUST_PROXY_HOPS` set to
 the number of proxies); otherwise every visitor shares one sign-in/sign-up rate limit.
 
+The migrations enable the `pg_trgm` extension, whose trigram indexes keep "contains" searches
+(storefront and admin) fast as tables grow. It ships with PostgreSQL and the database owner can
+enable it on managed hosts (Neon, Supabase, RDS, Cloud SQL); the migration fails if it isn't
+installed.
+
 ### Demo accounts
 
 All demo accounts use the password `Gear-Demo-2026!`.

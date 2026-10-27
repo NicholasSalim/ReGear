@@ -48,6 +48,10 @@ model User {
   disputesOpened  Dispute[]        @relation("DisputeOpener")
   auditLogs       AuditLog[]
   emailTokens     EmailToken[]
+
+  // Trigram indexes (pg_trgm) serve the admin and storefront "contains" searches.
+  @@index([email(ops: raw("gin_trgm_ops"))], type: Gin, map: "User_email_trgm_idx")
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "User_name_trgm_idx")
 }
 
 // One-time links sent by email (email verification, password reset). Only the
@@ -115,24 +119,24 @@ model Session {
 }
 
 model SellerProfile {
-  id                 String    @id @default(cuid())
-  userId             String    @unique
-  slug               String    @unique
-  displayName        String
-  bio                String    @default("")
-  location           String    @default("")
-  verificationStatus String    @default("UNVERIFIED") // UNVERIFIED | PENDING | VERIFIED | REJECTED
-  verifiedAt         DateTime?
-  ratingAvg          Float     @default(0)
-  ratingCount        Int       @default(0)
-  salesCount         Int       @default(0)
+  id                  String    @id @default(cuid())
+  userId              String    @unique
+  slug                String    @unique
+  displayName         String
+  bio                 String    @default("")
+  location            String    @default("")
+  verificationStatus  String    @default("UNVERIFIED") // UNVERIFIED | PENDING | VERIFIED | REJECTED
+  verifiedAt          DateTime?
+  ratingAvg           Float     @default(0)
+  ratingCount         Int       @default(0)
+  salesCount          Int       @default(0)
   // Where withdrawals are sent. The holder name is the one the bank reports.
   payoutBank          String?
   payoutAccountNumber String?
   payoutAccountName   String?
   payoutAccountSetAt  DateTime?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   user           User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   listings       Listing[]
@@ -141,6 +145,9 @@ model SellerProfile {
   reviews        Review[]
   balanceEntries BalanceEntry[]
   withdrawals    Withdrawal[]
+
+  // Trigram indexes (pg_trgm) serve the admin and storefront "contains" searches.
+  @@index([displayName(ops: raw("gin_trgm_ops"))], type: Gin, map: "SellerProfile_displayName_trgm_idx")
 }
 
 model VerificationRequest {
@@ -162,6 +169,7 @@ model VerificationRequest {
 
   @@index([status, createdAt])
   @@index([sellerId])
+  @@index([legalName(ops: raw("gin_trgm_ops"))], type: Gin, map: "VerificationRequest_legalName_trgm_idx")
 }
 
 model Listing {
@@ -202,6 +210,7 @@ model Listing {
   @@index([status, gradeRank])
   @@index([status, brand])
   @@index([sellerId, status])
+  @@index([searchText(ops: raw("gin_trgm_ops"))], type: Gin, map: "Listing_searchText_trgm_idx")
 }
 
 model ConditionReport {
@@ -268,10 +277,10 @@ model Order {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  buyer         User           @relation("BuyerOrders", fields: [buyerId], references: [id])
-  seller        SellerProfile  @relation("SellerOrders", fields: [sellerId], references: [id])
-  listing       Listing        @relation(fields: [listingId], references: [id])
-  events        OrderEvent[]
+  buyer          User           @relation("BuyerOrders", fields: [buyerId], references: [id])
+  seller         SellerProfile  @relation("SellerOrders", fields: [sellerId], references: [id])
+  listing        Listing        @relation(fields: [listingId], references: [id])
+  events         OrderEvent[]
   returnRequest  ReturnRequest?
   dispute        Dispute?
   review         Review?
@@ -281,6 +290,8 @@ model Order {
   @@index([sellerId, createdAt])
   @@index([status, updatedAt])
   @@index([listingId])
+  @@index([paymentRef])
+  @@index([number(ops: raw("gin_trgm_ops"))], type: Gin, map: "Order_number_trgm_idx")
 }
 
 model OrderEvent {
@@ -396,6 +407,9 @@ model AuditLog {
 
   @@index([entity, entityId])
   @@index([createdAt])
+  @@index([actorId, createdAt])
+  @@index([entityId])
+  @@index([ip])
 }
 
 // Seller money ledger: the balance is the sum of amountIdr. Each completed
@@ -444,4 +458,6 @@ model Withdrawal {
 
   @@index([status, createdAt])
   @@index([sellerId, createdAt])
+  @@index([accountName(ops: raw("gin_trgm_ops"))], type: Gin, map: "Withdrawal_accountName_trgm_idx")
+  @@index([accountNumber(ops: raw("gin_trgm_ops"))], type: Gin, map: "Withdrawal_accountNumber_trgm_idx")
 }

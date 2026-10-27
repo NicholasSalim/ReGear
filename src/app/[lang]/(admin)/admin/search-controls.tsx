@@ -2,9 +2,10 @@ import { Link } from "@/i18n/client";
 import { getDictionary } from "@/i18n/server";
 import { ADMIN_PAGE_SIZE, searchQuery, type AdminSearch } from "@/lib/admin/search";
 import { buttonClass } from "@/components/ui";
+import { LiveSearchForm } from "./live-search-form";
 
-// Plain GET forms and links: searching works without JavaScript, and every
-// result page has its own URL.
+// GET forms and links: every result page has its own URL, and searching
+// works without JavaScript. With it, results follow typing (see LiveSearchForm).
 
 export async function SearchBar({
   search,
@@ -24,7 +25,7 @@ export async function SearchBar({
   const t = (await getDictionary()).admin.searchBar;
   const active = !!(search.q || search.status || search.from || search.to);
   return (
-    <form method="get" role="search" className="card mb-4 flex flex-wrap items-end gap-3 p-4">
+    <LiveSearchForm path={path} searchingLabel={t.searching}>
       <label className="min-w-0 flex-1 basis-60 text-xs font-medium text-slate-500">
         {t.label}
         <input name="q" type="search" defaultValue={search.q} placeholder={placeholder} maxLength={100} className="input mt-1" />
@@ -58,7 +59,7 @@ export async function SearchBar({
           </Link>
         )}
       </div>
-    </form>
+    </LiveSearchForm>
   );
 }
 

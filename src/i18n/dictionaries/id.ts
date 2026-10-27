@@ -769,6 +769,7 @@ export const id: typeof en = {
       to: "Sampai",
       submit: "Cari",
       clear: "Hapus",
+      searching: "Mencari…",
       none: "Tidak ada yang cocok dengan pencarian ini.",
       results: (n: number) => `${n} hasil`,
       page: (page: number, pages: number) => `halaman ${page} dari ${pages}`,

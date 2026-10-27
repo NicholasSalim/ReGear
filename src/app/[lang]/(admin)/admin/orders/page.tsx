@@ -31,7 +31,8 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<"/[lan
             { id: search.q },
             { number: like(search.q) },
             { paymentRef: search.q },
-            { listingSnapshot: like(search.q) },
+            // The listing's lower-cased search column is indexed; the order's JSON snapshot isn't.
+            { listing: { searchText: { contains: search.q.toLowerCase() } } },
             { buyer: { OR: [{ name: like(search.q) }, { email: like(search.q) }] } },
             { seller: { OR: [{ displayName: like(search.q) }, { user: { email: like(search.q) } }] } },
           ],

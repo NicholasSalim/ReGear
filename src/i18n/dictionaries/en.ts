@@ -766,6 +766,7 @@ export const en = {
       to: "To",
       submit: "Search",
       clear: "Clear",
+      searching: "Searching…",
       none: "Nothing matches this search.",
       results: (n: number) => `${n} ${n === 1 ? "result" : "results"}`,
       page: (page: number, pages: number) => `page ${page} of ${pages}`,

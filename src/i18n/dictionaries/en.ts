@@ -325,7 +325,7 @@ export const en = {
     disputeNotFound: "Dispute not found",
     disputeResolved: "Dispute already resolved",
     orderNotInDispute: "Order is not in dispute",
-    partialRefundRange: "Partial refund must be greater than 0 and less than the order total.",
+    partialRefundRange: "Partial refund must be greater than 0 and less than the order total minus the platform fee.",
     reviewAfterCompletion: "You can review the seller once the order is completed.",
     alreadyReviewed: "You already reviewed this order.",
     unverifiedLimit: (n: number) => `Unverified sellers can have up to ${n} active listings. Verify your account to list more.`,

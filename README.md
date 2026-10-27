@@ -42,8 +42,16 @@ npm run dev                  # http://localhost:3000
 Production:
 
 ```bash
+npm run db:deploy            # apply migrations only; never `setup` or `db:seed` here
 npm run build && npm start
 ```
+
+The seed wipes the database and creates a demo admin with the public password below, so it
+refuses to run when `NODE_ENV=production` or when the database holds accounts it didn't
+create. `ALLOW_SEED=true` overrides that, for a deliberate wipe.
+
+Run production behind a reverse proxy with `TRUST_PROXY=true` (and `TRUST_PROXY_HOPS` set to
+the number of proxies); otherwise every visitor shares one sign-in/sign-up rate limit.
 
 ### Demo accounts
 

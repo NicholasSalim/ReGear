@@ -61,4 +61,27 @@ describe("Google account linking", () => {
     expect(res.linked).toBe(true);
     expect(res.user.id).toBe(owner.id);
   });
+
+  it("locks out whoever registered an unconfirmed email before its owner signed in with Google", async () => {
+    // Someone else signed up with the address and never confirmed it; their session is still open.
+    const squatter = await db.user.create({ data: { email: "owner@example.com", name: "Squatter", passwordHash: "x" } });
+    await db.session.create({ data: { id: "squatter-session", userId: squatter.id, expiresAt: new Date(Date.now() + 86_400_000) } });
+
+    const res = await findOrCreateGoogleUser(parseGoogleClaims(claims({ sub: "owner-google", email: "owner@example.com" }), CLIENT_ID));
+    expect(res).toMatchObject({ linked: true, passwordCleared: true });
+    const row = await db.user.findUniqueOrThrow({ where: { id: squatter.id } });
+    expect(row.passwordHash).toBeNull();
+    expect(row.emailVerifiedAt).toBeInstanceOf(Date);
+    expect(await db.session.count({ where: { userId: squatter.id } })).toBe(0);
+  });
+
+  it("keeps the password and sessions of a confirmed account it links to", async () => {
+    const owner = await db.user.create({ data: { email: "owner@example.com", name: "Owner", passwordHash: "x", emailVerifiedAt: new Date() } });
+    await db.session.create({ data: { id: "owner-session", userId: owner.id, expiresAt: new Date(Date.now() + 86_400_000) } });
+
+    const res = await findOrCreateGoogleUser(parseGoogleClaims(claims({ sub: "owner-google", email: "owner@example.com" }), CLIENT_ID));
+    expect(res).toMatchObject({ linked: true, passwordCleared: false });
+    expect((await db.user.findUniqueOrThrow({ where: { id: owner.id } })).passwordHash).toBe("x");
+    expect(await db.session.count({ where: { userId: owner.id } })).toBe(1);
+  });
 });

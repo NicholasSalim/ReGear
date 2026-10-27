@@ -28,7 +28,8 @@ export function MessageForm({ action }: { action: FormAction }) {
   );
 }
 
-export function ResolveForm({ action, totalIdr }: { action: FormAction; totalIdr: number }) {
+/** `maxRefundIdr` is exclusive: the seller keeps a positive payout. */
+export function ResolveForm({ action, maxRefundIdr }: { action: FormAction; maxRefundIdr: number }) {
   const locale = useLocale();
   const t = useT().disputeForms;
   const [resolution, setResolution] = useState<string>("REFUND_BUYER");
@@ -47,7 +48,7 @@ export function ResolveForm({ action, totalIdr }: { action: FormAction; totalIdr
             </select>
           </Field>
           {resolution === "PARTIAL_REFUND" && (
-            <Field label={t.refundAmount} name="refundIdr" error={s.fieldErrors?.refundIdr} hint={t.lessThan(formatMoney(totalIdr))}>
+            <Field label={t.refundAmount} name="refundIdr" error={s.fieldErrors?.refundIdr} hint={t.lessThan(formatMoney(maxRefundIdr))}>
               <input id="refundIdr" name="refundIdr" inputMode="numeric" placeholder={t.amountPlaceholder} className="input" />
             </Field>
           )}

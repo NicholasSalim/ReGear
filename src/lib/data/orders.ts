@@ -98,6 +98,7 @@ export async function getDisputeForUser(disputeId: string, user: CurrentUser) {
           number: true,
           status: true,
           totalIdr: true,
+          platformFeeIdr: true,
           buyerId: true,
           listingSnapshot: true,
           trackingNumber: true,

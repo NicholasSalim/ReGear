@@ -2,16 +2,24 @@ import "server-only";
 import { headers } from "next/headers";
 import { env } from "@/lib/env";
 
-/** Client IP. Forwarded headers are trusted only behind a known proxy. */
+/**
+ * Client IP. Forwarded headers are trusted only behind a known proxy.
+ * Each proxy appends the address it received the request from, so only the
+ * rightmost TRUST_PROXY_HOPS entries were written by our own proxies; anything
+ * further left came from the client and could be invented to dodge rate limits.
+ */
 export async function getClientIp(): Promise<string> {
   const h = await headers();
   if (env.TRUST_PROXY) {
-    const fwd = h.get("x-forwarded-for")?.split(",")[0]?.trim();
-    if (fwd) return fwd;
-    const real = h.get("x-real-ip");
-    if (real) return real;
+    return clientIpFromForwarded(h.get("x-forwarded-for"), env.TRUST_PROXY_HOPS) ?? h.get("x-real-ip")?.trim() ?? "local";
   }
   return "local";
+}
+
+/** The address our outermost trusted proxy saw, from an X-Forwarded-For value. */
+export function clientIpFromForwarded(header: string | null | undefined, hops: number): string | null {
+  const entries = (header ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  return entries.length ? entries[Math.max(0, entries.length - hops)] : null;
 }
 
 export async function getUserAgent(): Promise<string | undefined> {

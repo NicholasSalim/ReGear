@@ -19,6 +19,8 @@ const schema = z.object({
     .enum(["true", "false"])
     .default("false")
     .transform((v) => v === "true"),
+  // How many reverse proxies (load balancer, CDN, ...) sit in front of the app.
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(1).max(5).default(1),
 });
 
 const raw = Object.fromEntries(Object.entries(process.env).filter(([, v]) => v !== ""));
@@ -35,4 +37,9 @@ export const isHttps = env.NEXT_PUBLIC_SITE_URL.startsWith("https://");
 
 if (isProd && !isHttps && env.NEXT_PUBLIC_SITE_URL !== "http://localhost:3000") {
   console.warn("[regear] NEXT_PUBLIC_SITE_URL is not HTTPS: secure cookies and HSTS are disabled.");
+}
+if (isProd && !env.TRUST_PROXY) {
+  // Without a trusted proxy header every visitor looks the same, so the per-IP
+  // limits on sign-in and sign-up become one shared limit for the whole site.
+  console.warn("[regear] TRUST_PROXY is off: all visitors share one rate-limit bucket. Deploy behind a reverse proxy and set TRUST_PROXY=true.");
 }

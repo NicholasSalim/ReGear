@@ -26,7 +26,15 @@ export async function POST(req: Request) {
     );
   }
 
-  const length = Number(req.headers.get("content-length") ?? 0);
+  // Route handlers have no body size limit and formData() buffers the whole
+  // body, so a chunked request (no Content-Length) could be any size. Browsers
+  // always send the length for a FormData upload, and Node stops reading the
+  // body at the declared length, so requiring it caps what we buffer.
+  const declared = req.headers.get("content-length");
+  const length = Number(declared);
+  if (!declared || !Number.isSafeInteger(length) || length <= 0) {
+    return NextResponse.json({ error: t.invalid }, { status: 411 });
+  }
   if (length > MAX_UPLOAD_BYTES + 64 * 1024) {
     return NextResponse.json({ error: t.tooLarge }, { status: 413 });
   }

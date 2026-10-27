@@ -112,7 +112,27 @@ function buildChecks(category: string, specs: SeedListing["specs"], issues: Seed
   });
 }
 
+/**
+ * The seed deletes everything and creates an admin whose password is in the
+ * README, so it must never run against real data. It refuses in production,
+ * and anywhere the database already has an account it didn't create, unless
+ * ALLOW_SEED=true says the wipe is intended.
+ */
+async function assertSafeToSeed() {
+  if (process.env.ALLOW_SEED === "true") return;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("Refusing to seed: NODE_ENV is production. The seed wipes the database and creates a demo admin with a public password. Set ALLOW_SEED=true if you really mean it.");
+  }
+  const real = await db.user.count({
+    where: { NOT: [{ email: { endsWith: "@regear.test" } }, { email: { endsWith: "@deleted.invalid" } }] },
+  });
+  if (real > 0) {
+    throw new Error(`Refusing to seed: the database has ${real} account(s) the seed didn't create, and seeding would delete them. Set ALLOW_SEED=true to wipe it anyway.`);
+  }
+}
+
 async function main() {
+  await assertSafeToSeed();
   console.log("Resetting database…");
   // Children first to satisfy FK constraints.
   await db.$transaction([

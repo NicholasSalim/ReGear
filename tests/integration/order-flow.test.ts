@@ -7,6 +7,7 @@ vi.mock("next/headers", () => ({ headers: async () => new Headers(), cookies: as
 
 const { db } = await import("@/lib/db");
 const orders = await import("@/lib/orders/service");
+const { payments } = await import("@/lib/payments");
 
 const address = {
   fullName: "Test Buyer",
@@ -153,6 +154,76 @@ describe("order lifecycle", () => {
     expect(order.status).toBe("COMPLETED");
     expect(order.refundIdr).toBe(2_500);
     expect((await db.dispute.findUniqueOrThrow({ where: { id: disputeId } })).status).toBe("RESOLVED");
+  });
+
+  it("caps partial refunds so the seller's payout stays positive", async () => {
+    const { orderId } = await orders.createOrder(f.buyer.id, f.listing.id, address);
+    await orders.payOrder(orderId, f.buyer.id);
+    await orders.shipOrder(orderId, f.sellerUser.id, "JNE", "JNE123456");
+    const { disputeId } = await orders.openDispute(orderId, f.buyer.id, "NOT_RECEIVED", "Tracking has not updated for ten days now.");
+    // Total 10.500, fee 500: a 10.000 refund would leave the seller nothing.
+    await expect(orders.resolveDispute(disputeId, f.other.id, "PARTIAL_REFUND", "Too much", 10_000)).rejects.toThrow(/Partial refund/);
+    await orders.resolveDispute(disputeId, f.other.id, "PARTIAL_REFUND", "Almost all of it", 9_999);
+    expect((await db.order.findUniqueOrThrow({ where: { id: orderId } })).refundIdr).toBe(9_999);
+  });
+
+  it("lets a buyer neither undo a return by confirming delivery nor settle a dispute by accepting", async () => {
+    const { orderId } = await orders.createOrder(f.buyer.id, f.listing.id, address);
+    await orders.payOrder(orderId, f.buyer.id);
+    await orders.shipOrder(orderId, f.sellerUser.id, "JNE", "JNE123456");
+    await orders.confirmDelivery(orderId, f.buyer.id);
+    await orders.requestReturn(orderId, f.buyer.id, "NOT_AS_DESCRIBED", "Battery health is far lower than reported.");
+    await expect(orders.confirmDelivery(orderId, f.buyer.id)).rejects.toThrow(/cannot move/);
+
+    await orders.openDispute(orderId, f.buyer.id, "NOT_AS_DESCRIBED", "The seller has not answered my return request.");
+    await expect(orders.acceptOrder(orderId, f.buyer.id)).rejects.toThrow(/cannot move/);
+    expect((await db.order.findUniqueOrThrow({ where: { id: orderId } })).status).toBe("DISPUTED");
+  });
+});
+
+describe("money movements under concurrency", () => {
+  let f: Awaited<ReturnType<typeof fixture>>;
+  beforeEach(async () => {
+    f = await fixture();
+    vi.restoreAllMocks();
+  });
+
+  it("sends a resolution submitted twice at once to the provider with one key per movement", async () => {
+    const refund = vi.spyOn(payments, "refund");
+    const payout = vi.spyOn(payments, "payout");
+    const { orderId } = await orders.createOrder(f.buyer.id, f.listing.id, address);
+    await orders.payOrder(orderId, f.buyer.id);
+    await orders.shipOrder(orderId, f.sellerUser.id, "JNE", "JNE123456");
+    const { disputeId } = await orders.openDispute(orderId, f.buyer.id, "NOT_RECEIVED", "Tracking has not updated for ten days now.");
+
+    const results = await Promise.allSettled([
+      orders.resolveDispute(disputeId, f.other.id, "PARTIAL_REFUND", "Split the difference", 2_500),
+      orders.resolveDispute(disputeId, f.other.id, "PARTIAL_REFUND", "Split the difference", 2_500),
+    ]);
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    // However many requests reach the provider, they name the same movement, so it happens once.
+    expect(new Set(refund.mock.calls.map(([c]) => c.idempotencyKey))).toEqual(new Set([`order:${orderId}:refund`]));
+    expect(new Set(payout.mock.calls.map(([c]) => c.idempotencyKey))).toEqual(new Set([`order:${orderId}:payout`]));
+    expect((await db.order.findUniqueOrThrow({ where: { id: orderId } })).refundIdr).toBe(2_500);
+  });
+
+  it("refunds a paid order once when buyer and seller cancel at the same time", async () => {
+    const refund = vi.spyOn(payments, "refund");
+    const { orderId } = await orders.createOrder(f.buyer.id, f.listing.id, address);
+    await orders.payOrder(orderId, f.buyer.id);
+    const results = await Promise.allSettled([
+      orders.cancelOrder(orderId, f.buyer.id, ""),
+      orders.cancelOrder(orderId, f.sellerUser.id, ""),
+    ]);
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    expect(new Set(refund.mock.calls.map(([c]) => c.idempotencyKey))).toEqual(new Set([`order:${orderId}:refund`]));
+  });
+});
+
+describe("order maintenance", () => {
+  let f: Awaited<ReturnType<typeof fixture>>;
+  beforeEach(async () => {
+    f = await fixture();
   });
 
   it("maintenance expires unpaid orders and releases the listing", async () => {

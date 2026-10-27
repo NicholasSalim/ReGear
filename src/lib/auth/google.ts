@@ -51,7 +51,10 @@ export function parseGoogleClaims(raw: unknown, clientId: string): GoogleClaims 
  * Resolve the ReGear user for a Google identity:
  * 1. an already-linked Google account wins;
  * 2. otherwise an existing user with the same email is linked, but only
- *    because Google has verified ownership of that email;
+ *    because Google has verified ownership of that email. If that account
+ *    never confirmed its email, whoever registered it may not own the
+ *    address: their password is dropped and their sessions ended, so the
+ *    real owner doesn't inherit an account someone else can still open;
  * 3. otherwise a new password-less account is created.
  */
 export async function findOrCreateGoogleUser(claims: GoogleClaims) {
@@ -65,12 +68,19 @@ export async function findOrCreateGoogleUser(claims: GoogleClaims) {
 
   const existing = await db.user.findUnique({ where: { email: claims.email } });
   if (existing) {
-    await db.oAuthAccount.create({
-      data: { provider: "google", providerAccountId: claims.sub, userId: existing.id, email: claims.email },
+    const user = await db.$transaction(async (tx) => {
+      await tx.oAuthAccount.create({
+        data: { provider: "google", providerAccountId: claims.sub, userId: existing.id, email: claims.email },
+      });
+      if (existing.emailVerifiedAt) return existing;
+      // Linking requires Google to have verified this same address.
+      await tx.session.deleteMany({ where: { userId: existing.id } });
+      return tx.user.update({
+        where: { id: existing.id },
+        data: { emailVerifiedAt: new Date(), passwordHash: null, passwordChangedAt: new Date(), failedLoginCount: 0, lockedUntil: null },
+      });
     });
-    // Linking requires Google to have verified this same address.
-    if (!existing.emailVerifiedAt) await db.user.update({ where: { id: existing.id }, data: { emailVerifiedAt: new Date() } });
-    return { user: existing, created: false, linked: true };
+    return { user, created: false, linked: true, passwordCleared: !existing.emailVerifiedAt };
   }
 
   const name = claims.name?.trim() || claims.email.split("@")[0];

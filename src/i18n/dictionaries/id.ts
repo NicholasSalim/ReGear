@@ -327,7 +327,7 @@ export const id: typeof en = {
     disputeNotFound: "Sengketa tidak ditemukan",
     disputeResolved: "Sengketa sudah diselesaikan",
     orderNotInDispute: "Pesanan tidak sedang dalam sengketa",
-    partialRefundRange: "Pengembalian dana sebagian harus lebih dari 0 dan kurang dari total pesanan.",
+    partialRefundRange: "Pengembalian dana sebagian harus lebih dari 0 dan kurang dari total pesanan dikurangi biaya platform.",
     reviewAfterCompletion: "Anda bisa memberi ulasan penjual setelah pesanan selesai.",
     alreadyReviewed: "Anda sudah memberi ulasan untuk pesanan ini.",
     unverifiedLimit: (n: number) => `Penjual yang belum terverifikasi hanya bisa memiliki ${n} iklan aktif. Verifikasi akun Anda untuk menambah iklan.`,

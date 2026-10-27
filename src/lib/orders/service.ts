@@ -4,7 +4,7 @@ import { resolveEntry, type EventParams, type EventType } from "@/i18n/messages"
 import { db } from "@/lib/db";
 import { listingTags, TAGS } from "@/lib/cache";
 import { currencyCode } from "@/lib/format";
-import { payments } from "@/lib/payments";
+import { paymentKey, payments } from "@/lib/payments";
 import { enqueueOrderEmails } from "@/lib/email/notify";
 import type { Prisma } from "@/generated/prisma/client";
 import {
@@ -18,6 +18,7 @@ import {
   calculateFees,
   canOpenDispute,
   generateOrderNumber,
+  InvalidTransitionError,
   isWithinReturnWindow,
 } from "@/lib/orders/state";
 import type { Address } from "@/lib/validation";
@@ -137,7 +138,7 @@ export async function payOrder(orderId: string, buyerId: string): Promise<Result
     throw new DomainError("paymentExpired");
   }
 
-  const charge = await payments.charge({ orderId, amountIdr: order.totalIdr, currency: currencyCode });
+  const charge = await payments.charge({ idempotencyKey: paymentKey(orderId, "charge"), orderId, amountIdr: order.totalIdr, currency: currencyCode });
   return db.$transaction(async (tx) => {
     await setStatus(tx, orderId, "PENDING_PAYMENT", "PAID", { paidAt: new Date(), paymentRef: charge.ref });
     await addEvent(tx, orderId, "PAID", {}, buyerId);
@@ -159,7 +160,7 @@ export async function cancelOrder(orderId: string, userId: string, reason: strin
 
   let refundRef: string | null = null;
   if (order.status === "PAID" && order.paymentRef) {
-    refundRef = (await payments.refund({ ref: order.paymentRef, amountIdr: order.totalIdr })).ref;
+    refundRef = (await payments.refund({ idempotencyKey: paymentKey(order.id, "refund"), ref: order.paymentRef, amountIdr: order.totalIdr })).ref;
   }
   return db.$transaction(async (tx) => {
     await setStatus(tx, orderId, order.status, "CANCELLED", {
@@ -205,7 +206,10 @@ export async function confirmDelivery(orderId: string, buyerId: string | null): 
   return db.$transaction(async (tx) => {
     const order = await loadOrder(tx, orderId);
     if (buyerId) assertBuyer(order, buyerId);
-    await setStatus(tx, orderId, order.status, "DELIVERED", { deliveredAt: new Date() });
+    // Only a shipment can be delivered. (RETURN_IN_PROGRESS -> DELIVERED is the
+    // seller rejecting a return, not something a buyer may trigger.)
+    if (order.status !== "SHIPPED") throw new InvalidTransitionError(order.status, "DELIVERED");
+    await setStatus(tx, orderId, "SHIPPED", "DELIVERED", { deliveredAt: new Date() });
     await addEvent(tx, orderId, "DELIVERED", { auto: !buyerId, returnDays: order.returnWindowDays }, buyerId);
     return { orderId, tags: tagsFor(order) };
   });
@@ -222,10 +226,13 @@ export async function acceptOrder(orderId: string, buyerId: string): Promise<Res
   const result = await db.$transaction(async (tx) => {
     const order = await loadOrder(tx, orderId);
     assertBuyer(order, buyerId);
+    // A disputed order is settled by an admin, not by the buyer accepting it.
+    if (order.status !== "DELIVERED") throw new InvalidTransitionError(order.status, "COMPLETED");
     await completeInTx(tx, order, buyerId, "buyer");
     return { order, result: { orderId, tags: [...tagsFor(order), TAGS.seller(order.sellerId)] } };
   });
   await payments.payout({
+    idempotencyKey: paymentKey(orderId, "payout"),
     orderId,
     sellerId: result.order.sellerId,
     amountIdr: result.order.totalIdr - result.order.platformFeeIdr,
@@ -241,7 +248,7 @@ export async function autoCompleteOrder(orderId: string) {
     return o;
   });
   if (order) {
-    await payments.payout({ orderId, sellerId: order.sellerId, amountIdr: order.totalIdr - order.platformFeeIdr });
+    await payments.payout({ idempotencyKey: paymentKey(orderId, "payout"), orderId, sellerId: order.sellerId, amountIdr: order.totalIdr - order.platformFeeIdr });
   }
   return order ? tagsFor(order) : [];
 }
@@ -301,7 +308,7 @@ export async function receiveReturn(orderId: string, sellerUserId: string): Prom
   if (order.status !== "RETURN_IN_PROGRESS" || order.returnRequest?.status !== "SHIPPED_BACK") {
     throw new DomainError("returnNotShippedBack");
   }
-  if (order.paymentRef) await payments.refund({ ref: order.paymentRef, amountIdr: order.totalIdr });
+  if (order.paymentRef) await payments.refund({ idempotencyKey: paymentKey(order.id, "refund"), ref: order.paymentRef, amountIdr: order.totalIdr });
   return db.$transaction(async (tx) => {
     await tx.returnRequest.update({ where: { orderId }, data: { status: "REFUNDED" } });
     await setStatus(tx, orderId, "RETURN_IN_PROGRESS", "REFUNDED", { refundedAt: new Date(), refundIdr: order.totalIdr });
@@ -355,14 +362,15 @@ export async function resolveDispute(
   let refundIdr = 0;
   if (resolution === "REFUND_BUYER") refundIdr = order.totalIdr;
   if (resolution === "PARTIAL_REFUND") {
-    if (partialIdr <= 0 || partialIdr >= order.totalIdr) {
+    // The seller's payout (total - platform fee - refund) must stay positive.
+    if (partialIdr <= 0 || partialIdr >= order.totalIdr - order.platformFeeIdr) {
       throw new DomainError("partialRefundRange");
     }
     refundIdr = partialIdr;
   }
-  if (refundIdr > 0 && order.paymentRef) await payments.refund({ ref: order.paymentRef, amountIdr: refundIdr });
+  if (refundIdr > 0 && order.paymentRef) await payments.refund({ idempotencyKey: paymentKey(order.id, "refund"), ref: order.paymentRef, amountIdr: refundIdr });
   if (resolution !== "REFUND_BUYER") {
-    await payments.payout({ orderId: order.id, sellerId: order.sellerId, amountIdr: order.totalIdr - order.platformFeeIdr - refundIdr });
+    await payments.payout({ idempotencyKey: paymentKey(order.id, "payout"), orderId: order.id, sellerId: order.sellerId, amountIdr: order.totalIdr - order.platformFeeIdr - refundIdr });
   }
 
   return db.$transaction(async (tx) => {

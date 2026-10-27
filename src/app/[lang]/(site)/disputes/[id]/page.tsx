@@ -109,7 +109,7 @@ async function Dispute({ params }: { params: PageProps<"/[lang]/disputes/[id]">[
                 {t.markUnderReview}
               </ActionButton>
             )}
-            <ResolveForm action={resolveDisputeAction.bind(null, dispute.id)} totalIdr={dispute.order.totalIdr} />
+            <ResolveForm action={resolveDisputeAction.bind(null, dispute.id)} maxRefundIdr={dispute.order.totalIdr - dispute.order.platformFeeIdr} />
           </div>
         )}
         <p className="text-xs text-slate-500">{t.stayOnPlatform}</p>

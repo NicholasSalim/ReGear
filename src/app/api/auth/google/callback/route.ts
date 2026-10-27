@@ -90,12 +90,20 @@ export async function GET(req: Request) {
   }
 
   try {
-    const { user, created, linked } = await findOrCreateGoogleUser(claims);
+    const result = await findOrCreateGoogleUser(claims);
+    const { user, created, linked } = result;
     if (user.lockedUntil && user.lockedUntil > new Date()) return fail("locked", "account locked");
 
     await createSession(user.id, { ip: await getClientIp(), userAgent: await getUserAgent() });
     await db.user.update({ where: { id: user.id }, data: { locale: await getRequestLocale() } });
-    await audit(user.id, created ? "user.register_google" : linked ? "user.link_google" : "user.login_google", "User", user.id);
+    const passwordCleared = "passwordCleared" in result && result.passwordCleared;
+    await audit(
+      user.id,
+      created ? "user.register_google" : linked ? "user.link_google" : "user.login_google",
+      "User",
+      user.id,
+      passwordCleared ? { passwordCleared: true } : undefined,
+    );
 
     return NextResponse.redirect(new URL(next || localePath(user.role === "ADMIN" ? "/admin" : "/account", await getRequestLocale()), env.NEXT_PUBLIC_SITE_URL));
   } catch (err) {

@@ -30,6 +30,7 @@ async function sendVerificationEmail(tx: Prisma.TransactionClient, user: { id: s
 
 const LOCK_AFTER_FAILURES = 5;
 const LOCK_MINUTES = 15;
+const LOGIN_EMAIL_LIMIT = 10;
 
 export async function registerAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const { locale, t } = await actionI18n();
@@ -65,7 +66,7 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
   if (!parsed.success) return { fieldErrors: fieldErrors(parsed.error, t, locale) };
   const { email, password } = parsed.data;
 
-  const [byIp, byEmail] = await Promise.all([rateLimit(`login-ip:${ip}`, 30, 900), rateLimit(`login-email:${email}`, 10, 900)]);
+  const [byIp, byEmail] = await Promise.all([rateLimit(`login-ip:${ip}`, 30, 900), rateLimit(`login-email:${email}`, LOGIN_EMAIL_LIMIT, 900)]);
   if (!byIp.ok || !byEmail.ok) return { error: t.actions.loginLimit };
 
   const generic = { error: t.actions.badCredentials };
@@ -74,7 +75,10 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
   if (!user || !user.passwordHash) {
     // Equalise timing so attackers cannot enumerate registered emails.
     await verifyPassword(password, await getDummyHash());
-    return generic;
+    // A real account says "locked" from the attempt after its LOCK_AFTER_FAILURES-th
+    // failure; say the same here, or the message would reveal which emails exist.
+    const attempts = LOGIN_EMAIL_LIMIT - byEmail.remaining;
+    return attempts > LOCK_AFTER_FAILURES ? { error: t.actions.locked } : generic;
   }
   if (user.lockedUntil && user.lockedUntil > new Date()) {
     return { error: t.actions.locked };

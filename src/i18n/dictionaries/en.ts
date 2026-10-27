@@ -516,6 +516,7 @@ export const en = {
     nextSteps: "Next steps",
     payIntro: "Complete payment to secure this item. Your money is held in escrow until you accept the item.",
     demoNote: "Demo mode: payments are simulated, no card is charged.",
+    sandboxNote: "Test payments (Midtrans sandbox): no real money moves. Pay with the Midtrans simulator.",
     pay: (amount: string) => `Pay ${amount}`,
     cancelOrder: "Cancel order",
     waitingForShipment: "Waiting for the seller to ship your item.",

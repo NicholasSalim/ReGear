@@ -65,7 +65,24 @@ All demo accounts use the password `Gear-Demo-2026!`.
 | Verified seller | `techhaven@regear.test`, `camerabay@regear.test` |
 | Seller pending verification | `pcparts@regear.test` |
 
-Payments run in **simulated mode**; no card is charged.
+Without Midtrans keys, payments run in **simulated mode**: "Pay" succeeds at once and no money moves.
+
+### Payments (Midtrans)
+
+Set `MIDTRANS_SERVER_KEY` (and `MIDTRANS_ENV`, `sandbox` by default) to take payments through
+[Midtrans Snap](https://docs.midtrans.com). The buyer pays on Midtrans's page (GoPay, ShopeePay
+or QRIS: methods Midtrans can refund through its API, which escrow needs) and is sent back to
+`/api/payments/return`. An order becomes paid only when Midtrans's status API says so.
+
+1. Sandbox dashboard (https://dashboard.sandbox.midtrans.com) → **Settings → Access Keys**: copy the
+   server key (`SB-Mid-server-...`) into `MIDTRANS_SERVER_KEY`.
+2. **Settings → Payment → Notification URL**: `https://<your site>/api/payments/midtrans`. Midtrans
+   can't reach `localhost`; locally the return page and the maintenance job pick up payments instead.
+3. Pay test orders with the [Midtrans simulator](https://simulator.sandbox.midtrans.com).
+
+The order page labels sandbox payments as tests. Production refuses to start payments without
+a key rather than falling back to simulated mode. Seller payouts are not automated yet: they are
+logged, and sent by hand.
 
 ### Scripts
 
@@ -128,7 +145,7 @@ src/
     catalog.ts      category specs & condition checklists
     validation.ts   all Zod schemas
     storage.ts      image processing & storage (local disk; swap for S3/R2)
-    payments.ts     payment provider interface (simulated implementation)
+    payments.ts     payment provider interface (Midtrans, or simulated without keys)
 prisma/             schema, migrations, seed
 tests/              unit + integration tests
 ```
@@ -175,7 +192,7 @@ The app is fully available in Indonesian (default) and English.
 
 ## Going further in production
 
-- **Payments.** Implement `PaymentProvider` (`src/lib/payments.ts`) with Stripe Connect or Xendit using manual capture, idempotency keys tied to the order ID, and verified webhooks.
+- **Payouts.** Automate seller payouts (Midtrans Iris or a bank API) with stored payout destinations and references.
 - **Storage.** Swap `src/lib/storage.ts` for S3/R2. Keep private documents in a separate, encrypted bucket.
 - **Multi-instance.** Set `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY`, use a shared cache handler (`'use cache: remote'`), and move rate limiting to Redis if load warrants it.
 - **Not yet built:** email notifications (order and dispute events), carrier tracking webhooks, and 2FA for admin accounts.

@@ -25,6 +25,8 @@ export default defineConfig({
       NODE_ENV: "test",
       DATABASE_URL: testDatabaseUrl,
       STORAGE_DIR: "./storage-test",
+      // Tests always use the simulated payment provider, even when .env has Midtrans keys.
+      MIDTRANS_SERVER_KEY: "",
     },
     // Integration tests share one database.
     fileParallelism: false,

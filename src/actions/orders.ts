@@ -57,7 +57,20 @@ async function orderStep(orderId: string, fn: (userId: string) => Promise<{ tags
 }
 
 export async function payOrderAction(orderId: string, _prev?: ActionState, _formData?: FormData): Promise<ActionState> {
-  return orderStep(orderId, (uid) => orders.payOrder(orderId, uid), "paid");
+  let paymentPage: string | undefined;
+  const result = await runAction(async () => {
+    const user = await requireUserStrict();
+    const { locale, t } = await actionI18n();
+    idSchema.parse(orderId);
+    const limited = await rateLimit(`pay:${user.id}`, 30, 3600);
+    if (!limited.ok) return { error: t.actions.passwordLimit };
+    const res = await orders.payOrder(orderId, user.id, locale);
+    invalidate(res.tags);
+    if ("redirectUrl" in res) paymentPage = res.redirectUrl;
+    else return { ok: true, message: t.actions.paid };
+  });
+  if (paymentPage) redirect(paymentPage);
+  return result;
 }
 
 export async function cancelOrderAction(orderId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {

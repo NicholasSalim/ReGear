@@ -21,6 +21,7 @@ import { DISPUTE_STATUS_LABELS, RETURN_REASON_LABELS, RETURN_STATUS_LABELS, type
 import type { OrderForUser } from "@/lib/data/orders";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { mediaUrl } from "@/lib/media";
+import { payments } from "@/lib/payments";
 import { canOpenDispute, isWithinReturnWindow } from "@/lib/orders/state";
 import { GradeBadge, OrderStatusBadge, warrantyLabel } from "@/components/badges";
 import {
@@ -122,7 +123,9 @@ export async function OrderDetail({ order, now }: { order: OrderForUser; now: Da
                 <>
                   <div className="w-full rounded-lg bg-indigo-50 p-3 text-sm text-indigo-900">
                     {t.payIntro}
-                    <span className="block text-xs text-indigo-700">{t.demoNote}</span>
+                    {payments.mode !== "live" && (
+                      <span className="block text-xs text-indigo-700">{payments.mode === "sandbox" ? t.sandboxNote : t.demoNote}</span>
+                    )}
                   </div>
                   <ActionButton action={payOrderAction.bind(null, order.id)}>{t.pay(formatMoney(order.totalIdr))}</ActionButton>
                 </>

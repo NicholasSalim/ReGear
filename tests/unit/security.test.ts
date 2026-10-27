@@ -36,7 +36,7 @@ describe("simulated payments", () => {
 
   it("refuses a repeated key that asks for a different amount", async () => {
     const idempotencyKey = paymentKey("order-unit-3", "refund");
-    await payments.refund({ idempotencyKey, ref: "ch", amountIdr: 2_500 });
-    await expect(payments.refund({ idempotencyKey, ref: "ch", amountIdr: 9_000 })).rejects.toThrow(/different amount/);
+    await payments.refund({ idempotencyKey, orderId: "order-unit-3", ref: "ch", amountIdr: 2_500 });
+    await expect(payments.refund({ idempotencyKey, orderId: "order-unit-3", ref: "ch", amountIdr: 9_000 })).rejects.toThrow(/different amount/);
   });
 });

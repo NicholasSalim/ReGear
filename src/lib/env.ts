@@ -21,6 +21,10 @@ const schema = z.object({
     .transform((v) => v === "true"),
   // How many reverse proxies (load balancer, CDN, ...) sit in front of the app.
   TRUST_PROXY_HOPS: z.coerce.number().int().min(1).max(5).default(1),
+  // Midtrans payments. Without a server key, development and tests use the
+  // simulated provider and production refuses to take payments.
+  MIDTRANS_SERVER_KEY: z.string().min(10).optional(),
+  MIDTRANS_ENV: z.enum(["sandbox", "production"]).default("sandbox"),
 });
 
 const raw = Object.fromEntries(Object.entries(process.env).filter(([, v]) => v !== ""));
@@ -42,4 +46,12 @@ if (isProd && !env.TRUST_PROXY) {
   // Without a trusted proxy header every visitor looks the same, so the per-IP
   // limits on sign-in and sign-up become one shared limit for the whole site.
   console.warn("[regear] TRUST_PROXY is off: all visitors share one rate-limit bucket. Deploy behind a reverse proxy and set TRUST_PROXY=true.");
+}
+// Sandbox keys start with "SB-"; sending one to the production API (or the
+// reverse) fails every call with 401, so catch the mix-up at boot.
+if (env.MIDTRANS_SERVER_KEY && env.MIDTRANS_SERVER_KEY.startsWith("SB-") !== (env.MIDTRANS_ENV === "sandbox")) {
+  throw new Error(`MIDTRANS_SERVER_KEY does not match MIDTRANS_ENV="${env.MIDTRANS_ENV}"`);
+}
+if (isProd && !env.MIDTRANS_SERVER_KEY) {
+  console.warn("[regear] MIDTRANS_SERVER_KEY is not set: buyers cannot pay for orders.");
 }

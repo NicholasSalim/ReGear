@@ -521,6 +521,7 @@ export const id: typeof en = {
     nextSteps: "Langkah berikutnya",
     payIntro: "Selesaikan pembayaran untuk mengamankan barang ini. Uang Anda ditahan di rekening bersama sampai Anda menerima barang.",
     demoNote: "Mode demo: pembayaran disimulasikan, tidak ada kartu yang ditagih.",
+    sandboxNote: "Pembayaran uji coba (Midtrans sandbox): tidak ada uang sungguhan yang berpindah. Bayar dengan simulator Midtrans.",
     pay: (amount: string) => `Bayar ${amount}`,
     cancelOrder: "Batalkan pesanan",
     waitingForShipment: "Menunggu penjual mengirim barang Anda.",

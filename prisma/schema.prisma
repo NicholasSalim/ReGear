@@ -248,7 +248,8 @@ model Order {
   listingSnapshot  String // JSON snapshot of title/grade/image at purchase time
   carrier          String?
   trackingNumber   String?
-  paymentRef       String?
+  paymentRef       String? // provider transaction id, set once paid
+  paymentUrl       String? // provider payment page, reused until the order is paid or expires
   returnWindowDays Int
   paidAt           DateTime?
   shippedAt        DateTime?

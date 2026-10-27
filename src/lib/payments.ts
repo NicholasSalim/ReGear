@@ -1,23 +1,47 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
+import { env, isProd } from "@/lib/env";
+import { createMidtrans } from "@/lib/midtrans";
 
 // Payment provider abstraction. ReGear holds buyer funds in escrow from
-// payment until the order completes (or is refunded). The simulated provider
-// lets the full flow run locally; replace with a Stripe/Adyen/Xendit adapter
-// (PaymentIntent with manual capture + webhook verification) in production.
+// payment until the order completes (or is refunded). Midtrans is used when
+// MIDTRANS_SERVER_KEY is set; otherwise development and tests use the
+// simulated provider, which pays instantly.
 //
-// Every call carries an idempotency key naming the one money movement it is
-// (e.g. "order:<id>:refund"). Provider calls happen before the order's status
-// change is committed, so two racing requests (a double click, buyer and
-// seller cancelling at once) both reach the provider; the key makes the
-// provider perform the movement once and answer both with the same result.
-// Adapters must pass it through (Stripe: the Idempotency-Key header).
+// A real provider takes payment on its own page: checkout returns a URL to
+// send the buyer to, and the order only becomes PAID once the provider's
+// status API says so (see syncPayment in the order service).
+//
+// Every money movement carries an idempotency key naming the one movement it
+// is (e.g. "order:<id>:refund"). Provider calls happen before the order's
+// status change is committed, so two racing requests (a double click, buyer
+// and seller cancelling at once) both reach the provider; the key makes the
+// provider perform the movement once.
 
 export type IdempotencyKey = string;
 
+export type PaymentState =
+  | { state: "none" } // no payment started yet
+  | { state: "pending" }
+  | { state: "paid"; ref: string; amountIdr: number }
+  | { state: "failed" }; // expired, cancelled or declined: this order can no longer be paid
+
 export interface PaymentProvider {
-  charge(input: { idempotencyKey: IdempotencyKey; orderId: string; amountIdr: number; currency: string }): Promise<{ ref: string }>;
-  refund(input: { idempotencyKey: IdempotencyKey; ref: string; amountIdr: number }): Promise<{ ref: string }>;
+  /** "simulated" pays instantly; "sandbox" is a real provider moving test money. */
+  readonly mode: "simulated" | "sandbox" | "live";
+  checkout(input: {
+    idempotencyKey: IdempotencyKey;
+    orderId: string;
+    amountIdr: number;
+    currency: string;
+    expiresAt: Date;
+    itemName: string;
+    returnUrl: string;
+  }): Promise<{ redirectUrl: string } | { paid: { ref: string } }>;
+  status(orderId: string): Promise<PaymentState>;
+  /** Stop a payment that hasn't happened yet so it can't happen later; returns the final state (it may have just been paid). */
+  abandon(orderId: string): Promise<PaymentState>;
+  refund(input: { idempotencyKey: IdempotencyKey; orderId: string; ref: string; amountIdr: number }): Promise<{ ref: string }>;
   payout(input: { idempotencyKey: IdempotencyKey; orderId: string; amountIdr: number; sellerId: string }): Promise<{ ref: string }>;
 }
 
@@ -38,8 +62,15 @@ function once(prefix: string, key: IdempotencyKey, amountIdr: number) {
 }
 
 const simulated: PaymentProvider = {
-  async charge({ idempotencyKey, amountIdr }) {
-    return once("sim_ch", idempotencyKey, amountIdr);
+  mode: "simulated",
+  async checkout({ idempotencyKey, amountIdr }) {
+    return { paid: once("sim_ch", idempotencyKey, amountIdr) };
+  },
+  async status() {
+    return { state: "none" };
+  },
+  async abandon() {
+    return { state: "none" };
   },
   async refund({ idempotencyKey, amountIdr }) {
     return once("sim_re", idempotencyKey, amountIdr);
@@ -49,4 +80,25 @@ const simulated: PaymentProvider = {
   },
 };
 
-export const payments: PaymentProvider = simulated;
+function notConfigured(): never {
+  throw new Error("Payments are not configured: set MIDTRANS_SERVER_KEY");
+}
+// Production never falls back to fake money.
+const unconfigured: PaymentProvider = {
+  mode: "live",
+  checkout: notConfigured,
+  async status() {
+    return { state: "none" };
+  },
+  async abandon() {
+    return { state: "none" };
+  },
+  refund: notConfigured,
+  payout: notConfigured,
+};
+
+export const payments: PaymentProvider = env.MIDTRANS_SERVER_KEY
+  ? createMidtrans(env.MIDTRANS_SERVER_KEY, env.MIDTRANS_ENV)
+  : isProd
+    ? unconfigured
+    : simulated;

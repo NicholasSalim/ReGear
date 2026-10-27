@@ -1,7 +1,9 @@
 import "server-only";
 import { en } from "@/i18n/dictionaries/en";
 import { resolveEntry, type EventParams, type EventType } from "@/i18n/messages";
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
 import { db } from "@/lib/db";
+import { env } from "@/lib/env";
 import { listingTags, TAGS } from "@/lib/cache";
 import { currencyCode } from "@/lib/format";
 import { paymentKey, payments } from "@/lib/payments";
@@ -128,26 +130,106 @@ export async function createOrder(buyerId: string, listingId: string, address: A
   });
 }
 
-export async function payOrder(orderId: string, buyerId: string): Promise<Result> {
+type UnpaidOrder = { id: string; status: string; buyerId: string; sellerId: string; listingId: string; totalIdr: number };
+
+async function markPaid(order: UnpaidOrder, ref: string): Promise<string[]> {
+  await db.$transaction(async (tx) => {
+    await setStatus(tx, order.id, "PENDING_PAYMENT", "PAID", { paidAt: new Date(), paymentRef: ref });
+    await addEvent(tx, order.id, "PAID", {}, order.buyerId);
+  });
+  return tagsFor(order);
+}
+
+/** Record a payment the provider reports. Returns the tags to invalidate (none if someone else recorded it first). */
+async function confirmPaid(order: UnpaidOrder, paid: { ref: string; amountIdr: number }): Promise<string[]> {
+  if (paid.amountIdr !== order.totalIdr) {
+    console.error(`[payments] order ${order.id} paid ${paid.amountIdr} IDR, expected ${order.totalIdr}; not marking it paid`);
+    return [];
+  }
+  try {
+    return await markPaid(order, paid.ref);
+  } catch (err) {
+    // The webhook and the buyer's return from the payment page often arrive together.
+    if (err instanceof DomainError && err.code === "concurrentUpdate") return [];
+    throw err;
+  }
+}
+
+/**
+ * Bring an order in line with what the payment provider says. "Paid" only
+ * ever comes from here (or from the simulated provider), never from the
+ * buyer's browser or an unverified notification.
+ */
+export async function syncPayment(orderId: string): Promise<string[]> {
   const order = await db.order.findUnique({ where: { id: orderId } });
+  if (!order) return [];
+  if (order.status === "PENDING_PAYMENT") {
+    const state = await payments.status(orderId);
+    if (state.state === "paid") return confirmPaid(order, state);
+    if (state.state === "failed") return (await expireUnpaidOrder(orderId)) === "expired" ? tagsFor(order) : [];
+    return [];
+  }
+  // Expiring the payment before cancelling should make this impossible, but if
+  // a payment still lands on a cancelled order, the money goes straight back.
+  if (order.status === "CANCELLED" && order.paymentUrl && !order.paymentRef) {
+    const state = await payments.status(orderId);
+    if (state.state === "paid") {
+      console.error(`[payments] order ${orderId} was paid after it was cancelled; refunding`);
+      await payments.refund({ idempotencyKey: paymentKey(orderId, "refund"), orderId, ref: state.ref, amountIdr: state.amountIdr });
+      await db.order.update({ where: { id: orderId }, data: { paymentRef: state.ref, refundIdr: state.amountIdr, refundedAt: new Date() } });
+    }
+  }
+  return [];
+}
+
+/** Paid at once (simulated provider) or a page on the provider's site to send the buyer to. */
+export type PayResult = Result & ({ paid: true } | { redirectUrl: string });
+
+export async function payOrder(orderId: string, buyerId: string, locale: Locale = DEFAULT_LOCALE): Promise<PayResult> {
+  let order = await db.order.findUnique({ where: { id: orderId } });
   if (!order) throw new DomainError("orderNotFound");
   assertBuyer(order, buyerId);
   if (order.status !== "PENDING_PAYMENT") throw new DomainError("alreadyPaid");
-  if (Date.now() - order.createdAt.getTime() > PAYMENT_HOLD_MINUTES * 60_000) {
-    await expireUnpaidOrder(order.id);
+
+  // A payment page already exists: the buyer may have paid there already.
+  if (order.paymentUrl) {
+    const tags = await syncPayment(orderId);
+    order = await db.order.findUniqueOrThrow({ where: { id: orderId } });
+    if (order.status === "PAID") return { orderId, tags, paid: true };
+    if (order.status !== "PENDING_PAYMENT") throw new DomainError("paymentExpired");
+  }
+  const holdEndsAt = new Date(order.createdAt.getTime() + PAYMENT_HOLD_MINUTES * 60_000);
+  if (Date.now() > holdEndsAt.getTime()) {
+    if ((await expireUnpaidOrder(order.id)) === "paid") return { orderId, tags: tagsFor(order), paid: true };
     throw new DomainError("paymentExpired");
   }
+  if (order.paymentUrl) return { orderId, tags: [], redirectUrl: order.paymentUrl };
 
-  const charge = await payments.charge({ idempotencyKey: paymentKey(orderId, "charge"), orderId, amountIdr: order.totalIdr, currency: currencyCode });
-  return db.$transaction(async (tx) => {
-    await setStatus(tx, orderId, "PENDING_PAYMENT", "PAID", { paidAt: new Date(), paymentRef: charge.ref });
-    await addEvent(tx, orderId, "PAID", {}, buyerId);
-    return { orderId, tags: tagsFor(order) };
+  const started = await payments.checkout({
+    idempotencyKey: paymentKey(orderId, "charge"),
+    orderId,
+    amountIdr: order.totalIdr,
+    currency: currencyCode,
+    expiresAt: holdEndsAt,
+    itemName: (JSON.parse(order.listingSnapshot) as { title: string }).title,
+    // The provider sends the buyer back here, which checks the payment and shows the order.
+    returnUrl: `${env.NEXT_PUBLIC_SITE_URL}/api/payments/return?order=${orderId}&lang=${locale}`,
   });
+  if ("paid" in started) return { orderId, tags: await markPaid(order, started.paid.ref), paid: true };
+  // Keep the first page (a double click opens two) so the buyer always returns to the same one.
+  await db.order.updateMany({ where: { id: orderId, paymentUrl: null }, data: { paymentUrl: started.redirectUrl } });
+  const saved = await db.order.findUniqueOrThrow({ where: { id: orderId }, select: { paymentUrl: true } });
+  return { orderId, tags: [], redirectUrl: saved.paymentUrl ?? started.redirectUrl };
 }
 
 export async function cancelOrder(orderId: string, userId: string, reason: string): Promise<Result> {
-  const order = await db.$transaction((tx) => loadOrder(tx, orderId));
+  let order = await db.$transaction((tx) => loadOrder(tx, orderId));
+  if (order.status === "PENDING_PAYMENT" && (order.buyerId === userId || order.seller.userId === userId)) {
+    // Close the payment page first; if the buyer paid in the meantime, this
+    // becomes the cancellation of a paid order and the money is refunded.
+    const state = await payments.abandon(orderId);
+    if (state.state === "paid" && (await confirmPaid(order, state)).length) order = await db.$transaction((tx) => loadOrder(tx, orderId));
+  }
   const isBuyer = order.buyerId === userId;
   const isSeller = order.seller.userId === userId;
   if (!isBuyer && !isSeller) throw new DomainError("orderNotFound");
@@ -160,7 +242,7 @@ export async function cancelOrder(orderId: string, userId: string, reason: strin
 
   let refundRef: string | null = null;
   if (order.status === "PAID" && order.paymentRef) {
-    refundRef = (await payments.refund({ idempotencyKey: paymentKey(order.id, "refund"), ref: order.paymentRef, amountIdr: order.totalIdr })).ref;
+    refundRef = (await payments.refund({ idempotencyKey: paymentKey(order.id, "refund"), orderId: order.id, ref: order.paymentRef, amountIdr: order.totalIdr })).ref;
   }
   return db.$transaction(async (tx) => {
     await setStatus(tx, orderId, order.status, "CANCELLED", {
@@ -180,13 +262,21 @@ export async function cancelOrder(orderId: string, userId: string, reason: strin
   });
 }
 
-export async function expireUnpaidOrder(orderId: string) {
-  await db.$transaction(async (tx) => {
-    const order = await tx.order.findUnique({ where: { id: orderId } });
-    if (!order || order.status !== "PENDING_PAYMENT") return;
+/** Release an unpaid order's item. Returns "paid" if the buyer turned out to have paid, null if there was nothing to do. */
+export async function expireUnpaidOrder(orderId: string): Promise<"expired" | "paid" | null> {
+  const order = await db.order.findUnique({ where: { id: orderId } });
+  if (!order || order.status !== "PENDING_PAYMENT") return null;
+  // Stop the payment first, so the buyer can't pay for an item that's back on sale.
+  const state = await payments.abandon(orderId);
+  if (state.state === "paid") return (await confirmPaid(order, state)).length ? "paid" : null;
+
+  return db.$transaction(async (tx) => {
+    const current = await tx.order.findUnique({ where: { id: orderId } });
+    if (!current || current.status !== "PENDING_PAYMENT") return null;
     await setStatus(tx, orderId, "PENDING_PAYMENT", "CANCELLED", { cancelledAt: new Date() });
     await tx.listing.updateMany({ where: { id: order.listingId, status: "RESERVED" }, data: { status: "ACTIVE" } });
     await addEvent(tx, orderId, "EXPIRED", {});
+    return "expired" as const;
   });
 }
 
@@ -308,7 +398,7 @@ export async function receiveReturn(orderId: string, sellerUserId: string): Prom
   if (order.status !== "RETURN_IN_PROGRESS" || order.returnRequest?.status !== "SHIPPED_BACK") {
     throw new DomainError("returnNotShippedBack");
   }
-  if (order.paymentRef) await payments.refund({ idempotencyKey: paymentKey(order.id, "refund"), ref: order.paymentRef, amountIdr: order.totalIdr });
+  if (order.paymentRef) await payments.refund({ idempotencyKey: paymentKey(order.id, "refund"), orderId: order.id, ref: order.paymentRef, amountIdr: order.totalIdr });
   return db.$transaction(async (tx) => {
     await tx.returnRequest.update({ where: { orderId }, data: { status: "REFUNDED" } });
     await setStatus(tx, orderId, "RETURN_IN_PROGRESS", "REFUNDED", { refundedAt: new Date(), refundIdr: order.totalIdr });
@@ -368,7 +458,7 @@ export async function resolveDispute(
     }
     refundIdr = partialIdr;
   }
-  if (refundIdr > 0 && order.paymentRef) await payments.refund({ idempotencyKey: paymentKey(order.id, "refund"), ref: order.paymentRef, amountIdr: refundIdr });
+  if (refundIdr > 0 && order.paymentRef) await payments.refund({ idempotencyKey: paymentKey(order.id, "refund"), orderId: order.id, ref: order.paymentRef, amountIdr: refundIdr });
   if (resolution !== "REFUND_BUYER") {
     await payments.payout({ idempotencyKey: paymentKey(order.id, "payout"), orderId: order.id, sellerId: order.sellerId, amountIdr: order.totalIdr - order.platformFeeIdr - refundIdr });
   }
@@ -425,17 +515,39 @@ export async function leaveReview(orderId: string, buyerId: string, rating: numb
 
 // Maintenance ---------------------------------------------------------------
 
-/** Expire unpaid orders, auto-deliver long-shipped orders, auto-complete closed return windows. */
+/** Settle payments we weren't told about, expire unpaid orders, auto-deliver long-shipped orders, auto-complete closed return windows. */
 export async function runOrderMaintenance(now = new Date()) {
   const tags: string[] = [];
+  const holdStart = new Date(now.getTime() - PAYMENT_HOLD_MINUTES * 60_000);
+
+  // A lost or blocked webhook mustn't leave a paid order waiting.
+  const awaiting = await db.order.findMany({
+    where: { status: "PENDING_PAYMENT", paymentUrl: { not: null }, createdAt: { gte: holdStart } },
+    select: { id: true },
+    take: 200,
+  });
+  for (const o of awaiting) {
+    try {
+      tags.push(...(await syncPayment(o.id)));
+    } catch (err) {
+      console.error("payment sync failed", o.id, err);
+    }
+  }
+
   const stale = await db.order.findMany({
-    where: { status: "PENDING_PAYMENT", createdAt: { lt: new Date(now.getTime() - PAYMENT_HOLD_MINUTES * 60_000) } },
+    where: { status: "PENDING_PAYMENT", createdAt: { lt: holdStart } },
     select: { id: true, listingId: true, sellerId: true, buyerId: true },
     take: 500,
   });
+  let expired = 0;
   for (const o of stale) {
-    await expireUnpaidOrder(o.id);
-    tags.push(...tagsFor(o));
+    try {
+      const outcome = await expireUnpaidOrder(o.id);
+      if (outcome === "expired") expired++;
+      if (outcome) tags.push(...tagsFor(o));
+    } catch (err) {
+      console.error("expire failed", o.id, err);
+    }
   }
 
   const longShipped = await db.order.findMany({
@@ -467,5 +579,5 @@ export async function runOrderMaintenance(now = new Date()) {
       }
     }
   }
-  return { expired: stale.length, autoDelivered: longShipped.length, tags: [...new Set(tags)] };
+  return { expired, autoDelivered: longShipped.length, tags: [...new Set(tags)] };
 }

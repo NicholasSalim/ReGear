@@ -58,6 +58,12 @@ describe("Midtrans adapter", () => {
     expect(body.expiry.start_time).toMatch(/^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d \+0700$/);
   });
 
+  it("keeps the page open at least the 5 minutes Snap requires", async () => {
+    const fetch = respond({ status: 201, body: { token: "t", redirect_url: "https://app.sandbox.midtrans.com/snap/v4/redirection/t" } });
+    await midtrans.checkout({ idempotencyKey: "k", orderId: "cm1", amountIdr: 1, currency: "IDR", expiresAt: new Date(Date.now() + 2 * 60_000), itemName: "x", returnUrl: "https://x" });
+    expect(request(fetch).body).toMatchObject({ expiry: { duration: 5 }, page_expiry: { duration: 5 } });
+  });
+
   it("fails loudly when Snap refuses", async () => {
     respond({ status: 400, body: { error_messages: ["transaction_details.order_id sudah digunakan"] } });
     await expect(midtrans.checkout({ idempotencyKey: "k", orderId: "cm1", amountIdr: 1, currency: "IDR", expiresAt: new Date(), itemName: "x", returnUrl: "https://x" })).rejects.toThrow(/sudah digunakan/);

@@ -359,7 +359,7 @@ export const en = {
     cancelled: "Order cancelled.",
     shipped: "Marked as shipped. The buyer has been notified.",
     delivered: "Delivery confirmed. Inspect your item against the condition report.",
-    accepted: "Thanks! The seller has been paid.",
+    accepted: "Thanks! The payment now goes to the seller's balance.",
     returnRequested: "Return requested. The seller has 3 days to respond.",
     returnApproved: "Return approved.",
     returnRejected: "Return rejected.",
@@ -424,7 +424,9 @@ export const en = {
         p.returnDays > 0 ? ` You have ${p.returnDays} days to inspect the item and request a return.` : ""
       }`,
     COMPLETED: (p: { by: "buyer" | "window" }): string =>
-      p.by === "buyer" ? "Buyer accepted the item. Payment released to the seller." : "Return window closed. Order completed and payment released to the seller.",
+      p.by === "buyer"
+        ? "Buyer accepted the item. Payment released to the seller's balance."
+        : "Return window closed. Order completed and payment released to the seller's balance.",
     RETURN_REQUESTED: () => "Buyer requested a return. Waiting for the seller to respond.",
     RETURN_APPROVED: () => "Seller approved the return. Please ship the item back and add tracking.",
     RETURN_REJECTED: (p: { note: string }) => `Seller rejected the return: ${p.note}. The buyer can escalate by opening a dispute.`,
@@ -435,8 +437,8 @@ export const en = {
       p.outcome === "buyer"
         ? "Dispute resolved in the buyer's favour. Full refund issued."
         : p.outcome === "partial"
-          ? "Dispute resolved with a partial refund to the buyer; the remainder was released to the seller."
-          : "Dispute resolved in the seller's favour. Payment released to the seller.",
+          ? "Dispute resolved with a partial refund to the buyer; the remainder was released to the seller's balance."
+          : "Dispute resolved in the seller's favour. Payment released to the seller's balance.",
   },
   auth: {
     loginMetaTitle: "Sign in",
@@ -881,7 +883,10 @@ export const en = {
       },
       COMPLETED: {
         buyer: { subject: (n: string) => `Order ${n} is complete`, body: () => "Thanks! This order is complete and the payment has been released to the seller. How did it go? You can review the seller on the order page." },
-        seller: { subject: (n: string) => `You've been paid for order ${n}`, body: () => "This order is complete. The payment, minus ReGear's fee, has been released to you." },
+        seller: {
+          subject: (n: string) => `Order ${n} is complete`,
+          body: () => "This order is complete. The payment, minus ReGear's fee, is now in your seller balance. Withdraw it to your bank from Seller dashboard → Payouts.",
+        },
       },
       RETURN_REQUESTED: {
         seller: { subject: (n: string) => `Return requested for order ${n}`, body: () => "The buyer has asked to return the item. Open the order page to see why, then approve or reject the request." },
@@ -911,7 +916,7 @@ export const en = {
         seller: {
           subject: (n: string) => `Dispute decided for order ${n}`,
           body: (p: { outcome: "buyer" | "partial" | "seller" }): string =>
-            p.outcome === "buyer" ? "ReGear decided the dispute in the buyer's favour, and the buyer was refunded in full." : p.outcome === "partial" ? "ReGear decided the dispute with a partial refund to the buyer; the rest has been released to you." : "ReGear decided the dispute in your favour. The payment has been released to you.",
+            p.outcome === "buyer" ? "ReGear decided the dispute in the buyer's favour, and the buyer was refunded in full." : p.outcome === "partial" ? "ReGear decided the dispute with a partial refund to the buyer; the rest is now in your seller balance." : "ReGear decided the dispute in your favour. The payment is now in your seller balance.",
         },
       },
     },

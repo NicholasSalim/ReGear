@@ -361,7 +361,7 @@ export const id: typeof en = {
     cancelled: "Pesanan dibatalkan.",
     shipped: "Ditandai sudah dikirim. Pembeli sudah diberi tahu.",
     delivered: "Penerimaan dikonfirmasi. Periksa barang Anda sesuai laporan kondisinya.",
-    accepted: "Terima kasih! Penjual sudah dibayar.",
+    accepted: "Terima kasih! Pembayaran kini masuk ke saldo penjual.",
     returnRequested: "Pengembalian diajukan. Penjual punya waktu 3 hari untuk menanggapi.",
     returnApproved: "Pengembalian disetujui.",
     returnRejected: "Pengembalian ditolak.",
@@ -427,8 +427,8 @@ export const id: typeof en = {
       }`,
     COMPLETED: (p: { by: "buyer" | "window" }) =>
       p.by === "buyer"
-        ? "Pembeli menerima barang. Pembayaran diteruskan ke penjual."
-        : "Batas waktu pengembalian berakhir. Pesanan selesai dan pembayaran diteruskan ke penjual.",
+        ? "Pembeli menerima barang. Pembayaran diteruskan ke saldo penjual."
+        : "Batas waktu pengembalian berakhir. Pesanan selesai dan pembayaran diteruskan ke saldo penjual.",
     RETURN_REQUESTED: () => "Pembeli mengajukan pengembalian. Menunggu tanggapan penjual.",
     RETURN_APPROVED: () => "Penjual menyetujui pengembalian. Silakan kirim barang kembali dan tambahkan nomor resi.",
     RETURN_REJECTED: (p: { note: string }) => `Penjual menolak pengembalian: ${p.note}. Pembeli bisa melanjutkan dengan membuka sengketa.`,
@@ -440,8 +440,8 @@ export const id: typeof en = {
       p.outcome === "buyer"
         ? "Sengketa diselesaikan untuk pembeli. Dana dikembalikan penuh."
         : p.outcome === "partial"
-          ? "Sengketa diselesaikan dengan pengembalian dana sebagian ke pembeli; sisanya diteruskan ke penjual."
-          : "Sengketa diselesaikan untuk penjual. Pembayaran diteruskan ke penjual.",
+          ? "Sengketa diselesaikan dengan pengembalian dana sebagian ke pembeli; sisanya diteruskan ke saldo penjual."
+          : "Sengketa diselesaikan untuk penjual. Pembayaran diteruskan ke saldo penjual.",
   },
   auth: {
     loginMetaTitle: "Masuk",
@@ -886,7 +886,10 @@ export const id: typeof en = {
       },
       COMPLETED: {
         buyer: { subject: (n: string) => `Pesanan ${n} selesai`, body: () => "Terima kasih! Pesanan ini selesai dan pembayaran sudah diteruskan ke penjual. Bagaimana pengalaman Anda? Beri ulasan untuk penjual di halaman pesanan." },
-        seller: { subject: (n: string) => `Pembayaran pesanan ${n} sudah diteruskan`, body: () => "Pesanan ini selesai. Pembayarannya, setelah dipotong biaya ReGear, sudah diteruskan ke Anda." },
+        seller: {
+          subject: (n: string) => `Pesanan ${n} selesai`,
+          body: () => "Pesanan ini selesai. Pembayarannya, setelah dipotong biaya ReGear, kini ada di saldo penjual Anda. Tarik ke rekening bank Anda dari Dasbor penjual → Penarikan.",
+        },
       },
       RETURN_REQUESTED: {
         seller: { subject: (n: string) => `Pengajuan pengembalian untuk pesanan ${n}`, body: () => "Pembeli mengajukan pengembalian barang. Buka halaman pesanan untuk melihat alasannya, lalu setujui atau tolak." },
@@ -916,7 +919,7 @@ export const id: typeof en = {
         seller: {
           subject: (n: string) => `Keputusan sengketa untuk pesanan ${n}`,
           body: (p: { outcome: "buyer" | "partial" | "seller" }): string =>
-            p.outcome === "buyer" ? "ReGear memutuskan sengketa untuk pembeli, dan dana pembeli dikembalikan penuh." : p.outcome === "partial" ? "ReGear memutuskan sengketa dengan pengembalian dana sebagian kepada pembeli; sisanya diteruskan ke Anda." : "ReGear memutuskan sengketa untuk Anda. Pembayaran diteruskan ke Anda.",
+            p.outcome === "buyer" ? "ReGear memutuskan sengketa untuk pembeli, dan dana pembeli dikembalikan penuh." : p.outcome === "partial" ? "ReGear memutuskan sengketa dengan pengembalian dana sebagian kepada pembeli; sisanya kini ada di saldo penjual Anda." : "ReGear memutuskan sengketa untuk Anda. Pembayarannya kini ada di saldo penjual Anda.",
         },
       },
     },

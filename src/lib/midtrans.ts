@@ -84,7 +84,10 @@ export function createMidtrans(serverKey: string, environment: keyof typeof HOST
     mode: environment === "sandbox" ? "sandbox" : "live",
 
     async checkout({ orderId, amountIdr, expiresAt, itemName, returnUrl }) {
-      const minutes = Math.max(1, Math.floor((expiresAt.getTime() - Date.now()) / 60_000));
+      // Snap refuses a page open for less than 5 minutes. With less of the hold
+      // left, the page may outlive it briefly; expiring the order expires the
+      // payment at Midtrans too (abandon), so a late payment still can't land.
+      const minutes = Math.max(5, Math.floor((expiresAt.getTime() - Date.now()) / 60_000));
       const { http, body } = await call(`${hosts.snap}/snap/v1/transactions`, {
         transaction_details: { order_id: orderId, gross_amount: amountIdr },
         item_details: [{ id: orderId, price: amountIdr, quantity: 1, name: itemName.slice(0, 50) }],

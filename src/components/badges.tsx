@@ -67,6 +67,20 @@ export async function OrderStatusBadge({ status }: { status: string }) {
   return <Badge className={cn(info?.tone ?? "bg-slate-100 text-slate-700", "ring-transparent")}>{info ? pick(info.label, locale) : status}</Badge>;
 }
 
+export async function WithdrawalStatusBadge({ status }: { status: string }) {
+  const tone: Record<string, string> = {
+    PENDING_REVIEW: "bg-amber-50 text-amber-800 ring-amber-600/20",
+    SENDING: "bg-sky-50 text-sky-800 ring-sky-600/20",
+    PROCESSING: "bg-sky-50 text-sky-800 ring-sky-600/20",
+    COMPLETED: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
+    FAILED: "bg-rose-50 text-rose-700 ring-rose-600/20",
+    REJECTED: "bg-rose-50 text-rose-700 ring-rose-600/20",
+    NEEDS_ATTENTION: "bg-amber-50 text-amber-800 ring-amber-600/20",
+  };
+  const t = (await getDictionary()).payouts.status;
+  return <Badge className={tone[status] ?? "bg-slate-100 text-slate-700 ring-slate-500/20"}>{t[status] ?? status}</Badge>;
+}
+
 export async function ListingStatusBadge({ status }: { status: string }) {
   const tone: Record<string, string> = {
     ACTIVE: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",

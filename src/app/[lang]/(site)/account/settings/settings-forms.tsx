@@ -54,7 +54,7 @@ export function SettingsForms({ name, email, hasPassword, googleEmail }: { name:
 
 export function DeleteAccountForm({ email, hasPassword, blockers }: { email: string; hasPassword: boolean; blockers: DeletionBlockers }) {
   const t = useT().deleteAccount;
-  const blocked = blockers.admin || blockers.purchases > 0 || blockers.sales > 0;
+  const blocked = blockers.admin || blockers.purchases > 0 || blockers.sales > 0 || blockers.balance;
   return (
     <section className="card mt-6 space-y-4 border-rose-200 p-6" aria-labelledby="delete-account">
       <div>
@@ -91,6 +91,12 @@ export function DeleteAccountForm({ email, hasPassword, blockers }: { email: str
               <li>
                 {t.sales(blockers.sales)}{" "}
                 <Link href="/sell/orders" className="font-semibold underline">{t.viewSales}</Link>
+              </li>
+            )}
+            {blockers.balance && (
+              <li>
+                {t.balance}{" "}
+                <Link href="/sell/payouts" className="font-semibold underline">{t.viewPayouts}</Link>
               </li>
             )}
           </ul>

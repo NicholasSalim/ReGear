@@ -47,6 +47,8 @@ async function fixture() {
     db.review.deleteMany(),
     db.returnRequest.deleteMany(),
     db.orderEvent.deleteMany(),
+    db.balanceEntry.deleteMany(),
+    db.withdrawal.deleteMany(),
     db.order.deleteMany(),
     db.favorite.deleteMany(),
     db.upload.deleteMany(),
@@ -87,7 +89,7 @@ describe("account deletion", () => {
   it("is refused while a purchase is open, and changes nothing", async () => {
     await orders.createOrder(f.buyer.id, f.sold.id, address);
     await db.session.create({ data: { id: "sess-b", userId: f.buyer.id, expiresAt: new Date(Date.now() + 86_400_000) } });
-    expect(await getDeletionBlockers(f.buyer.id)).toEqual({ admin: false, purchases: 1, sales: 0 });
+    expect(await getDeletionBlockers(f.buyer.id)).toEqual({ admin: false, purchases: 1, sales: 0, balance: false });
 
     await expect(deleteAccount(f.buyer.id)).rejects.toMatchObject({ code: "accountBusy" });
     const buyer = await db.user.findUniqueOrThrow({ where: { id: f.buyer.id } });
@@ -97,7 +99,7 @@ describe("account deletion", () => {
 
   it("is refused while a sale is open, and the seller's listings stay up", async () => {
     await orders.createOrder(f.buyer.id, f.sold.id, address);
-    expect(await getDeletionBlockers(f.sellerUser.id)).toEqual({ admin: false, purchases: 0, sales: 1 });
+    expect(await getDeletionBlockers(f.sellerUser.id)).toEqual({ admin: false, purchases: 0, sales: 1, balance: false });
 
     await expect(deleteAccount(f.sellerUser.id)).rejects.toMatchObject({ code: "accountBusy" });
     expect((await db.listing.findUniqueOrThrow({ where: { id: f.unsold.id } })).status).toBe("ACTIVE");
@@ -148,6 +150,13 @@ describe("account deletion", () => {
       data: { sellerId: f.seller.id, legalName: "Sam Seller", phone: "+62 812", address: "Jl. Rumah", idType: "NATIONAL_ID", idNumberLast4: "1234", documentKey: doc.key, status: "APPROVED" },
     });
     await completedOrder(f);
+    await db.sellerProfile.update({ where: { id: f.seller.id }, data: { payoutBank: "bca", payoutAccountNumber: "1234567890", payoutAccountName: "SAM SELLER" } });
+
+    // The sale's money is still in the shop's balance: it has to be withdrawn first.
+    await expect(deleteAccount(f.sellerUser.id)).rejects.toMatchObject({ code: "accountHasBalance" });
+    const owed = (await db.balanceEntry.aggregate({ where: { sellerId: f.seller.id }, _sum: { amountIdr: true } }))._sum.amountIdr ?? 0;
+    const paid = await db.withdrawal.create({ data: { sellerId: f.seller.id, amountIdr: owed, status: "COMPLETED", bank: "bca", accountNumber: "1234567890", accountName: "SAM SELLER" } });
+    await db.balanceEntry.create({ data: { sellerId: f.seller.id, type: "WITHDRAWAL", amountIdr: -owed, withdrawalId: paid.id } });
 
     await deleteAccount(f.sellerUser.id);
 
@@ -158,6 +167,9 @@ describe("account deletion", () => {
       location: "",
       verificationStatus: "UNVERIFIED",
       verifiedAt: null,
+      payoutBank: null,
+      payoutAccountNumber: null,
+      payoutAccountName: null,
     });
     expect(await db.verificationRequest.count({ where: { sellerId: f.seller.id } })).toBe(0);
     expect(await storage.readPrivateDocument(doc.key)).toBeNull();

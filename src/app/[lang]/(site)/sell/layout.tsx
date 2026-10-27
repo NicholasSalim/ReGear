@@ -21,6 +21,7 @@ export default async function SellLayout({ children }: { children: React.ReactNo
             { href: "/sell", label: nav.dashboard, exact: true },
             { href: "/sell/listings", label: nav.listings },
             { href: "/sell/orders", label: nav.sales },
+            { href: "/sell/payouts", label: nav.payouts },
             { href: "/sell/verification", label: nav.verification },
             { href: "/sell/profile", label: nav.profile },
           ]}

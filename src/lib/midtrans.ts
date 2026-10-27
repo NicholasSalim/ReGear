@@ -119,11 +119,5 @@ export function createMidtrans(serverKey: string, environment: keyof typeof HOST
       if (b.status_code === "200" || b.status_code === "406") return { ref: refundKey };
       throw new MidtransError(`Refund of order ${orderId} failed: ${b.status_code} ${b.status_message}`, String(b.status_code));
     },
-
-    async payout({ orderId, amountIdr }) {
-      // Not automated yet: seller payouts are sent by hand from the escrow balance.
-      console.warn(`[payments] payout of ${amountIdr} IDR for order ${orderId} must be sent manually`);
-      return { ref: `manual_${orderId}` };
-    },
   };
 }

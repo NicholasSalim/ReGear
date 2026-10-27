@@ -26,11 +26,11 @@ describe("client IP from X-Forwarded-For", () => {
 
 describe("simulated payments", () => {
   it("performs a movement once per idempotency key", async () => {
-    const idempotencyKey = paymentKey("order-unit-1", "payout");
-    const a = await payments.payout({ idempotencyKey, orderId: "order-unit-1", sellerId: "s", amountIdr: 100 });
-    const b = await payments.payout({ idempotencyKey, orderId: "order-unit-1", sellerId: "s", amountIdr: 100 });
+    const idempotencyKey = paymentKey("order-unit-1", "refund");
+    const a = await payments.refund({ idempotencyKey, orderId: "order-unit-1", ref: "ch", amountIdr: 100 });
+    const b = await payments.refund({ idempotencyKey, orderId: "order-unit-1", ref: "ch", amountIdr: 100 });
     expect(b.ref).toBe(a.ref);
-    const other = await payments.payout({ idempotencyKey: paymentKey("order-unit-2", "payout"), orderId: "order-unit-2", sellerId: "s", amountIdr: 100 });
+    const other = await payments.refund({ idempotencyKey: paymentKey("order-unit-2", "refund"), orderId: "order-unit-2", ref: "ch", amountIdr: 100 });
     expect(other.ref).not.toBe(a.ref);
   });
 

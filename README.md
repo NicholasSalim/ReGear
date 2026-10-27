@@ -81,8 +81,24 @@ or QRIS: methods Midtrans can refund through its API, which escrow needs) and is
 3. Pay test orders with the [Midtrans simulator](https://simulator.sandbox.midtrans.com).
 
 The order page labels sandbox payments as tests. Production refuses to start payments without
-a key rather than falling back to simulated mode. Seller payouts are not automated yet: they are
-logged, and sent by hand.
+a key rather than falling back to simulated mode.
+
+### Seller payouts
+
+A completed order credits the seller's balance (total minus the platform fee and any refund).
+Sellers add a bank account and withdraw from **Seller dashboard → Payouts**; the amount leaves
+their balance at once.
+
+- Withdrawals are paid by hand. Each one waits in **Admin → Payouts**: transfer the amount from
+  the company bank account (check the holder name your bank shows), then **Mark paid** with the
+  transfer reference, or **Mark failed** to return the money to the seller's balance. The seller
+  is emailed either way.
+- A withdrawal first needs approval when it's the seller's first, over Rp 10.000.000, within 48
+  hours of a bank account change, to an account whose holder doesn't match the verified name, or
+  while the seller has an open dispute.
+- Development simulates the transfer, so approving pays at once; `PAYOUTS_MODE=manual` gives the
+  production flow locally. Midtrans settles buyer payments into your bank account: keep that
+  account above **Owed to sellers** on the admin page.
 
 ### Scripts
 
@@ -192,7 +208,7 @@ The app is fully available in Indonesian (default) and English.
 
 ## Going further in production
 
-- **Payouts.** Automate seller payouts (Midtrans Iris or a bank API) with stored payout destinations and references.
+- **Automatic payouts.** Implement `PayoutProvider` (`src/lib/payouts/provider.ts`) with a disbursement API (Midtrans Iris, Xendit, Flip) to send withdrawals without an admin.
 - **Storage.** Swap `src/lib/storage.ts` for S3/R2. Keep private documents in a separate, encrypted bucket.
 - **Multi-instance.** Set `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY`, use a shared cache handler (`'use cache: remote'`), and move rate limiting to Redis if load warrants it.
 - **Not yet built:** email notifications (order and dispute events), carrier tracking webhooks, and 2FA for admin accounts.

@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { invalidate } from "@/lib/cache";
 import { runOrderMaintenance } from "@/lib/orders/service";
+import { runPayoutMaintenance } from "@/lib/payouts/service";
 import { purgeExpiredRateLimits } from "@/lib/security/rate-limit";
 import { deletePublicImage } from "@/lib/storage";
 import { AUDIT_RETENTION_DAYS, EMAIL_LOG_RETENTION_DAYS } from "@/lib/legal";
@@ -24,6 +25,7 @@ export async function POST(req: Request) {
 
   const result = await runOrderMaintenance();
   invalidate(result.tags, "route");
+  const withdrawals = await runPayoutMaintenance();
 
   const now = new Date();
   const [sessions] = await Promise.all([
@@ -50,6 +52,7 @@ export async function POST(req: Request) {
   return NextResponse.json({
     expiredOrders: result.expired,
     autoDelivered: result.autoDelivered,
+    ...withdrawals,
     purgedSessions: sessions.count,
     purgedOrphanUploads: orphans.count,
     purgedAuditLogs: oldLogs.count,

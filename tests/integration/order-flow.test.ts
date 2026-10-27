@@ -27,6 +27,8 @@ async function fixture() {
     db.review.deleteMany(),
     db.returnRequest.deleteMany(),
     db.orderEvent.deleteMany(),
+    db.balanceEntry.deleteMany(),
+    db.withdrawal.deleteMany(),
     db.order.deleteMany(),
     db.conditionReport.deleteMany(),
     db.listing.deleteMany(),
@@ -188,9 +190,8 @@ describe("money movements under concurrency", () => {
     vi.restoreAllMocks();
   });
 
-  it("sends a resolution submitted twice at once to the provider with one key per movement", async () => {
+  it("refunds once and credits the seller once when a resolution is submitted twice at once", async () => {
     const refund = vi.spyOn(payments, "refund");
-    const payout = vi.spyOn(payments, "payout");
     const { orderId } = await orders.createOrder(f.buyer.id, f.listing.id, address);
     await orders.payOrder(orderId, f.buyer.id);
     await orders.shipOrder(orderId, f.sellerUser.id, "JNE", "JNE123456");
@@ -203,8 +204,11 @@ describe("money movements under concurrency", () => {
     expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
     // However many requests reach the provider, they name the same movement, so it happens once.
     expect(new Set(refund.mock.calls.map(([c]) => c.idempotencyKey))).toEqual(new Set([`order:${orderId}:refund`]));
-    expect(new Set(payout.mock.calls.map(([c]) => c.idempotencyKey))).toEqual(new Set([`order:${orderId}:payout`]));
     expect((await db.order.findUniqueOrThrow({ where: { id: orderId } })).refundIdr).toBe(2_500);
+    // The seller gets total minus the platform fee minus the refund, once.
+    const order = await db.order.findUniqueOrThrow({ where: { id: orderId } });
+    const credits = await db.balanceEntry.findMany({ where: { orderId } });
+    expect(credits.map((c) => c.amountIdr)).toEqual([order.totalIdr - order.platformFeeIdr - 2_500]);
   });
 
   it("refunds a paid order once when buyer and seller cancel at the same time", async () => {

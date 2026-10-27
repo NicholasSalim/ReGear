@@ -17,6 +17,7 @@ import {
   MAX_PRICE_IDR,
   MAX_SHIPPING_IDR,
   MIN_PRICE_IDR,
+  MIN_WITHDRAWAL_IDR,
   RETURN_REASONS,
   WARRANTY_TYPES,
 } from "@/lib/constants";
@@ -339,6 +340,17 @@ export const reviewSchema = z.object({
   rating: z.coerce.number().int().min(1).max(5),
   comment: text(0, 1000),
 });
+
+// Payouts ---------------------------------------------------------------------
+
+export const payoutAccountSchema = z.object({
+  bank: z.string().trim().toLowerCase().regex(/^[a-z0-9_]{2,30}$/, vmsg("choose")),
+  // People type account numbers with spaces or dashes; banks only use the digits.
+  accountNumber: z.string().transform((s) => s.replace(/[\s.-]/g, "")).pipe(z.string().regex(/^\d{5,20}$/, vmsg("accountNumber"))),
+  accountName: text(3, 100),
+});
+
+export const withdrawalSchema = z.object({ amount: moneyIdr({ min: MIN_WITHDRAWAL_IDR, max: 2_000_000_000 }) });
 
 /** Flatten zod issues into a { field: message } map for forms, in the visitor's language. */
 export function fieldErrors(error: z.ZodError, t: Dictionary, locale: Locale): Record<string, string> {

@@ -126,14 +126,21 @@ model SellerProfile {
   ratingAvg          Float     @default(0)
   ratingCount        Int       @default(0)
   salesCount         Int       @default(0)
+  // Where withdrawals are sent. The holder name is the one the bank reports.
+  payoutBank          String?
+  payoutAccountNumber String?
+  payoutAccountName   String?
+  payoutAccountSetAt  DateTime?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
-  user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  listings      Listing[]
-  sales         Order[]               @relation("SellerOrders")
-  verifications VerificationRequest[]
-  reviews       Review[]
+  user           User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listings       Listing[]
+  sales          Order[]               @relation("SellerOrders")
+  verifications  VerificationRequest[]
+  reviews        Review[]
+  balanceEntries BalanceEntry[]
+  withdrawals    Withdrawal[]
 }
 
 model VerificationRequest {
@@ -265,9 +272,10 @@ model Order {
   seller        SellerProfile  @relation("SellerOrders", fields: [sellerId], references: [id])
   listing       Listing        @relation(fields: [listingId], references: [id])
   events        OrderEvent[]
-  returnRequest ReturnRequest?
-  dispute       Dispute?
-  review        Review?
+  returnRequest  ReturnRequest?
+  dispute        Dispute?
+  review         Review?
+  balanceEntries BalanceEntry[]
 
   @@index([buyerId, createdAt])
   @@index([sellerId, createdAt])
@@ -388,4 +396,52 @@ model AuditLog {
 
   @@index([entity, entityId])
   @@index([createdAt])
+}
+
+// Seller money ledger: the balance is the sum of amountIdr. Each completed
+// order credits the seller once (SALE); each withdrawal debits it once
+// (WITHDRAWAL) and, if the transfer fails or is rejected, credits it back
+// once (WITHDRAWAL_RETURNED). Rows are never updated or deleted.
+model BalanceEntry {
+  id           String   @id @default(cuid())
+  sellerId     String
+  type         String // SALE | WITHDRAWAL | WITHDRAWAL_RETURNED
+  amountIdr    Int // credits positive, debits negative
+  orderId      String?
+  withdrawalId String?
+  createdAt    DateTime @default(now())
+
+  seller     SellerProfile @relation(fields: [sellerId], references: [id])
+  order      Order?        @relation(fields: [orderId], references: [id])
+  withdrawal Withdrawal?   @relation(fields: [withdrawalId], references: [id])
+
+  @@unique([type, orderId])
+  @@unique([type, withdrawalId])
+  @@index([sellerId, createdAt])
+}
+
+// A seller moving their balance to their bank account. The bank details are
+// copied at request time, so a later change can't redirect it.
+model Withdrawal {
+  id            String    @id @default(cuid())
+  sellerId      String
+  amountIdr     Int
+  status        String    @default("PENDING_REVIEW") // PENDING_REVIEW | SENDING | PROCESSING | COMPLETED | FAILED | REJECTED | NEEDS_ATTENTION
+  bank          String
+  accountNumber String
+  accountName   String
+  reviewReasons String    @default("[]") // JSON array: why it waited for an admin
+  providerRef   String?   @unique // payout reference at the provider (Iris reference_no)
+  note          String? // admin note, or what went wrong
+  reviewedById  String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sentAt        DateTime?
+  completedAt   DateTime?
+
+  seller  SellerProfile  @relation(fields: [sellerId], references: [id])
+  entries BalanceEntry[]
+
+  @@index([status, createdAt])
+  @@index([sellerId, createdAt])
 }

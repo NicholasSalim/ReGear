@@ -305,29 +305,28 @@ export async function confirmDelivery(orderId: string, buyerId: string | null): 
   });
 }
 
-async function completeInTx(tx: Tx, order: { id: string; status: string; listingId: string; sellerId: string; paymentRef: string | null; totalIdr: number; platformFeeIdr: number; refundIdr: number }, actorId: string | null, by: "buyer" | "window") {
+/** The seller's share of a completed order goes into their balance, once per order (unique per order). */
+async function creditSeller(tx: Tx, order: { id: string; sellerId: string; totalIdr: number; platformFeeIdr: number }, refundIdr: number) {
+  await tx.balanceEntry.create({ data: { sellerId: order.sellerId, type: "SALE", orderId: order.id, amountIdr: order.totalIdr - order.platformFeeIdr - refundIdr } });
+}
+
+async function completeInTx(tx: Tx, order: { id: string; status: string; listingId: string; sellerId: string; totalIdr: number; platformFeeIdr: number; refundIdr: number }, actorId: string | null, by: "buyer" | "window") {
   await setStatus(tx, order.id, order.status, "COMPLETED", { completedAt: new Date() });
   await tx.listing.update({ where: { id: order.listingId }, data: { status: "SOLD" } });
   await tx.sellerProfile.update({ where: { id: order.sellerId }, data: { salesCount: { increment: 1 } } });
+  await creditSeller(tx, order, order.refundIdr);
   await addEvent(tx, order.id, "COMPLETED", { by }, actorId);
 }
 
 export async function acceptOrder(orderId: string, buyerId: string): Promise<Result> {
-  const result = await db.$transaction(async (tx) => {
+  return db.$transaction(async (tx) => {
     const order = await loadOrder(tx, orderId);
     assertBuyer(order, buyerId);
     // A disputed order is settled by an admin, not by the buyer accepting it.
     if (order.status !== "DELIVERED") throw new InvalidTransitionError(order.status, "COMPLETED");
     await completeInTx(tx, order, buyerId, "buyer");
-    return { order, result: { orderId, tags: [...tagsFor(order), TAGS.seller(order.sellerId)] } };
+    return { orderId, tags: [...tagsFor(order), TAGS.seller(order.sellerId)] };
   });
-  await payments.payout({
-    idempotencyKey: paymentKey(orderId, "payout"),
-    orderId,
-    sellerId: result.order.sellerId,
-    amountIdr: result.order.totalIdr - result.order.platformFeeIdr,
-  });
-  return result.result;
 }
 
 export async function autoCompleteOrder(orderId: string) {
@@ -337,9 +336,6 @@ export async function autoCompleteOrder(orderId: string) {
     await completeInTx(tx, o, null, "window");
     return o;
   });
-  if (order) {
-    await payments.payout({ idempotencyKey: paymentKey(orderId, "payout"), orderId, sellerId: order.sellerId, amountIdr: order.totalIdr - order.platformFeeIdr });
-  }
   return order ? tagsFor(order) : [];
 }
 
@@ -459,9 +455,6 @@ export async function resolveDispute(
     refundIdr = partialIdr;
   }
   if (refundIdr > 0 && order.paymentRef) await payments.refund({ idempotencyKey: paymentKey(order.id, "refund"), orderId: order.id, ref: order.paymentRef, amountIdr: refundIdr });
-  if (resolution !== "REFUND_BUYER") {
-    await payments.payout({ idempotencyKey: paymentKey(order.id, "payout"), orderId: order.id, sellerId: order.sellerId, amountIdr: order.totalIdr - order.platformFeeIdr - refundIdr });
-  }
 
   return db.$transaction(async (tx) => {
     await tx.dispute.update({
@@ -482,6 +475,7 @@ export async function resolveDispute(
       });
       await tx.listing.update({ where: { id: order.listingId }, data: { status: "SOLD" } });
       await tx.sellerProfile.update({ where: { id: order.sellerId }, data: { salesCount: { increment: 1 } } });
+      await creditSeller(tx, order, refundIdr);
       await addEvent(
         tx,
         order.id,

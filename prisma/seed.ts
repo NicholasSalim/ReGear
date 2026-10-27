@@ -143,6 +143,8 @@ async function main() {
     db.review.deleteMany(),
     db.returnRequest.deleteMany(),
     db.orderEvent.deleteMany(),
+    db.balanceEntry.deleteMany(),
+    db.withdrawal.deleteMany(),
     db.order.deleteMany(),
     db.favorite.deleteMany(),
     db.upload.deleteMany(),
@@ -181,6 +183,24 @@ async function main() {
       },
     });
     sellers[s.key] = { id: profile.id, userId: user.id };
+    // Verified sellers have the approved request behind their badge; withdrawals compare its legal name.
+    if (s.status === "VERIFIED") {
+      const idDoc = await makeImage("private", "SAMPLE ID — NOT A REAL DOCUMENT", `${s.displayName} · demo verification`, 5, 1);
+      await db.verificationRequest.create({
+        data: {
+          sellerId: profile.id,
+          legalName: s.name,
+          phone: "+62 812 0000 0000",
+          address: `Jl. Contoh No. 1, ${s.location}`,
+          idType: "NATIONAL_ID",
+          idNumberLast4: "1234",
+          documentKey: idDoc.key,
+          status: "APPROVED",
+          createdAt: new Date(Date.now() - 92 * 86_400_000),
+          reviewedAt: new Date(Date.now() - 90 * 86_400_000),
+        },
+      });
+    }
   }
 
   // A pending verification request with a generated "document" for the admin queue.
@@ -306,6 +326,8 @@ async function main() {
     daysAgo: 20,
     events: ["PAID", "SHIPPED", "DELIVERED", "COMPLETED"],
   });
+  // A completed order credits the seller's balance (see completeInTx).
+  await db.balanceEntry.create({ data: { sellerId: completed.sellerId, type: "SALE", orderId: completed.id, amountIdr: completed.totalIdr - completed.platformFeeIdr } });
   await db.review.create({ data: { orderId: completed.id, sellerId: sellers.techhaven.id, buyerId: buyer.id, rating: 5, comment: "Exactly as described — the condition report was spot on. Fast shipping too!" } });
   await db.sellerProfile.update({ where: { id: sellers.techhaven.id }, data: { ratingAvg: 5, ratingCount: 1, salesCount: 1 } });
 

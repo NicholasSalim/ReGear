@@ -4,9 +4,10 @@ import { env, isProd } from "@/lib/env";
 import { createMidtrans } from "@/lib/midtrans";
 
 // Payment provider abstraction. ReGear holds buyer funds in escrow from
-// payment until the order completes (or is refunded). Midtrans is used when
-// MIDTRANS_SERVER_KEY is set; otherwise development and tests use the
-// simulated provider, which pays instantly.
+// payment until the order completes (or is refunded); the seller's share then
+// goes into their balance, and withdrawals go out through src/lib/payouts.
+// Midtrans is used when MIDTRANS_SERVER_KEY is set; otherwise development and
+// tests use the simulated provider, which pays instantly.
 //
 // A real provider takes payment on its own page: checkout returns a URL to
 // send the buyer to, and the order only becomes PAID once the provider's
@@ -42,11 +43,10 @@ export interface PaymentProvider {
   /** Stop a payment that hasn't happened yet so it can't happen later; returns the final state (it may have just been paid). */
   abandon(orderId: string): Promise<PaymentState>;
   refund(input: { idempotencyKey: IdempotencyKey; orderId: string; ref: string; amountIdr: number }): Promise<{ ref: string }>;
-  payout(input: { idempotencyKey: IdempotencyKey; orderId: string; amountIdr: number; sellerId: string }): Promise<{ ref: string }>;
 }
 
 /** The one key for each money movement of an order. */
-export const paymentKey = (orderId: string, movement: "charge" | "refund" | "payout") => `order:${orderId}:${movement}`;
+export const paymentKey = (orderId: string, movement: "charge" | "refund") => `order:${orderId}:${movement}`;
 
 // Simulated provider: like a real one, it answers a repeated key with the
 // first result, and refuses a repeated key asking for a different amount.
@@ -75,9 +75,6 @@ const simulated: PaymentProvider = {
   async refund({ idempotencyKey, amountIdr }) {
     return once("sim_re", idempotencyKey, amountIdr);
   },
-  async payout({ idempotencyKey, amountIdr }) {
-    return once("sim_po", idempotencyKey, amountIdr);
-  },
 };
 
 function notConfigured(): never {
@@ -94,7 +91,6 @@ const unconfigured: PaymentProvider = {
     return { state: "none" };
   },
   refund: notConfigured,
-  payout: notConfigured,
 };
 
 export const payments: PaymentProvider = env.MIDTRANS_SERVER_KEY

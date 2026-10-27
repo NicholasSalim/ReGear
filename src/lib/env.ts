@@ -25,6 +25,9 @@ const schema = z.object({
   // simulated provider and production refuses to take payments.
   MIDTRANS_SERVER_KEY: z.string().min(10).optional(),
   MIDTRANS_ENV: z.enum(["sandbox", "production"]).default("sandbox"),
+  // Seller withdrawals are paid by hand in production. "manual" does that in
+  // development too; "auto" simulates the transfer outside production.
+  PAYOUTS_MODE: z.enum(["auto", "manual"]).default("auto"),
 });
 
 const raw = Object.fromEntries(Object.entries(process.env).filter(([, v]) => v !== ""));

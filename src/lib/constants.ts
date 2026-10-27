@@ -186,3 +186,16 @@ export const AUTO_COMPLETE_DAYS_AFTER_DELIVERY_BUFFER = 2; // added to the retur
 export const MAX_LISTING_IMAGES = 10;
 export const MAX_COMPARE = 4;
 export const PAGE_SIZE = 24;
+
+// Seller withdrawals
+export const WITHDRAWAL_STATUSES = ["PENDING_REVIEW", "SENDING", "PROCESSING", "COMPLETED", "FAILED", "REJECTED", "NEEDS_ATTENTION"] as const;
+export type WithdrawalStatus = (typeof WITHDRAWAL_STATUSES)[number];
+/** A seller can have one of these at a time. */
+export const OPEN_WITHDRAWAL_STATUSES: WithdrawalStatus[] = ["PENDING_REVIEW", "SENDING", "PROCESSING", "NEEDS_ATTENTION"];
+/** Why a withdrawal waits for an admin instead of going straight to the bank. */
+export const WITHDRAWAL_REVIEW_REASONS = ["first", "large", "newAccount", "nameMismatch", "openDispute"] as const;
+export type WithdrawalReviewReason = (typeof WITHDRAWAL_REVIEW_REASONS)[number];
+export const MIN_WITHDRAWAL_IDR = 10_000;
+export const WITHDRAWAL_REVIEW_ABOVE_IDR = 10_000_000;
+/** A payout account changed this recently holds withdrawals for review (account takeover). */
+export const NEW_PAYOUT_ACCOUNT_HOURS = 48;

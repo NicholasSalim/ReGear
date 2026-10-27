@@ -2,7 +2,7 @@ import "server-only";
 import { db } from "@/lib/db";
 import { DomainError } from "@/lib/orders/service";
 import { deletePrivateDocument, deletePublicImage } from "@/lib/storage";
-import type { OrderStatus } from "@/lib/constants";
+import { OPEN_WITHDRAWAL_STATUSES, type OrderStatus } from "@/lib/constants";
 
 // Account deletion. The user row is anonymised, not removed: orders, reviews
 // and dispute threads belong to the other party too and stay readable, shown
@@ -12,9 +12,9 @@ import type { OrderStatus } from "@/lib/constants";
 /** Orders in these states still hold money, an item or a claim. */
 export const OPEN_ORDER_STATUSES: OrderStatus[] = ["PENDING_PAYMENT", "PAID", "SHIPPED", "DELIVERED", "RETURN_IN_PROGRESS", "DISPUTED"];
 
-export type DeletionBlockers = { admin: boolean; purchases: number; sales: number };
+export type DeletionBlockers = { admin: boolean; purchases: number; sales: number; balance: boolean };
 
-type Reader = Pick<typeof db, "order">;
+type Reader = Pick<typeof db, "order" | "balanceEntry" | "withdrawal">;
 
 async function openOrderCounts(client: Reader, userId: string, sellerId: string | undefined) {
   const [purchases, sales] = await Promise.all([
@@ -24,15 +24,25 @@ async function openOrderCounts(client: Reader, userId: string, sellerId: string 
   return { purchases, sales };
 }
 
+/** Money the seller hasn't withdrawn yet would be lost with the account. */
+async function hasMoney(client: Reader, sellerId: string | undefined) {
+  if (!sellerId) return false;
+  const [sum, open] = await Promise.all([
+    client.balanceEntry.aggregate({ where: { sellerId }, _sum: { amountIdr: true } }),
+    client.withdrawal.count({ where: { sellerId, status: { in: OPEN_WITHDRAWAL_STATUSES } } }),
+  ]);
+  return (sum._sum.amountIdr ?? 0) > 0 || open > 0;
+}
+
 /** What stops this account from being deleted right now (all zero/false means it can be). */
 export async function getDeletionBlockers(userId: string): Promise<DeletionBlockers> {
   const user = await db.user.findUniqueOrThrow({ where: { id: userId }, select: { role: true, sellerProfile: { select: { id: true } } } });
-  const counts = await openOrderCounts(db, userId, user.sellerProfile?.id);
-  return { admin: user.role === "ADMIN", ...counts };
+  const [counts, balance] = await Promise.all([openOrderCounts(db, userId, user.sellerProfile?.id), hasMoney(db, user.sellerProfile?.id)]);
+  return { admin: user.role === "ADMIN", ...counts, balance };
 }
 
 export function isBlocked(b: DeletionBlockers) {
-  return b.admin || b.purchases > 0 || b.sales > 0;
+  return b.admin || b.purchases > 0 || b.sales > 0 || b.balance;
 }
 
 /** Address fields that identify the buyer; the city and country stay for records. */
@@ -65,6 +75,7 @@ export async function deleteAccount(userId: string) {
     const open = await openOrderCounts(tx, userId, sellerId);
     if (open.purchases > 0 || open.sales > 0) throw new DomainError("accountBusy");
     if (sellerId && (await tx.listing.count({ where: { sellerId, status: "RESERVED" } })) > 0) throw new DomainError("accountBusy");
+    if (await hasMoney(tx, sellerId)) throw new DomainError("accountHasBalance");
 
     // 3. Photos: keep the ones past orders show (their snapshot points at the
     //    listing's photos); delete unattached photos and those of listings that never sold.
@@ -93,7 +104,17 @@ export async function deleteAccount(userId: string) {
     if (sellerId) {
       await tx.sellerProfile.update({
         where: { id: sellerId },
-        data: { displayName: "", bio: "", location: "", verificationStatus: "UNVERIFIED", verifiedAt: null },
+        data: {
+          displayName: "",
+          bio: "",
+          location: "",
+          verificationStatus: "UNVERIFIED",
+          verifiedAt: null,
+          payoutBank: null,
+          payoutAccountNumber: null,
+          payoutAccountName: null,
+          payoutAccountSetAt: null,
+        },
       });
     }
     // The email is freed so the person can sign up again later.

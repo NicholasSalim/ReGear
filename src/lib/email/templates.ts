@@ -4,6 +4,7 @@ import { id } from "@/i18n/dictionaries/id";
 import { localePath, type Locale } from "@/i18n/locales";
 import type { EventType } from "@/i18n/messages";
 import { env } from "@/lib/env";
+import { formatMoney } from "@/lib/format";
 import type { OutgoingEmail } from "@/lib/email/transport";
 
 // Every email ReGear sends, worded from the dictionaries in the recipient's
@@ -22,7 +23,10 @@ export type EmailPayload =
   | { template: "order-event"; params: { orderId: string; number: string; title: string; type: EventType; role: OrderRole; event: Record<string, unknown> } }
   | { template: "dispute-message"; params: { disputeId: string; number: string; from: "BUYER" | "SELLER" | "ADMIN" } }
   | { template: "verification-approved"; params: Record<string, never> }
-  | { template: "verification-rejected"; params: { note: string } };
+  | { template: "verification-rejected"; params: { note: string } }
+  | { template: "payout-account-changed"; params: { bank: string; account: string; name: string } }
+  | { template: "withdrawal-completed"; params: { amountIdr: number; account: string } }
+  | { template: "withdrawal-failed"; params: { amountIdr: number; rejected: boolean; note: string } };
 
 export type EmailTemplate = EmailPayload["template"];
 
@@ -73,6 +77,30 @@ function content(payload: EmailPayload, locale: Locale): Content {
         paragraphs: [t.verification.rejected.body(payload.params.note)],
         button: { label: t.verification.rejected.button, url: siteUrl("/sell/verification", locale) },
       };
+    case "payout-account-changed": {
+      const { bank, account, name } = payload.params;
+      return {
+        subject: t.payout.accountChanged.subject,
+        paragraphs: [t.payout.accountChanged.body(bank, account, name), t.payout.accountChanged.warning],
+        button: { label: t.payout.button, url: siteUrl("/sell/payouts", locale) },
+      };
+    }
+    case "withdrawal-completed": {
+      const amount = formatMoney(payload.params.amountIdr);
+      return {
+        subject: t.payout.completed.subject(amount),
+        paragraphs: [t.payout.completed.body(amount, payload.params.account)],
+        button: { label: t.payout.button, url: siteUrl("/sell/payouts", locale) },
+      };
+    }
+    case "withdrawal-failed": {
+      const amount = formatMoney(payload.params.amountIdr);
+      return {
+        subject: t.payout.failed.subject(amount),
+        paragraphs: [t.payout.failed.body(amount, payload.params.rejected, payload.params.note)],
+        button: { label: t.payout.button, url: siteUrl("/sell/payouts", locale) },
+      };
+    }
   }
 }
 

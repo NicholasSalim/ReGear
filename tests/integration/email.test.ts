@@ -23,6 +23,8 @@ async function fixture() {
     db.review.deleteMany(),
     db.returnRequest.deleteMany(),
     db.orderEvent.deleteMany(),
+    db.balanceEntry.deleteMany(),
+    db.withdrawal.deleteMany(),
     db.order.deleteMany(),
     db.favorite.deleteMany(),
     db.upload.deleteMany(),

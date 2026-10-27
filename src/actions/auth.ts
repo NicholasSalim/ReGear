@@ -178,6 +178,7 @@ export async function deleteAccountAction(_prev: ActionState, formData: FormData
 
     const blockers = await getDeletionBlockers(user.id);
     if (blockers.admin) return { error: t.domain.adminAccount };
+    if (blockers.balance) return { error: t.domain.accountHasBalance };
     if (isBlocked(blockers)) return { error: t.domain.accountBusy };
 
     const confirmEmail = String(formData.get("confirmEmail") ?? "").trim().toLowerCase();

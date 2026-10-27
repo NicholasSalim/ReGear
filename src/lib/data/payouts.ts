@@ -1,6 +1,8 @@
 import "server-only";
 import { db } from "@/lib/db";
-import { OPEN_WITHDRAWAL_STATUSES, type WithdrawalReviewReason } from "@/lib/constants";
+import { OPEN_WITHDRAWAL_STATUSES, type WithdrawalReviewReason, type WithdrawalStatus } from "@/lib/constants";
+import { dayRange, like, type AdminSearch } from "@/lib/admin/search";
+import type { Prisma } from "@/generated/prisma/client";
 import { payouts } from "@/lib/payouts/provider";
 import { sellerBalance } from "@/lib/payouts/service";
 
@@ -40,21 +42,16 @@ export async function getAdminPayouts() {
     select: {
       displayName: true,
       slug: true,
+      userId: true,
       user: { select: { email: true } },
       verifications: { where: { status: "APPROVED" }, orderBy: { reviewedAt: "desc" as const }, take: 1, select: { legalName: true } },
     },
   };
-  const [owed, inFlight, review, toPay, recent] = await Promise.all([
+  const [owed, inFlight, review, toPay] = await Promise.all([
     db.balanceEntry.aggregate({ _sum: { amountIdr: true } }),
     db.withdrawal.aggregate({ where: { status: { in: OPEN_WITHDRAWAL_STATUSES } }, _sum: { amountIdr: true }, _count: true }),
     db.withdrawal.findMany({ where: { status: "PENDING_REVIEW" }, orderBy: { createdAt: "asc" }, take: 50, include: { seller: sellerSelect } }),
     db.withdrawal.findMany({ where: { status: "NEEDS_ATTENTION" }, orderBy: { createdAt: "asc" }, take: 50, include: { seller: sellerSelect } }),
-    db.withdrawal.findMany({
-      where: { status: { notIn: ["PENDING_REVIEW", "NEEDS_ATTENTION"] } },
-      orderBy: { createdAt: "desc" },
-      take: 30,
-      include: { seller: { select: { displayName: true, slug: true } } },
-    }),
   ]);
   const withReasons = <T extends { reviewReasons: string }>(rows: T[]) => rows.map((r) => ({ ...r, reasons: reasonsOf(r.reviewReasons) }));
   return {
@@ -64,6 +61,37 @@ export async function getAdminPayouts() {
     inFlightCount: inFlight._count,
     review: withReasons(review),
     toPay: withReasons(toPay),
-    recent,
   };
+}
+
+/** Every withdrawal, newest first, matching an admin search. */
+export async function getWithdrawalHistory(s: AdminSearch<WithdrawalStatus>) {
+  const digits = s.q.replace(/\D/g, "");
+  const where: Prisma.WithdrawalWhereInput = {
+    ...(s.status ? { status: s.status } : {}),
+    ...(dayRange(s) ? { createdAt: dayRange(s) } : {}),
+    ...(s.q
+      ? {
+          OR: [
+            { id: s.q },
+            { providerRef: s.q },
+            { accountName: like(s.q) },
+            ...(digits.length >= 4 ? [{ accountNumber: { contains: digits } }] : []),
+            { seller: { displayName: like(s.q) } },
+            { seller: { user: { email: like(s.q) } } },
+          ],
+        }
+      : {}),
+  };
+  const [rows, total] = await Promise.all([
+    db.withdrawal.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip: s.skip,
+      take: s.take,
+      include: { seller: { select: { displayName: true, userId: true } } },
+    }),
+    db.withdrawal.count({ where }),
+  ]);
+  return { rows, total };
 }

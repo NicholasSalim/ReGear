@@ -20,6 +20,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <DashboardNav
           items={[
             { href: "/admin", label: nav.overview, exact: true },
+            { href: "/admin/orders", label: nav.orders },
+            { href: "/admin/users", label: nav.users },
             { href: "/admin/verifications", label: nav.verifications },
             { href: "/admin/disputes", label: nav.disputes },
             { href: "/admin/payouts", label: nav.payouts },

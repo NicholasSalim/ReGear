@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { Link } from "@/i18n/client";
 import { getDictionary, getLocale } from "@/i18n/server";
 import { requireAdmin } from "@/lib/auth/dal";
-import { getAdminPayouts } from "@/lib/data/payouts";
+import { getAdminPayouts, getWithdrawalHistory } from "@/lib/data/payouts";
+import { readSearch } from "@/lib/admin/search";
+import { WITHDRAWAL_STATUSES } from "@/lib/constants";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { bankName } from "@/lib/payouts/provider";
 import { maskAccount } from "@/lib/payouts/service";
@@ -10,6 +12,7 @@ import { withdrawalDecisionAction } from "@/actions/payouts";
 import { WithdrawalStatusBadge } from "@/components/badges";
 import { EmptyState, PageHeader, StatCard } from "@/components/ui";
 import { WithdrawalPayForm, WithdrawalReviewForm } from "../admin-forms";
+import { Pager, SearchBar } from "../search-controls";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getDictionary()).payouts.adminTitle };
@@ -17,9 +20,10 @@ export async function generateMetadata(): Promise<Metadata> {
 
 type Row = Awaited<ReturnType<typeof getAdminPayouts>>["review"][number];
 
-export default async function AdminPayoutsPage() {
+export default async function AdminPayoutsPage({ searchParams }: PageProps<"/[lang]/admin/payouts">) {
   await requireAdmin();
-  const [locale, dict, d] = await Promise.all([getLocale(), getDictionary(), getAdminPayouts()]);
+  const search = readSearch(await searchParams, WITHDRAWAL_STATUSES);
+  const [locale, dict, d, history] = await Promise.all([getLocale(), getDictionary(), getAdminPayouts(), getWithdrawalHistory(search)]);
   const t = dict.payouts;
 
   // Everything the admin needs to make (or check) the bank transfer.
@@ -28,7 +32,7 @@ export default async function AdminPayoutsPage() {
       <p className="text-base font-semibold">
         <span className="num">{formatMoney(w.amountIdr)}</span>
         <span className="ml-2 font-normal text-slate-500">
-          <Link href={`/sellers/${w.seller.slug}`} className="hover:text-brand-700">{w.seller.displayName}</Link> · {w.seller.user.email}
+          <Link href={`/admin/users/${w.seller.userId}`} className="hover:text-brand-700">{w.seller.displayName}</Link> · {w.seller.user.email}
         </span>
       </p>
       <dl className="grid gap-2 sm:grid-cols-2">
@@ -102,21 +106,30 @@ export default async function AdminPayoutsPage() {
         )}
       </section>
 
-      <section className="mt-8" aria-labelledby="recent">
-        <h2 id="recent" className="mb-3 text-lg font-bold">{t.recentTitle}</h2>
-        {d.recent.length === 0 ? (
-          <EmptyState title={t.withdrawalsEmpty} />
+      <section className="mt-8" aria-labelledby="history">
+        <h2 id="history" className="mb-3 text-lg font-bold">{dict.admin.historyTitle}</h2>
+        <SearchBar
+          search={search}
+          path="/admin/payouts"
+          placeholder={dict.admin.placeholders.payouts}
+          statuses={WITHDRAWAL_STATUSES.map((s) => ({ value: s, label: t.status[s] ?? s }))}
+        />
+        {history.rows.length === 0 ? (
+          <EmptyState title={dict.admin.searchBar.none} />
         ) : (
           <ul className="card divide-y divide-slate-100">
-            {d.recent.map((w) => (
+            {history.rows.map((w) => (
               <li key={w.id} className="flex flex-wrap items-center justify-between gap-3 p-4 text-sm">
                 <div className="min-w-0">
                   <p>
-                    <span className="num font-semibold">{formatMoney(w.amountIdr)}</span> · {w.seller.displayName}
+                    <span className="num font-semibold">{formatMoney(w.amountIdr)}</span> ·{" "}
+                    <Link href={`/admin/users/${w.seller.userId}`} className="hover:text-brand-700">{w.seller.displayName}</Link>
                   </p>
                   <p className="text-xs text-slate-500">
-                    {bankName(w.bank)} {maskAccount(w.accountNumber)} · {formatDateTime(w.createdAt, locale)}
+                    {bankName(w.bank)} {maskAccount(w.accountNumber)} · {w.accountName} · {formatDateTime(w.createdAt, locale)}
+                    {w.completedAt && ` → ${formatDateTime(w.completedAt, locale)}`}
                   </p>
+                  <p className="num text-xs text-slate-400">{w.id}</p>
                   {w.note && <p className="mt-1 text-xs text-slate-600">{w.note}</p>}
                 </div>
                 <WithdrawalStatusBadge status={w.status} />
@@ -124,6 +137,7 @@ export default async function AdminPayoutsPage() {
             ))}
           </ul>
         )}
+        <Pager search={search} total={history.total} path="/admin/payouts" />
       </section>
     </>
   );

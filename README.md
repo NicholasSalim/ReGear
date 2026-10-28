@@ -68,7 +68,7 @@ installed.
 
 ### Demo accounts
 
-These demo accounts use the password `Gear-Demo-2026!`.
+The seed creates these accounts, which own the sample listings and orders. No password for them is published: `npm run db:seed` uses `SEED_DEMO_PASSWORD` (and `SEED_ADMIN_PASSWORD` for the admin) from `.env`, or generates them and prints them once. Visitors to a deployed site register their own accounts.
 
 | Role | Email |
 |---|---|
@@ -76,8 +76,7 @@ These demo accounts use the password `Gear-Demo-2026!`.
 | Buyer with an open dispute | `dana@regear.test` |
 | Verified seller | `techhaven@regear.test`, `camerabay@regear.test` |
 | Seller pending verification | `pcparts@regear.test` |
-
-The admin account, `admin@regear.test`, gets its own password: `SEED_ADMIN_PASSWORD` if set, otherwise a random one the seed prints once. A deployed demo shares its database with the seed, so the admin password must not be one published here.
+| Admin | `admin@regear.test` |
 
 Without Midtrans keys, payments run in **simulated mode**: "Pay" succeeds at once and no money moves.
 

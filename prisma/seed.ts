@@ -18,9 +18,10 @@ const files = createFileStore({
   supabaseUrl: process.env.SUPABASE_URL,
   supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
 });
-const DEMO_PASSWORD = "Gear-Demo-2026!";
-// The admin password is never a published one: a deployed demo shares this
-// database, and the demo password above is in the README and the repository.
+// Seeded accounts never get a password written in the repository: a deployed
+// site may run on this database. Set them in .env, or the seed generates them
+// and prints them once.
+const DEMO_PASSWORD = process.env.SEED_DEMO_PASSWORD || randomBytes(18).toString("base64url");
 const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD || randomBytes(18).toString("base64url");
 
 const GRADE_RANK: Record<ConditionGrade, number> = { LIKE_NEW: 0, EXCELLENT: 1, GOOD: 2, FAIR: 3, FOR_PARTS: 4 };
@@ -360,7 +361,7 @@ async function main() {
 
   await db.favorite.createMany({ data: [listingIds[0], listingIds[3], listingIds[7]].map((listingId) => ({ userId: buyer.id, listingId })) });
 
-  console.log("\nSeed complete. Demo accounts (password: %s)", DEMO_PASSWORD);
+  console.log("\nSeed complete. Demo accounts:");
   console.table([
     { role: "Buyer", email: buyer.email },
     { role: "Buyer (dispute)", email: buyer2.email },
@@ -368,8 +369,10 @@ async function main() {
     { role: "Seller (verified)", email: "camerabay@regear.test" },
     { role: "Seller (pending verification)", email: "pcparts@regear.test" },
   ]);
+  if (process.env.SEED_DEMO_PASSWORD) console.log("Their password is the one in SEED_DEMO_PASSWORD.");
+  else console.log("Their password: %s  (generated; shown only now)", DEMO_PASSWORD);
   if (process.env.SEED_ADMIN_PASSWORD) console.log("Admin: %s, with the password in SEED_ADMIN_PASSWORD", admin.email);
-  else console.log("Admin: %s / %s  (generated; shown only now, so note it down)", admin.email, ADMIN_PASSWORD);
+  else console.log("Admin: %s / %s  (generated; shown only now)", admin.email, ADMIN_PASSWORD);
 }
 
 main()

@@ -39,6 +39,10 @@ export const clientEn = {
     haveAccount: "Already have an account?",
     acceptTerms: "I agree to ReGear's [Terms & Conditions](/terms) and [Privacy Policy](/privacy).",
     forgotLink: "Forgot password?",
+    code: "6-digit code",
+    confirmCode: "Create account",
+    confirmingCode: "Checking…",
+    resendCode: "Send a new code",
   },
   settings: {
     profile: "Profile",

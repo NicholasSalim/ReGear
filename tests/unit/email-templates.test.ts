@@ -43,8 +43,19 @@ describe("order email copy", () => {
     }
   });
 
+  it("puts the sign-up code in the subject and body, in both languages", () => {
+    for (const locale of ["id", "en"] as const) {
+      const mail = renderEmail({ template: "signup-code", params: { code: "042917", name: "Pat" } }, locale, "x@test.dev", null);
+      expect(mail.subject).toContain("042917");
+      expect(mail.text).toContain("\n042917\n");
+      expect(mail.html).toContain(">042917</p>");
+      const existing = renderEmail({ template: "signup-existing", params: {} }, locale, "x@test.dev", "Pat");
+      expect(existing.text).not.toMatch(/\d{6}|undefined/);
+    }
+  });
+
   it("escapes names and links in HTML", () => {
-    const mail = renderEmail({ template: "verify-email", params: { url: 'http://x/?a="b"&c', name: "<b>Pat</b>" } }, "en", "x@test.dev", "<b>Pat</b>");
+    const mail = renderEmail({ template: "reset-password", params: { url: 'http://x/?a="b"&c', name: "<b>Pat</b>" } }, "en", "x@test.dev", "<b>Pat</b>");
     expect(mail.html).toContain("Hi &lt;b&gt;Pat&lt;/b&gt;,");
     expect(mail.html).toContain('href="http://x/?a=&quot;b&quot;&amp;c"');
   });

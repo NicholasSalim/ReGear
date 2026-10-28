@@ -64,6 +64,8 @@ export async function validateSessionToken(token: string) {
   if (!session || session.expiresAt.getTime() <= Date.now()) return null;
   // Sessions issued before the latest password change are invalid.
   if (session.createdAt < session.user.passwordChangedAt) return null;
+  // Only accounts whose owner has proved the email address can be signed in.
+  if (!session.user.emailVerifiedAt) return null;
   return session;
 }
 

@@ -40,6 +40,10 @@ export const clientId: typeof clientEn = {
     haveAccount: "Sudah punya akun?",
     acceptTerms: "Saya menyetujui [Syarat & Ketentuan](/terms) dan [Kebijakan Privasi](/privacy) ReGear.",
     forgotLink: "Lupa kata sandi?",
+    code: "Kode 6 digit",
+    confirmCode: "Buat akun",
+    confirmingCode: "Memeriksa…",
+    resendCode: "Kirim kode baru",
   },
   settings: {
     profile: "Profil",

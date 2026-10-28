@@ -9,10 +9,9 @@ import { hashPassword } from "@/lib/auth/password";
 // the database keeps its SHA-256. Issuing a new link retires older unused
 // ones of the same kind, and a link works once until it expires.
 
-export type TokenPurpose = "VERIFY_EMAIL" | "RESET_PASSWORD";
+export type TokenPurpose = "RESET_PASSWORD";
 
 export const TOKEN_TTL_MS: Record<TokenPurpose, number> = {
-  VERIFY_EMAIL: 24 * 60 * 60_000,
   RESET_PASSWORD: 60 * 60_000,
 };
 
@@ -42,16 +41,6 @@ async function consumeEmailToken(tx: Prisma.TransactionClient, token: unknown, p
   const { userId } = await tx.emailToken.findUniqueOrThrow({ where: { tokenHash }, select: { userId: true } });
   const user = await tx.user.findUnique({ where: { id: userId }, select: { id: true, deletedAt: true } });
   return user && !user.deletedAt ? user.id : null;
-}
-
-/** Marks the email verified. Returns the user id, or null for a bad link. */
-export async function verifyEmailWithToken(token: unknown) {
-  return db.$transaction(async (tx) => {
-    const userId = await consumeEmailToken(tx, token, "VERIFY_EMAIL");
-    if (!userId) return null;
-    await tx.user.updateMany({ where: { id: userId, emailVerifiedAt: null }, data: { emailVerifiedAt: new Date() } });
-    return userId;
-  });
 }
 
 /**

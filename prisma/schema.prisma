@@ -54,8 +54,30 @@ model User {
   @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "User_name_trgm_idx")
 }
 
-// One-time links sent by email (email verification, password reset). Only the
-// SHA-256 of the token is stored; a token works once and until it expires.
+// A sign-up waiting for its emailed code. No account exists until the code is
+// entered in the browser that signed up (that browser holds the cookie whose
+// SHA-256 is the id), so nobody can open an account on an address they can't
+// read. codeHash is null when the address already has an account: that
+// address is told so instead, and no code can match.
+model SignupRequest {
+  id           String   @id
+  email        String
+  name         String
+  passwordHash String
+  locale       String
+  termsVersion String
+  codeHash     String?
+  attempts     Int      @default(0)
+  sends        Int      @default(1)
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  @@index([email])
+  @@index([expiresAt])
+}
+
+// One-time links sent by email (password reset). Only the SHA-256 of the
+// token is stored; a token works once and until it expires.
 model EmailToken {
   id        String    @id @default(cuid())
   userId    String

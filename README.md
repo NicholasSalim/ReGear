@@ -149,9 +149,9 @@ Note: `NEXT_PUBLIC_SITE_URL` is inlined at build time and defines the redirect U
 ReGear sends account and order emails: email confirmation, password reset, order, return and dispute updates, and seller verification results. Each email is worded in the recipient's language (the one they last signed in with).
 
 - **Delivery.** Set `SMTP_URL` (for example `smtps://user:pass@smtp.example.com:465`) and `EMAIL_FROM`; any SMTP provider works (Brevo, Mailgun, Amazon SES, Resend, ...). Use a domain with SPF, DKIM and DMARC set up so mail isn't marked as spam.
-- **Development.** Without `SMTP_URL`, emails are written to `STORAGE_DIR/dev-mail` and listed at http://localhost:3000/api/dev/mail, so you can click confirmation and reset links. That page doesn't exist in production. In production without `SMTP_URL`, emails stay queued and an error is logged.
+- **Development.** Without `SMTP_URL`, emails are written to `STORAGE_DIR/dev-mail` and listed at http://localhost:3000/api/dev/mail, so you can read sign-up codes and click reset links. That page doesn't exist in production. In production without `SMTP_URL`, emails stay queued and an error is logged.
 - **How it works.** Emails are written to the `EmailOutbox` table in the same transaction as the change that causes them (`src/lib/email/`), so a rolled-back change sends nothing. They're delivered right after the response, and the maintenance job retries failures (up to 5 attempts, with backoff). Order notifications only go to confirmed addresses. Who gets which order email is defined in `src/lib/email/notify.ts`.
-- **Email confirmation.** New accounts get a confirmation link (valid 24 hours). Buying and publishing listings need a confirmed address; drafts and browsing don't. Google sign-ins count as confirmed. A banner offers to resend the link.
+- **Sign-up proves the email address.** Signing up emails a 6-digit code, and no account exists until that code is typed into the same browser (15 minutes, 5 tries, up to 5 codes). Someone using another person's address never sees the code, and the owner can't confirm it by accident: there is no link to click. Signing up with an address that already has an account looks the same on screen, but that address gets a "you already have an account" email instead of a code, so sign-up can't reveal who is registered. Google sign-ins count as confirmed, since Google has verified the address. Accounts from before this rule that were never confirmed can't sign in; trying sends their address a password reset link, and setting a password from it confirms the account.
 - **Password reset.** "Lupa kata sandi?" on the sign-in page emails a link that works once, for 1 hour. The answer is the same whether or not the email has an account. Setting the new password ends every session and clears a sign-in lockout.
 
 ### Scheduled maintenance
@@ -180,7 +180,7 @@ Both free plans are enough for a demo. `vercel.json` runs the app in Singapore (
 | `CRON_SECRET` | a new random string of 32+ characters |
 | `TRUST_PROXY` | `true` (Vercel sets `X-Forwarded-For` to the visitor's address) |
 | `MIDTRANS_SERVER_KEY`, `MIDTRANS_ENV` | your Midtrans key, and `sandbox` or `production` to match it |
-| `SMTP_URL`, `EMAIL_FROM` | an SMTP service (Brevo's free plan works with a verified sender address). Without it, nobody can confirm their email, and buying and publishing need a confirmed email. |
+| `SMTP_URL`, `EMAIL_FROM` | an SMTP service (Brevo's free plan works with a verified sender address). Without it, sign-up codes never arrive, so nobody can create an account with email and password. |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | optional; add `https://<project>.vercel.app/api/auth/google/callback` as a redirect URI |
 
 **3. Midtrans.** In the Midtrans dashboard, set the payment notification URL to `https://<project>.vercel.app/api/payments/midtrans`.

@@ -9,7 +9,7 @@ const { db } = await import("@/lib/db");
 const orders = await import("@/lib/orders/service");
 const { deliverPendingEmails, enqueueEmail } = await import("@/lib/email/outbox");
 const { DEV_MAIL_DIR } = await import("@/lib/email/transport");
-const { issueEmailToken, isEmailTokenValid, resetPasswordWithToken, verifyEmailWithToken } = await import("@/lib/auth/email-tokens");
+const { issueEmailToken, isEmailTokenValid, resetPasswordWithToken } = await import("@/lib/auth/email-tokens");
 const { hashPassword, verifyPassword } = await import("@/lib/auth/password");
 
 const address = { fullName: "Test Buyer", phone: "+62 000 0000 000", line1: "Jl. Test 1", line2: "", city: "Jakarta", region: "", postalCode: "10110", country: "Indonesia" };
@@ -117,18 +117,6 @@ describe("email links", () => {
   let f: Awaited<ReturnType<typeof fixture>>;
   beforeEach(async () => {
     f = await fixture();
-  });
-
-  it("confirms an email once, and only with a verification link", async () => {
-    await db.user.update({ where: { id: f.buyer.id }, data: { emailVerifiedAt: null } });
-    const reset = await issueEmailToken(db, f.buyer.id, "RESET_PASSWORD");
-    expect(await verifyEmailWithToken(reset)).toBeNull(); // wrong kind of link
-
-    const token = await issueEmailToken(db, f.buyer.id, "VERIFY_EMAIL");
-    expect(await verifyEmailWithToken(token)).toBe(f.buyer.id);
-    expect((await db.user.findUniqueOrThrow({ where: { id: f.buyer.id } })).emailVerifiedAt).toBeInstanceOf(Date);
-    expect(await verifyEmailWithToken(token)).toBeNull(); // used up
-    expect(await verifyEmailWithToken("not-a-token")).toBeNull();
   });
 
   it("resets a password once, ends every session and clears a lockout", async () => {

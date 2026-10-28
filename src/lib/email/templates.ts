@@ -18,7 +18,8 @@ type Fn = (...args: never[]) => string;
 type OrderCopy = Partial<Record<OrderRole, { subject: (number: string) => string; body: Fn }>>;
 
 export type EmailPayload =
-  | { template: "verify-email"; params: { url: string; name: string } }
+  | { template: "signup-code"; params: { code: string; name: string } }
+  | { template: "signup-existing"; params: Record<string, never> }
   | { template: "reset-password"; params: { url: string; name: string } }
   | { template: "order-event"; params: { orderId: string; number: string; title: string; type: EventType; role: OrderRole; event: Record<string, unknown> } }
   | { template: "dispute-message"; params: { disputeId: string; number: string; from: "BUYER" | "SELLER" | "ADMIN" } }
@@ -30,8 +31,8 @@ export type EmailPayload =
 
 export type EmailTemplate = EmailPayload["template"];
 
-/** Templates whose params carry a one-time link; their params are wiped once sent. */
-export const SENSITIVE_TEMPLATES: EmailTemplate[] = ["verify-email", "reset-password"];
+/** Templates whose params carry a one-time code or link; their params are wiped once sent. */
+export const SENSITIVE_TEMPLATES: EmailTemplate[] = ["signup-code", "reset-password"];
 
 /** Absolute URL of a page in the given language. */
 export function siteUrl(path: string, locale: Locale) {
@@ -43,13 +44,20 @@ export function orderCopy(locale: Locale, type: string, role: OrderRole) {
   return (dictionaryFor(locale).emails.order as Record<string, OrderCopy>)[type]?.[role];
 }
 
-type Content = { subject: string; paragraphs: string[]; button?: { label: string; url: string }; note?: string };
+type Content = { subject: string; paragraphs: string[]; code?: string; button?: { label: string; url: string }; note?: string };
 
 function content(payload: EmailPayload, locale: Locale): Content {
   const t = dictionaryFor(locale).emails;
   switch (payload.template) {
-    case "verify-email":
-      return { subject: t.verify.subject, paragraphs: [t.verify.body], button: { label: t.verify.button, url: payload.params.url }, note: t.verify.note };
+    case "signup-code":
+      return { subject: t.signupCode.subject(payload.params.code), paragraphs: [t.signupCode.body], code: payload.params.code, note: t.signupCode.note };
+    case "signup-existing":
+      return {
+        subject: t.signupExisting.subject,
+        paragraphs: [t.signupExisting.body],
+        button: { label: t.signupExisting.button, url: siteUrl("/login", locale) },
+        note: t.signupExisting.note,
+      };
     case "reset-password":
       return { subject: t.reset.subject, paragraphs: [t.reset.body], button: { label: t.reset.button, url: payload.params.url }, note: t.reset.note };
     case "order-event": {
@@ -116,6 +124,7 @@ export function renderEmail(payload: EmailPayload, locale: Locale, to: string, n
   const text = [
     greeting,
     ...c.paragraphs,
+    ...(c.code ? [c.code] : []),
     ...(c.button ? [`${c.button.label}: ${c.button.url}`] : []),
     ...(c.note ? [c.note] : []),
     "—",
@@ -128,7 +137,7 @@ export function renderEmail(payload: EmailPayload, locale: Locale, to: string, n
 <div style="max-width:560px;margin:0 auto;padding:24px 16px">
 <p style="margin:0 0 20px;font-size:20px;font-weight:800;letter-spacing:-0.02em">ReGear</p>
 <div style="background:#ffffff;border:1px solid #dfe2e8;border-radius:10px;padding:24px;font-size:15px;line-height:1.55">
-${p(greeting)}${c.paragraphs.map((x) => p(x)).join("")}${
+${p(greeting)}${c.paragraphs.map((x) => p(x)).join("")}${c.code ? p(c.code, "font-size:30px;font-weight:800;letter-spacing:8px;font-family:Consolas,Menlo,monospace") : ""}${
     c.button
       ? `<p style="margin:24px 0"><a href="${escape(c.button.url)}" style="display:inline-block;background:#2340d9;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:8px">${escape(c.button.label)}</a></p>
 ${p(t.buttonFallback, "font-size:13px;color:#5b6475")}<p style="margin:0 0 16px;font-size:13px;word-break:break-all"><a href="${escape(c.button.url)}" style="color:#2340d9">${escape(c.button.url)}</a></p>`

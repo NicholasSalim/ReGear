@@ -1,6 +1,4 @@
-import { Suspense } from "react";
 import { SiteHeader } from "@/components/site-header";
-import { VerifyEmailBanner } from "@/components/verify-email-banner";
 import { SiteFooter } from "@/components/site-footer";
 import { CompareTray } from "@/components/compare";
 
@@ -9,9 +7,6 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
   return (
     <>
       <SiteHeader />
-      <Suspense fallback={null}>
-        <VerifyEmailBanner />
-      </Suspense>
       <main id="main" className="flex-1">
         {children}
       </main>

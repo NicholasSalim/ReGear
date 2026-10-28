@@ -148,6 +148,7 @@ async function main() {
   // Children first to satisfy FK constraints.
   await db.$transaction([
     db.emailOutbox.deleteMany(),
+    db.signupRequest.deleteMany(),
     db.auditLog.deleteMany(),
     db.rateLimit.deleteMany(),
     db.disputeMessage.deleteMany(),

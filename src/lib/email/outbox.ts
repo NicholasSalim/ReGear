@@ -17,16 +17,16 @@ const MAX_ATTEMPTS = 5;
 const STALE_CLAIM_MS = 10 * 60_000;
 const NOT_CONFIGURED_RETRY_MS = 5 * 60_000;
 
-export type EmailRecipient = { userId: string; to?: string; locale: Locale };
+export type EmailRecipient = { userId?: string; to?: string; locale: Locale };
 
 /**
- * Queue an email for a user. Order and account notices go to the user's
- * current, verified address at send time; `to` fixes the address (for the
- * verification and reset emails, which go out before it is verified).
+ * Queue an email. Order and account notices go to the user's current,
+ * verified address at send time; `to` fixes the address (for sign-up codes,
+ * which go out before any account exists, and password resets).
  */
 export async function enqueueEmail(client: Client, recipient: EmailRecipient, payload: EmailPayload) {
   await client.emailOutbox.create({
-    data: { userId: recipient.userId, to: recipient.to ?? null, locale: recipient.locale, template: payload.template, params: JSON.stringify(payload.params) },
+    data: { userId: recipient.userId ?? null, to: recipient.to ?? null, locale: recipient.locale, template: payload.template, params: JSON.stringify(payload.params) },
   });
   scheduleDelivery();
 }

@@ -48,6 +48,8 @@ export async function POST(req: Request) {
     where: { status: { in: ["SENT", "SKIPPED", "FAILED"] }, createdAt: { lt: new Date(now.getTime() - EMAIL_LOG_RETENTION_DAYS * 86_400_000) } },
   });
   await db.emailToken.deleteMany({ where: { OR: [{ expiresAt: { lt: now } }, { usedAt: { not: null } }] } });
+  // Sign-ups whose code was never entered (they hold a name, email and password hash).
+  await db.signupRequest.deleteMany({ where: { expiresAt: { lt: now } } });
 
   return NextResponse.json({
     expiredOrders: result.expired,

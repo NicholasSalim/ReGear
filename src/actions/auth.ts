@@ -8,10 +8,10 @@ import { audit } from "@/lib/audit";
 import { invalidate, TAGS } from "@/lib/cache";
 import { LEGAL_VERSION } from "@/lib/legal";
 import { issueEmailToken, resetPasswordWithToken } from "@/lib/auth/email-tokens";
+import { clearSignupCookie, confirmSignup, currentSignup, resendSignupCode, setSignupCookie, startSignup } from "@/lib/auth/signup";
 import { enqueueEmail } from "@/lib/email/outbox";
 import { siteUrl } from "@/lib/email/templates";
 import type { Locale } from "@/i18n/locales";
-import type { Prisma } from "@/generated/prisma/client";
 import { deleteAccount, getDeletionBlockers, isBlocked } from "@/lib/account/delete";
 import { actionI18n, formToObject, runAction, type ActionState } from "@/lib/action";
 import { getDummyHash, hashPassword, verifyPassword } from "@/lib/auth/password";
@@ -21,42 +21,70 @@ import { rateLimit } from "@/lib/security/rate-limit";
 import { getClientIp, getUserAgent, safeRedirectPath } from "@/lib/security/request";
 import { changePasswordSchema, fieldErrors, forgotPasswordSchema, loginSchema, profileSchema, registerSchema, resetPasswordSchema } from "@/lib/validation";
 
-/** Queue the "confirm your email" message with a fresh one-time link. */
-async function sendVerificationEmail(tx: Prisma.TransactionClient, user: { id: string; email: string; name: string }, locale: Locale) {
-  const token = await issueEmailToken(tx, user.id, "VERIFY_EMAIL");
-  const url = `${siteUrl("/api/auth/verify-email", "id")}?token=${token}&lang=${locale}`;
-  await enqueueEmail(tx, { userId: user.id, to: user.email, locale }, { template: "verify-email", params: { url, name: user.name } });
+/** Email a password reset link (also how an account whose email was never confirmed gets confirmed). */
+async function sendResetLink(user: { id: string; email: string; name: string }, locale: Locale) {
+  await db.$transaction(async (tx) => {
+    const token = await issueEmailToken(tx, user.id, "RESET_PASSWORD");
+    const url = `${siteUrl("/reset-password", locale)}?token=${token}`;
+    await enqueueEmail(tx, { userId: user.id, to: user.email, locale }, { template: "reset-password", params: { url, name: user.name } });
+  });
 }
 
 const LOCK_AFTER_FAILURES = 5;
 const LOCK_MINUTES = 15;
 const LOGIN_EMAIL_LIMIT = 10;
 
+/**
+ * Starts a sign-up: emails a code and asks for it. No account exists until
+ * the code is entered (see lib/auth/signup.ts). The answer is the same
+ * whether or not the email is already registered.
+ */
 export async function registerAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const { locale, t } = await actionI18n();
   const ip = await getClientIp();
-  const limited = await rateLimit(`register:${ip}`, 10, 3600);
-  if (!limited.ok) return { error: t.actions.signupLimit };
-
   const parsed = registerSchema.safeParse(formToObject(formData));
   if (!parsed.success) return { fieldErrors: fieldErrors(parsed.error, t, locale) };
   const { name, email, password } = parsed.data;
 
-  const existing = await db.user.findUnique({ where: { email }, select: { id: true } });
-  if (existing) return { fieldErrors: { email: t.actions.emailTaken } };
+  const [byIp, byEmail] = await Promise.all([rateLimit(`register:${ip}`, 10, 3600), rateLimit(`register-email:${email}`, 5, 3600)]);
+  if (!byIp.ok || !byEmail.ok) return { error: t.actions.signupLimit };
 
-  const passwordHash = await hashPassword(password);
-  // The account and its confirmation email are saved together.
-  const user = await db.$transaction(async (tx) => {
-    const created = await tx.user.create({
-      data: { name, email, passwordHash, locale, termsVersion: LEGAL_VERSION, termsAcceptedAt: new Date() },
-    });
-    await sendVerificationEmail(tx, created, locale);
-    return created;
-  });
-  await createSession(user.id, { ip, userAgent: await getUserAgent() });
-  await audit(user.id, "user.register", "User", user.id);
+  const token = await startSignup({ name, email, passwordHash: await hashPassword(password), locale, termsVersion: LEGAL_VERSION });
+  await setSignupCookie(token);
+  const next = safeRedirectPath(formData.get("next"), "");
+  redirect(`${localePath("/register/confirm", locale)}${next ? `?next=${encodeURIComponent(next)}` : ""}`);
+}
+
+/** The code from the sign-up email: creates the account and signs in. */
+export async function confirmSignupAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { locale, t } = await actionI18n();
+  const ip = await getClientIp();
+  const limited = await rateLimit(`signup-code:${ip}`, 30, 900);
+  if (!limited.ok) return { error: t.actions.signupLimit };
+
+  const signup = await currentSignup();
+  if (!signup) return { error: t.actions.codeExpired };
+  const result = await confirmSignup(signup.token, String(formData.get("code") ?? "").replace(/\s/g, ""));
+  if (!result.ok) {
+    if (result.reason === "wrong") return { fieldErrors: { code: t.actions.codeWrong(result.attemptsLeft) } };
+    await clearSignupCookie();
+    return { error: result.reason === "exists" ? t.actions.signupExists : t.actions.codeExpired };
+  }
+
+  await clearSignupCookie();
+  await createSession(result.userId, { ip, userAgent: await getUserAgent() });
+  await audit(result.userId, "user.register", "User", result.userId);
   redirect(safeRedirectPath(formData.get("next"), localePath("/account", locale)));
+}
+
+/** Emails a new code for the sign-up in progress. */
+export async function resendSignupCodeAction(_prev?: ActionState, _formData?: FormData): Promise<ActionState> {
+  const { t } = await actionI18n();
+  const limited = await rateLimit(`signup-resend:${await getClientIp()}`, 10, 3600);
+  if (!limited.ok) return { error: t.actions.codeResendWait };
+  const signup = await currentSignup();
+  if (!signup || !(await resendSignupCode(signup.token))) return { error: t.actions.codeResendLimit };
+  return { ok: true, message: t.actions.codeResent };
 }
 
 export async function loginAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -85,6 +113,14 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
   }
 
   const { ok, needsRehash } = await verifyPassword(password, user.passwordHash);
+  if (ok && !user.emailVerifiedAt) {
+    // Made before sign-up needed a code, and never confirmed. Whoever set this
+    // password may not own the address, so it doesn't get in: the address
+    // gets a reset link instead, and setting a password from it confirms it.
+    const resend = await rateLimit(`confirm-first:${user.id}`, 3, 3600);
+    if (resend.ok) await sendResetLink(user, locale);
+    return { error: t.actions.confirmEmailFirst };
+  }
   if (!ok) {
     const failures = user.failedLoginCount + 1;
     await db.user.update({
@@ -204,19 +240,6 @@ export async function deleteAccountAction(_prev: ActionState, formData: FormData
   return result;
 }
 
-/** Sends the email confirmation link again (from the banner). */
-export async function resendVerificationAction(_prev?: ActionState, _formData?: FormData): Promise<ActionState> {
-  return runAction(async () => {
-    const user = await requireUserStrict();
-    const { locale, t } = await actionI18n();
-    if (user.emailVerified) return { ok: true, message: t.actions.emailAlreadyVerified };
-    const limited = await rateLimit(`verify-email:${user.id}`, 3, 900);
-    if (!limited.ok) return { error: t.actions.emailVerificationLimit };
-    await db.$transaction((tx) => sendVerificationEmail(tx, user, locale));
-    return { ok: true, message: t.actions.verificationSent(user.email) };
-  });
-}
-
 /**
  * Emails a password reset link. The answer is the same whether or not the
  * email has an account, so this can't be used to find out who is registered.
@@ -232,11 +255,7 @@ export async function requestPasswordResetAction(_prev: ActionState, formData: F
 
   const user = await db.user.findUnique({ where: { email }, select: { id: true, email: true, name: true, deletedAt: true } });
   if (user && !user.deletedAt) {
-    await db.$transaction(async (tx) => {
-      const token = await issueEmailToken(tx, user.id, "RESET_PASSWORD");
-      const url = `${siteUrl("/reset-password", locale)}?token=${token}`;
-      await enqueueEmail(tx, { userId: user.id, to: user.email, locale }, { template: "reset-password", params: { url, name: user.name } });
-    });
+    await sendResetLink(user, locale);
     await audit(user.id, "user.password_reset_requested", "User", user.id);
   }
   return { ok: true, message: t.actions.resetSent };

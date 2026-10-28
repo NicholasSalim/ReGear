@@ -54,8 +54,10 @@ Run production behind a reverse proxy with `TRUST_PROXY=true` (and `TRUST_PROXY_
 the number of proxies); otherwise every visitor shares one sign-in/sign-up rate limit, and the
 whole site shares one search limit.
 
-Storefront searches are limited to 60 per minute per visitor IP (`src/proxy.ts`), answered with
-a 429 page beyond that. The count is kept in memory per server process, so it only applies to
+Storefront searches are limited to 120 per minute per visitor IP (`SEARCHES_PER_MINUTE` in
+`src/proxy.ts`), answered with a 429 page beyond that. Each address that goes over is logged
+once a minute as `[search-limit] <ip> … (signed in|anonymous)`; signed-in entries mean real
+customers are reaching it and the limit should go up. The count is kept in memory per server process, so it only applies to
 production builds (`next start`), and with several instances each counts its own traffic. A CDN
 or proxy rate limit (Cloudflare, nginx `limit_req`) is the stronger place for this once deployed.
 

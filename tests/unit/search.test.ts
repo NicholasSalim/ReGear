@@ -24,7 +24,8 @@ describe("window limiter", () => {
     const hit = createWindowLimiter({ limit: 3, windowMs: 60_000 });
     const t0 = 1_000_000;
     expect([hit("ip", t0), hit("ip", t0 + 1), hit("ip", t0 + 2)].every((r) => r.ok)).toBe(true);
-    expect(hit("ip", t0 + 10_000)).toEqual({ ok: false, retryAfterSec: 50 });
+    expect(hit("ip", t0 + 10_000)).toEqual({ ok: false, justExceeded: true, retryAfterSec: 50 });
+    expect(hit("ip", t0 + 11_000)).toMatchObject({ ok: false, justExceeded: false }); // reported once per window
     expect(hit("other-ip", t0 + 10_000).ok).toBe(true); // counted per visitor
     expect(hit("ip", t0 + 60_000).ok).toBe(true); // a new window
   });

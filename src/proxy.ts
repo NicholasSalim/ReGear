@@ -21,10 +21,12 @@ const PRIVATE_PATHS = ["/account", "/sell", "/admin", "/checkout", "/disputes"];
 
 const isPrivate = (path: string) => PRIVATE_PATHS.some((p) => path === p || path.startsWith(`${p}/`));
 
-// Far above what a person types (live search sends one request per pause in
-// typing), well below what a scraper sends. Mobile networks put many people
-// behind one address, so this must stay generous.
-const SEARCHES_PER_MINUTE = 60;
+// A busy shopper sends 15–25 a minute (live search sends one request per pause
+// in typing; paging and filters with a search active count too). Mobile
+// networks put many people behind one address, so this leaves room for several
+// of them; 2 a second from one address is still nothing for the database.
+// The log line below shows whether real (signed-in) customers ever reach it.
+const SEARCHES_PER_MINUTE = 120;
 const searchLimit = createWindowLimiter({ limit: SEARCHES_PER_MINUTE, windowMs: 60_000 });
 
 /** A storefront search the visitor asked for (not a link prefetch, not plain browsing). */
@@ -79,7 +81,13 @@ export function proxy(request: NextRequest) {
   const locale = explicit ?? DEFAULT_LOCALE;
   const { path } = splitLocale(pathname);
   if (isSearch(request, path)) {
-    const limited = searchLimit(clientIp(request));
+    const ip = clientIp(request);
+    const limited = searchLimit(ip);
+    if (limited.justExceeded) {
+      // Once per address per minute. The address is kept only in the server log.
+      const signedIn = SESSION_COOKIES.some((name) => request.cookies.has(name));
+      console.warn(`[search-limit] ${ip} went over ${SEARCHES_PER_MINUTE} searches a minute (${signedIn ? "signed in" : "anonymous"})`);
+    }
     if (!limited.ok) return tooManySearches(locale, limited.retryAfterSec);
   }
   if (isPrivate(path) && !SESSION_COOKIES.some((name) => request.cookies.has(name))) {

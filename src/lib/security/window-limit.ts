@@ -19,6 +19,11 @@ export function createWindowLimiter({ limit, windowMs, maxKeys = 50_000 }: { lim
       windows.set(key, w);
     }
     w.count++;
-    return { ok: w.count <= limit, retryAfterSec: Math.max(1, Math.ceil((w.resetAt - now) / 1000)) };
+    return {
+      ok: w.count <= limit,
+      /** True only for the first refused request of a window, e.g. to log once rather than every time. */
+      justExceeded: w.count === limit + 1,
+      retryAfterSec: Math.max(1, Math.ceil((w.resetAt - now) / 1000)),
+    };
   };
 }

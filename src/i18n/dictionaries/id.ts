@@ -266,6 +266,9 @@ export const id: typeof en = {
     unauthorizedTitle: "Silakan masuk untuk melanjutkan",
     goHome: "Ke beranda",
     signIn: "Masuk",
+    tooManySearches: "Terlalu banyak pencarian",
+    tooManySearchesBody: (seconds: number) => `Anda sudah banyak mencari dalam satu menit terakhir. Tunggu ${seconds} detik, lalu coba lagi.`,
+    backToListings: "Kembali ke semua iklan",
   },
   validation: {
     invalid: "Periksa kembali isian ini",

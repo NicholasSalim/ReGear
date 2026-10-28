@@ -5,6 +5,7 @@ import { getDictionary, getLocale } from "@/i18n/server";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth/dal";
 import { dayRange, readSearch } from "@/lib/admin/search";
+import { escapeLike } from "@/lib/search-text";
 import { LISTING_STATUSES, LISTING_STATUS_LABELS } from "@/lib/constants";
 import { formatDate, formatMoney } from "@/lib/format";
 import type { Prisma } from "@/generated/prisma/client";
@@ -23,7 +24,7 @@ export default async function AdminListingsPage({ searchParams }: PageProps<"/[l
   const t = dict.admin;
   await requireAdmin();
   const search = readSearch(await searchParams, LISTING_STATUSES);
-  const query = search.q.toLowerCase();
+  const query = escapeLike(search.q.toLowerCase());
   const where: Prisma.ListingWhereInput = {
     ...(search.status ? { status: search.status } : {}),
     ...(dayRange(search) ? { createdAt: dayRange(search) } : {}),

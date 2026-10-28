@@ -264,6 +264,9 @@ export const en = {
     unauthorizedTitle: "Please sign in to continue",
     goHome: "Go home",
     signIn: "Sign in",
+    tooManySearches: "Too many searches",
+    tooManySearchesBody: (seconds: number) => `You've searched a lot in the last minute. Please wait ${seconds} seconds, then try again.`,
+    backToListings: "Back to all listings",
   },
   validation: {
     invalid: "Check this value",

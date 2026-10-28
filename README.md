@@ -51,7 +51,13 @@ refuses to run when `NODE_ENV=production` or when the database holds accounts it
 create. `ALLOW_SEED=true` overrides that, for a deliberate wipe.
 
 Run production behind a reverse proxy with `TRUST_PROXY=true` (and `TRUST_PROXY_HOPS` set to
-the number of proxies); otherwise every visitor shares one sign-in/sign-up rate limit.
+the number of proxies); otherwise every visitor shares one sign-in/sign-up rate limit, and the
+whole site shares one search limit.
+
+Storefront searches are limited to 60 per minute per visitor IP (`src/proxy.ts`), answered with
+a 429 page beyond that. The count is kept in memory per server process, so it only applies to
+production builds (`next start`), and with several instances each counts its own traffic. A CDN
+or proxy rate limit (Cloudflare, nginx `limit_req`) is the stronger place for this once deployed.
 
 The migrations enable the `pg_trgm` extension, whose trigram indexes keep "contains" searches
 (storefront and admin) fast as tables grow. It ships with PostgreSQL and the database owner can

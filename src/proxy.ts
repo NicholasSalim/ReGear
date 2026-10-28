@@ -1,5 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { DEFAULT_LOCALE, isLocale, LANG_COOKIE, LANG_HEADER, localePath, splitLocale, type Locale } from "@/i18n/locales";
+import { en } from "@/i18n/dictionaries/en";
+import { id } from "@/i18n/dictionaries/id";
+import { clientIpFromForwarded } from "@/lib/security/ip";
+import { createWindowLimiter } from "@/lib/security/window-limit";
 
 // 1. Language. Indonesian lives at clean URLs and is rewritten to the internal
 //    "/id/..." route; English lives under "/en". "/id/..." itself redirects to
@@ -9,10 +13,43 @@ import { DEFAULT_LOCALE, isLocale, LANG_COOKIE, LANG_HEADER, localePath, splitLo
 //    are redirected before any rendering work happens. This is NOT the security
 //    boundary: every page, Server Action and route handler re-validates the
 //    session against the database through the Data Access Layer.
+// 3. Storefront searches are limited per visitor, so scripts can't make the
+//    database run unlimited uncached queries. Counted in memory: a database
+//    write per search would cost more than the search it guards.
 const SESSION_COOKIES = ["__Host-regear_session", "regear_session"];
 const PRIVATE_PATHS = ["/account", "/sell", "/admin", "/checkout", "/disputes"];
 
 const isPrivate = (path: string) => PRIVATE_PATHS.some((p) => path === p || path.startsWith(`${p}/`));
+
+// Far above what a person types (live search sends one request per pause in
+// typing), well below what a scraper sends. Mobile networks put many people
+// behind one address, so this must stay generous.
+const SEARCHES_PER_MINUTE = 60;
+const searchLimit = createWindowLimiter({ limit: SEARCHES_PER_MINUTE, windowMs: 60_000 });
+
+/** A storefront search the visitor asked for (not a link prefetch, not plain browsing). */
+function isSearch(request: NextRequest, path: string) {
+  if (request.method !== "GET" || !request.nextUrl.searchParams.get("q")?.trim()) return false;
+  if (request.headers.has("next-router-prefetch") || request.headers.get("purpose") === "prefetch") return false;
+  return path === "/listings" || path.startsWith("/c/");
+}
+
+// Same rule as getClientIp(), which can't run here: forwarded addresses only count behind our own proxy.
+function clientIp(request: NextRequest) {
+  if (process.env.TRUST_PROXY !== "true") return "local";
+  const hops = Math.min(5, Math.max(1, Number(process.env.TRUST_PROXY_HOPS) || 1));
+  return clientIpFromForwarded(request.headers.get("x-forwarded-for"), hops) ?? request.headers.get("x-real-ip")?.trim() ?? "local";
+}
+
+function tooManySearches(locale: Locale, retryAfterSec: number) {
+  const t = (locale === "en" ? en : id).errors;
+  // A bare page: it's served before (and instead of) the app. Every string in it is ours.
+  const html = `<!doctype html><html lang="${locale}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${t.tooManySearches} · ReGear</title></head><body style="margin:15vh auto;max-width:32rem;padding:0 16px;font-family:system-ui,sans-serif;color:#1a2233;text-align:center"><h1 style="font-size:1.5rem">${t.tooManySearches}</h1><p>${t.tooManySearchesBody(retryAfterSec)}</p><p><a href="${localePath("/listings", locale)}" style="color:#2340d9">${t.backToListings}</a></p></body></html>`;
+  return new NextResponse(html, {
+    status: 429,
+    headers: { "Content-Type": "text/html; charset=utf-8", "Retry-After": String(retryAfterSec), "Cache-Control": "no-store" },
+  });
+}
 
 function rememberLocale(response: NextResponse, request: NextRequest, locale: Locale) {
   if (request.cookies.get(LANG_COOKIE)?.value !== locale) {
@@ -40,7 +77,12 @@ export function proxy(request: NextRequest) {
   }
 
   const locale = explicit ?? DEFAULT_LOCALE;
-  if (isPrivate(splitLocale(pathname).path) && !SESSION_COOKIES.some((name) => request.cookies.has(name))) {
+  const { path } = splitLocale(pathname);
+  if (isSearch(request, path)) {
+    const limited = searchLimit(clientIp(request));
+    if (!limited.ok) return tooManySearches(locale, limited.retryAfterSec);
+  }
+  if (isPrivate(path) && !SESSION_COOKIES.some((name) => request.cookies.has(name))) {
     const url = request.nextUrl.clone();
     url.pathname = localePath("/login", locale);
     url.search = `?next=${encodeURIComponent(pathname)}`;

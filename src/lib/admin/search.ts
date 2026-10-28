@@ -1,4 +1,5 @@
 import "server-only";
+import { escapeLike } from "@/lib/search-text";
 
 // Search and paging for the admin history pages. Everything arrives as GET
 // parameters (q, status, from, to, page), so a search is a link an admin can
@@ -46,8 +47,8 @@ export function dayRange(s: { from: string; to: string }) {
   };
 }
 
-/** Case-insensitive "contains" for a text column. */
-export const like = (q: string) => ({ contains: q, mode: "insensitive" as const });
+/** Case-insensitive "contains" for a text column, matching the text literally. */
+export const like = (q: string) => ({ contains: escapeLike(q), mode: "insensitive" as const });
 
 /** The search as URL parameters, for links that keep it (paging, "see all"). */
 export function searchQuery(s: Pick<AdminSearch, "q" | "status" | "from" | "to">, page?: number) {

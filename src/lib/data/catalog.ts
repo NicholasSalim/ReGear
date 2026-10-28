@@ -1,4 +1,5 @@
 import "server-only";
+import { searchWords } from "@/lib/search-text";
 import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/lib/db";
 import { TAGS } from "@/lib/cache";
@@ -47,8 +48,8 @@ function browseWhere(p: BrowseParams): Prisma.ListingWhereInput {
   if (p.verified) where.seller = { verificationStatus: "VERIFIED" };
   if (p.warranty) where.warrantyType = { not: "NONE" };
   if (p.q) {
-    const tokens = p.q.toLowerCase().split(/\s+/).filter(Boolean).slice(0, 6);
-    where.AND = tokens.map((t) => ({ searchText: { contains: t } }));
+    const words = searchWords(p.q);
+    if (words.length) where.AND = words.map((w) => ({ searchText: { contains: w } }));
   }
   return where;
 }

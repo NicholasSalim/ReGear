@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth/dal";
 import { dayRange, like, readSearch } from "@/lib/admin/search";
 import { snapshotTitle } from "@/lib/admin/display";
+import { escapeLike } from "@/lib/search-text";
 import { ORDER_STATUSES, ORDER_STATUS_INFO } from "@/lib/constants";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import type { Prisma } from "@/generated/prisma/client";
@@ -32,7 +33,7 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<"/[lan
             { number: like(search.q) },
             { paymentRef: search.q },
             // The listing's lower-cased search column is indexed; the order's JSON snapshot isn't.
-            { listing: { searchText: { contains: search.q.toLowerCase() } } },
+            { listing: { searchText: { contains: escapeLike(search.q.toLowerCase()) } } },
             { buyer: { OR: [{ name: like(search.q) }, { email: like(search.q) }] } },
             { seller: { OR: [{ displayName: like(search.q) }, { user: { email: like(search.q) } }] } },
           ],

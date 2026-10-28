@@ -270,4 +270,4 @@ The app is fully available in Indonesian (default) and English.
 
 - **Automatic payouts.** Implement `PayoutProvider` (`src/lib/payouts/provider.ts`) with a disbursement API (Midtrans Iris, Xendit, Flip) to send withdrawals without an admin.
 - **Multi-instance.** Set `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY`, use a shared cache handler (`'use cache: remote'`), and move rate limiting to Redis if load warrants it.
-- **Not yet built:** email notifications (order and dispute events), carrier tracking webhooks, and 2FA for admin accounts.
+- **Not yet built:** carrier tracking webhooks (tracking numbers aren't checked), and 2FA for admin accounts.

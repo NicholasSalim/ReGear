@@ -19,6 +19,9 @@ const files = createFileStore({
   supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
 });
 const DEMO_PASSWORD = "Gear-Demo-2026!";
+// The admin password is never a published one: a deployed demo shares this
+// database, and the demo password above is in the README and the repository.
+const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD || randomBytes(18).toString("base64url");
 
 const GRADE_RANK: Record<ConditionGrade, number> = { LIKE_NEW: 0, EXCELLENT: 1, GOOD: 2, FAIR: 3, FOR_PARTS: 4 };
 const PALETTES = [
@@ -159,7 +162,7 @@ async function main() {
   ]);
 
   const passwordHash = await hashPassword(DEMO_PASSWORD);
-  const admin = await db.user.create({ data: { email: "admin@regear.test", name: "Ada Admin", role: "ADMIN", passwordHash, emailVerifiedAt: new Date() } });
+  const admin = await db.user.create({ data: { email: "admin@regear.test", name: "Ada Admin", role: "ADMIN", passwordHash: await hashPassword(ADMIN_PASSWORD), emailVerifiedAt: new Date() } });
   const buyer = await db.user.create({ data: { email: "buyer@regear.test", name: "Bima Buyer", passwordHash, emailVerifiedAt: new Date() } });
   const buyer2 = await db.user.create({ data: { email: "dana@regear.test", name: "Dana Rahman", passwordHash, emailVerifiedAt: new Date() } });
 
@@ -357,15 +360,16 @@ async function main() {
 
   await db.favorite.createMany({ data: [listingIds[0], listingIds[3], listingIds[7]].map((listingId) => ({ userId: buyer.id, listingId })) });
 
-  console.log("\nSeed complete. Demo accounts (password for all: %s)", DEMO_PASSWORD);
+  console.log("\nSeed complete. Demo accounts (password: %s)", DEMO_PASSWORD);
   console.table([
-    { role: "Admin", email: admin.email },
     { role: "Buyer", email: buyer.email },
     { role: "Buyer (dispute)", email: buyer2.email },
     { role: "Seller (verified)", email: "techhaven@regear.test" },
     { role: "Seller (verified)", email: "camerabay@regear.test" },
     { role: "Seller (pending verification)", email: "pcparts@regear.test" },
   ]);
+  if (process.env.SEED_ADMIN_PASSWORD) console.log("Admin: %s, with the password in SEED_ADMIN_PASSWORD", admin.email);
+  else console.log("Admin: %s / %s  (generated; shown only now, so note it down)", admin.email, ADMIN_PASSWORD);
 }
 
 main()

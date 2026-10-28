@@ -68,15 +68,16 @@ installed.
 
 ### Demo accounts
 
-All demo accounts use the password `Gear-Demo-2026!`.
+These demo accounts use the password `Gear-Demo-2026!`.
 
 | Role | Email |
 |---|---|
-| Admin | `admin@regear.test` |
 | Buyer | `buyer@regear.test` |
 | Buyer with an open dispute | `dana@regear.test` |
 | Verified seller | `techhaven@regear.test`, `camerabay@regear.test` |
 | Seller pending verification | `pcparts@regear.test` |
+
+The admin account, `admin@regear.test`, gets its own password: `SEED_ADMIN_PASSWORD` if set, otherwise a random one the seed prints once. A deployed demo shares its database with the seed, so the admin password must not be one published here.
 
 Without Midtrans keys, payments run in **simulated mode**: "Pay" succeeds at once and no money moves.
 
@@ -163,6 +164,46 @@ curl -X POST -H "Authorization: Bearer $CRON_SECRET" https://your-host/api/cron/
 ```
 
 It expires unpaid orders, auto-delivers long-shipped orders, auto-completes orders after the return window, and purges expired sessions, rate-limit rows, orphaned uploads and security logs older than 2 years. It also sends queued emails, retries failed ones, and deletes the sent-email record after 30 days and used or expired email links.
+
+## Deploying to Vercel + Supabase
+
+Both free plans are enough for a demo. `vercel.json` runs the app in Singapore (`sin1`); create the Supabase project in Singapore (`ap-southeast-1`) too, so they sit next to each other.
+
+**1. Database.** Point `DATABASE_URL` at Supabase's **Session pooler** URL (port 5432) on your machine, then run `npm run db:deploy` (and `npm run db:seed` once, for demo data; it wipes the database first). Run migrations this way before each deploy that adds one; Vercel's build doesn't run them.
+
+**2. Vercel project.** Import the Git repository and add these environment variables (Production):
+
+| Variable | Value |
+|---|---|
+| `DATABASE_URL` | Supabase **Transaction pooler** URL (port 6543): many short-lived app instances share its connections |
+| `NEXT_PUBLIC_SITE_URL` | `https://<project>.vercel.app` (read at build time: redeploy after changing it) |
+| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | as in `.env`; uploads go to Supabase Storage |
+| `CRON_SECRET` | a new random string of 32+ characters |
+| `TRUST_PROXY` | `true` (Vercel sets `X-Forwarded-For` to the visitor's address) |
+| `MIDTRANS_SERVER_KEY`, `MIDTRANS_ENV` | your Midtrans key, and `sandbox` or `production` to match it |
+| `SMTP_URL`, `EMAIL_FROM` | an SMTP service (Brevo's free plan works with a verified sender address). Without it, nobody can confirm their email, and buying and publishing need a confirmed email. |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | optional; add `https://<project>.vercel.app/api/auth/google/callback` as a redirect URI |
+
+**3. Midtrans.** In the Midtrans dashboard, set the payment notification URL to `https://<project>.vercel.app/api/payments/midtrans`.
+
+**4. Maintenance every 5 minutes.** Vercel's free plan runs cron jobs only once a day, so let Supabase call the endpoint. In Supabase's SQL editor:
+
+```sql
+create extension if not exists pg_cron;
+create extension if not exists pg_net;
+select vault.create_secret('<your CRON_SECRET>', 'regear_cron_secret');
+select cron.schedule('regear-maintenance', '*/5 * * * *', $$
+  select net.http_post(
+    url := 'https://<project>.vercel.app/api/cron/maintenance',
+    headers := jsonb_build_object('Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'regear_cron_secret')),
+    timeout_milliseconds := 60000
+  );
+$$);
+```
+
+Check it with `select status_code, created from net._http_response order by created desc limit 5;` (200 means it ran; 401 means the secret doesn't match).
+
+**Limits of this setup.** The storefront search limit (120 a minute) is counted per app instance, and Vercel runs several, so it is looser than the number says; the limits stored in the database (sign-in, checkout, uploads, payments) are unaffected.
 
 ## Architecture
 

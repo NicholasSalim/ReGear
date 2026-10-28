@@ -48,3 +48,6 @@ next-env.d.ts
 /src/generated
 /storage-test
 /.playwright-mcp
+/prisma/dev.db
+/.agents
+/skills-lock.json

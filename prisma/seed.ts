@@ -140,8 +140,14 @@ async function assertSafeToSeed() {
 async function main() {
   await assertSafeToSeed();
   console.log("Resetting database…");
+  // The stored images go with their rows, so a reseed doesn't leave old files behind.
+  const [oldUploads, oldDocuments] = await Promise.all([
+    db.upload.findMany({ select: { key: true } }),
+    db.verificationRequest.findMany({ select: { documentKey: true } }),
+  ]);
   // Children first to satisfy FK constraints.
   await db.$transaction([
+    db.emailOutbox.deleteMany(),
     db.auditLog.deleteMany(),
     db.rateLimit.deleteMany(),
     db.disputeMessage.deleteMany(),
@@ -161,6 +167,8 @@ async function main() {
     db.session.deleteMany(),
     db.user.deleteMany(),
   ]);
+  for (const { key } of oldUploads) await files.remove("public", key).catch(() => {});
+  for (const { documentKey } of oldDocuments) await files.remove("private", documentKey).catch(() => {});
 
   const passwordHash = await hashPassword(DEMO_PASSWORD);
   const admin = await db.user.create({ data: { email: "admin@regear.test", name: "Ada Admin", role: "ADMIN", passwordHash: await hashPassword(ADMIN_PASSWORD), emailVerifiedAt: new Date() } });

@@ -12,7 +12,7 @@ const { DEV_MAIL_DIR } = await import("@/lib/email/transport");
 const { issueEmailToken, isEmailTokenValid, resetPasswordWithToken, verifyEmailWithToken } = await import("@/lib/auth/email-tokens");
 const { hashPassword, verifyPassword } = await import("@/lib/auth/password");
 
-const address = { fullName: "Test Buyer", phone: "+62 811 0000 000", line1: "Jl. Test 1", line2: "", city: "Jakarta", region: "", postalCode: "10110", country: "Indonesia" };
+const address = { fullName: "Test Buyer", phone: "+62 000 0000 000", line1: "Jl. Test 1", line2: "", city: "Jakarta", region: "", postalCode: "10110", country: "Indonesia" };
 
 async function fixture() {
   await db.$transaction([

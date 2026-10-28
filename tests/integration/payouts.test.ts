@@ -9,7 +9,7 @@ const service = await import("@/lib/payouts/service");
 const { payouts, PayoutError } = await import("@/lib/payouts/provider");
 const { getDeletionBlockers } = await import("@/lib/account/delete");
 
-const address = { fullName: "Test Buyer", phone: "+62 811 0000 000", line1: "Jl. Test 1", line2: "", city: "Jakarta", region: "", postalCode: "10110", country: "Indonesia" };
+const address = { fullName: "Test Buyer", phone: "+62 000 0000 000", line1: "Jl. Test 1", line2: "", city: "Jakarta", region: "", postalCode: "10110", country: "Indonesia" };
 
 async function fixture() {
   await db.$transaction([

@@ -11,7 +11,7 @@ const { payments } = await import("@/lib/payments");
 
 const address = {
   fullName: "Test Buyer",
-  phone: "+62 811 0000 000",
+  phone: "+62 000 0000 000",
   line1: "Jl. Test 1",
   line2: "",
   city: "Jakarta",

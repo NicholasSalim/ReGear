@@ -12,7 +12,7 @@ const { payments } = await import("@/lib/payments");
 // outcome is only known by asking for the status later.
 const PAGE = "https://app.sandbox.midtrans.com/snap/v4/redirection/tok";
 
-const address = { fullName: "Test Buyer", phone: "+62 811 0000 000", line1: "Jl. Test 1", line2: "", city: "Jakarta", region: "", postalCode: "10110", country: "Indonesia" };
+const address = { fullName: "Test Buyer", phone: "+62 000 0000 000", line1: "Jl. Test 1", line2: "", city: "Jakarta", region: "", postalCode: "10110", country: "Indonesia" };
 
 async function fixture() {
   await db.$transaction([

@@ -195,7 +195,7 @@ async function main() {
         data: {
           sellerId: profile.id,
           legalName: s.name,
-          phone: "+62 812 0000 0000",
+          phone: "+62 000 0000 0000",
           address: `Jl. Contoh No. 1, ${s.location}`,
           idType: "NATIONAL_ID",
           idNumberLast4: "1234",
@@ -214,7 +214,7 @@ async function main() {
     data: {
       sellerId: sellers.pcparts.id,
       legalName: "Putra Pratama",
-      phone: "+62 812 0000 0000",
+      phone: "+62 000 0000 0000",
       address: "Jl. Contoh No. 1, Surabaya, Jawa Timur 60111",
       idType: "NATIONAL_ID",
       idNumberLast4: "4821",
@@ -310,7 +310,7 @@ async function main() {
         totalIdr: fees.totalIdr,
         status,
         returnWindowDays: listing.returnWindowDays,
-        shippingAddress: JSON.stringify({ fullName: "Bima Buyer", phone: "+62 811 1111 1111", line1: "Jl. Merdeka No. 10", line2: "", city: "Jakarta", region: "DKI Jakarta", postalCode: "10110", country: "Indonesia" }),
+        shippingAddress: JSON.stringify({ fullName: "Bima Buyer", phone: "+62 000 0000 0000", line1: "Jl. Contoh No. 10", line2: "", city: "Jakarta", region: "DKI Jakarta", postalCode: "10110", country: "Indonesia" }),
         listingSnapshot: JSON.stringify({ title: listing.title, slug: listing.slug, conditionGrade: listing.conditionGrade, imageKey: listing.images[0]?.key ?? null, warrantyType: listing.warrantyType, warrantyMonths: listing.warrantyMonths, warrantyTerms: listing.warrantyTerms }),
         paymentRef: `sim_ch_${randomBytes(6).toString("hex")}`,
         paidAt: t(extra.daysAgo),

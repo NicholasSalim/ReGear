@@ -90,7 +90,7 @@ describe("auth validation", () => {
     const res = registerSchema.safeParse({ name: "Ann", email: "ann@example.com", password: "pass#word1" });
     expect(res.success).toBe(false);
     expect(res.error?.issues.map((i) => i.path.join("."))).toEqual(["acceptTerms"]);
-    const id = { legalName: "Ann Lee", phone: "+62 812 3456 7890", address: "Jl. Merdeka No. 10, Jakarta", idType: "NATIONAL_ID", idNumber: "3171234567890001" };
+    const id = { legalName: "Ann Lee", phone: "+62 000 0000 0000", address: "Jl. Contoh No. 10, Jakarta", idType: "NATIONAL_ID", idNumber: "3171234567890001" };
     expect(verificationSchema.safeParse(id).success).toBe(false);
     expect(verificationSchema.safeParse({ ...id, consent: "on" }).success).toBe(true);
   });

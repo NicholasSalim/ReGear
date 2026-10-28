@@ -1,7 +1,5 @@
 import "dotenv/config";
 import { randomBytes } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
 import sharp from "sharp";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
@@ -11,9 +9,15 @@ import { applicableChecks, categorySearchTerms, getCategory } from "../src/lib/c
 import { functionalScore, type ConditionCheckEntry } from "../src/lib/condition";
 import type { CheckStatus, ConditionGrade } from "../src/lib/constants";
 import { calculateFees, generateOrderNumber } from "../src/lib/orders/state";
+import { createFileStore } from "../src/lib/file-store";
 
 const db = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
-const STORAGE = path.resolve(process.env.STORAGE_DIR ?? "./storage");
+// The same place the app keeps uploads: local disk, or Supabase Storage when configured.
+const files = createFileStore({
+  dir: process.env.STORAGE_DIR || "./storage",
+  supabaseUrl: process.env.SUPABASE_URL,
+  supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+});
 const DEMO_PASSWORD = "Gear-Demo-2026!";
 
 const GRADE_RANK: Record<ConditionGrade, number> = { LIKE_NEW: 0, EXCELLENT: 1, GOOD: 2, FAIR: 3, FOR_PARTS: 4 };
@@ -55,9 +59,7 @@ async function makeImage(dir: "public" | "private", title: string, subtitle: str
   const data = await sharp(Buffer.from(svg)).webp({ quality: 80 }).toBuffer();
   const name = randomBytes(16).toString("hex");
   const key = `${name.slice(0, 2)}/${name}.webp`;
-  const full = path.join(STORAGE, dir, key);
-  await mkdir(path.dirname(full), { recursive: true });
-  await writeFile(full, data);
+  await files.put(dir, key, data);
   return { key, width: 1200, height: 900, bytes: data.length };
 }
 

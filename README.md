@@ -122,6 +122,12 @@ their balance at once.
 | `npm run typecheck` / `lint` | Type and lint checks |
 | `npm run db:migrate` / `db:deploy` / `db:seed` | Database |
 
+### File storage (optional Supabase)
+
+Uploaded images live under `STORAGE_DIR` unless `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are set; then they go to Supabase Storage. Use Supabase on hosts without a lasting disk, such as Vercel. Two private buckets, `listing-photos` and `id-documents`, are created on first upload. Visitors still get listing photos from `/media/...`, and only admins can open ID documents, so neither bucket is public.
+
+The browser scales photos over 2 MB down to 2000px before uploading, which keeps each request under host limits (Vercel's is 4.5 MB). The server still re-encodes every image.
+
 ### Google sign-in (optional)
 
 Sign-in with Google uses OAuth 2.0 Authorization Code + PKCE with OpenID Connect (`src/lib/auth/google.ts`, `src/app/api/auth/google/`). The button appears automatically once both variables are set.
@@ -173,7 +179,7 @@ src/
     security/       rate limiting, origin checks, safe redirects
     catalog.ts      category specs & condition checklists
     validation.ts   all Zod schemas
-    storage.ts      image processing & storage (local disk; swap for S3/R2)
+    storage.ts      image processing & storage (local disk, or Supabase Storage)
     payments.ts     payment provider interface (Midtrans, or simulated without keys)
 prisma/             schema, migrations, seed
 tests/              unit + integration tests
@@ -207,6 +213,7 @@ The app is fully available in Indonesian (default) and English.
 - **CSRF.** Server Actions get Next.js' built-in Origin/Host check. Route handlers verify `Origin` explicitly, and SameSite cookies add another layer.
 - **Input handling.** Zod validates everything, with lengths bounded and control characters rejected. React escaping prevents XSS. The only raw HTML is JSON-LD, which is serialised with `<` and the U+2028/U+2029 characters escaped. Redirect targets are restricted to same-site paths.
 - **Uploads.** Size is capped, and files are decoded by sharp with a pixel limit. Anything that isn't a real raster image is rejected. Images are re-encoded to WebP, which removes EXIF/GPS data and neutralises polyglot files. Storage keys are random, and the key format is validated to block path traversal. Media is served with `nosniff` and a sandboxed CSP. Identity documents live outside the public store; only admins can fetch them, and every view is audited.
+- **Row-level security.** RLS is on for every table, with no policies, so Supabase's Data API (reachable with the project's publishable key) returns no rows. The app connects as the tables' owner, so RLS doesn't restrict it. A migration that adds a table must also run `ALTER TABLE ... ENABLE ROW LEVEL SECURITY`.
 - **Headers.** CSP (`default-src 'self'`, `object-src 'none'`, `frame-ancestors 'none'`, `form-action 'self'`, `base-uri 'self'`), HSTS (over HTTPS), `X-Frame-Options: DENY`, `nosniff`, a strict Referrer-Policy, Permissions-Policy, COOP and CORP. `poweredByHeader` is disabled. Private areas send `Cache-Control: private, no-store`.
 - **CSP trade-off.** Partial Prerendering serves static shells that can't carry per-request nonces, so `script-src` includes `'unsafe-inline'` for Next's inline bootstrap scripts. The other XSS defences above still apply. If your threat model requires a nonce-based CSP, disable `cacheComponents`, generate a nonce in `src/proxy.ts`, and accept fully dynamic rendering. See the Next.js CSP guide in `node_modules/next/dist/docs/01-app/02-guides/content-security-policy.md`.
 - **Audit log.** Logins, lockouts, password changes, verification decisions, document views, dispute openings and resolutions, and listing moderation are all recorded.
@@ -222,6 +229,5 @@ The app is fully available in Indonesian (default) and English.
 ## Going further in production
 
 - **Automatic payouts.** Implement `PayoutProvider` (`src/lib/payouts/provider.ts`) with a disbursement API (Midtrans Iris, Xendit, Flip) to send withdrawals without an admin.
-- **Storage.** Swap `src/lib/storage.ts` for S3/R2. Keep private documents in a separate, encrypted bucket.
 - **Multi-instance.** Set `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY`, use a shared cache handler (`'use cache: remote'`), and move rate limiting to Redis if load warrants it.
 - **Not yet built:** email notifications (order and dispute events), carrier tracking webhooks, and 2FA for admin accounts.

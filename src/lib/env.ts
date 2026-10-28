@@ -7,6 +7,10 @@ const schema = z.object({
   DATABASE_URL: z.string().regex(/^postgres(ql)?:\/\//,"must be a postgresql:// connection string"),
   NEXT_PUBLIC_SITE_URL: z.url().default("http://localhost:3000"),
   STORAGE_DIR: z.string().min(1).default("./storage"),
+  // Supabase Storage for uploaded images, used when both are set; otherwise
+  // they are kept under STORAGE_DIR. Hosts without a lasting disk need it.
+  SUPABASE_URL: z.url().optional(),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(20).optional(),
   CRON_SECRET: z.string().min(32).optional(),
   // Google sign-in is enabled only when both values are present.
   GOOGLE_CLIENT_ID: z.string().min(10).optional(),
@@ -54,6 +58,12 @@ if (isProd && !env.TRUST_PROXY) {
 // reverse) fails every call with 401, so catch the mix-up at boot.
 if (env.MIDTRANS_SERVER_KEY && env.MIDTRANS_SERVER_KEY.startsWith("SB-") !== (env.MIDTRANS_ENV === "sandbox")) {
   throw new Error(`MIDTRANS_SERVER_KEY does not match MIDTRANS_ENV="${env.MIDTRANS_ENV}"`);
+}
+if (!env.SUPABASE_URL !== !env.SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error("Set both SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY, or neither");
+}
+if (process.env.VERCEL && !env.SUPABASE_URL) {
+  console.warn("[regear] Supabase Storage is not configured: uploads are written to a temporary disk and will disappear.");
 }
 if (isProd && !env.MIDTRANS_SERVER_KEY) {
   console.warn("[regear] MIDTRANS_SERVER_KEY is not set: buyers cannot pay for orders.");

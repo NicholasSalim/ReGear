@@ -28,6 +28,9 @@ export default defineConfig({
       // Tests always use the simulated payment provider, even when .env has Midtrans keys.
       MIDTRANS_SERVER_KEY: "",
       PAYOUTS_MODE: "auto",
+      // ...and keep uploads on local disk, even when .env has Supabase keys.
+      SUPABASE_URL: "",
+      SUPABASE_SERVICE_ROLE_KEY: "",
     },
     // Integration tests share one database.
     fileParallelism: false,

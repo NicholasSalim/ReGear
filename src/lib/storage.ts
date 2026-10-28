@@ -1,21 +1,15 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
-import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
-import path from "node:path";
 import sharp, { type Metadata as SharpMetadata } from "sharp";
 import { en } from "@/i18n/dictionaries/en";
 import { env } from "@/lib/env";
+import { createFileStore } from "@/lib/file-store";
 
-// File storage on local disk. Public images live under <STORAGE_DIR>/public
-// and are served by /media/[...key]; identity documents live under
-// <STORAGE_DIR>/private and are only streamed to admins.
-// Swap these functions for an S3/R2 implementation in multi-node deployments.
+// Uploaded images. Public images (listing photos) are served by
+// /media/[...key]; identity documents are only streamed to admins. The bytes
+// live under STORAGE_DIR, or in Supabase Storage when it is configured.
 
-const ROOT = path.resolve(env.STORAGE_DIR);
-const PUBLIC_DIR = path.join(ROOT, "public");
-const PRIVATE_DIR = path.join(ROOT, "private");
-
-const KEY_RE = /^[a-f0-9]{2}\/[a-f0-9]{32}\.(webp|jpg)$/;
+const store = createFileStore({ dir: env.STORAGE_DIR, supabaseUrl: env.SUPABASE_URL, supabaseKey: env.SUPABASE_SERVICE_ROLE_KEY });
 
 export const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 const MAX_INPUT_PIXELS = 50_000_000;
@@ -36,13 +30,6 @@ export class InvalidImageError extends Error {
 function newKey(ext: "webp" | "jpg") {
   const name = randomBytes(16).toString("hex");
   return `${name.slice(0, 2)}/${name}.${ext}`;
-}
-
-function resolveKey(base: string, key: string): string {
-  if (!KEY_RE.test(key)) throw new Error("Invalid storage key");
-  const full = path.join(base, key);
-  if (!full.startsWith(base + path.sep)) throw new Error("Invalid storage key");
-  return full;
 }
 
 /**
@@ -77,49 +64,30 @@ async function processImage(input: Buffer, quality: number) {
 export async function savePublicImage(input: Buffer) {
   const { data, info } = await processImage(input, 82);
   const key = newKey("webp");
-  const full = resolveKey(PUBLIC_DIR, key);
-  await mkdir(path.dirname(full), { recursive: true });
-  await writeFile(full, data, { flag: "wx" });
+  await store.put("public", key, data);
   return { key, width: info.width, height: info.height, bytes: data.length };
 }
 
 export async function savePrivateDocument(input: Buffer) {
   const { data } = await processImage(input, 88);
   const key = newKey("webp");
-  const full = resolveKey(PRIVATE_DIR, key);
-  await mkdir(path.dirname(full), { recursive: true });
-  await writeFile(full, data, { flag: "wx", mode: 0o600 });
+  await store.put("private", key, data);
   return { key };
 }
 
 export async function readPublicImage(key: string): Promise<Buffer | null> {
-  try {
-    return await readFile(resolveKey(PUBLIC_DIR, key));
-  } catch {
-    return null;
-  }
+  return store.get("public", key);
 }
 
 export async function readPrivateDocument(key: string): Promise<Buffer | null> {
-  try {
-    return await readFile(resolveKey(PRIVATE_DIR, key));
-  } catch {
-    return null;
-  }
+  return store.get("private", key);
 }
 
+// Deleting is clean-up: a file that can't be removed now is logged, not an error for the caller.
 export async function deletePublicImage(key: string) {
-  try {
-    await unlink(resolveKey(PUBLIC_DIR, key));
-  } catch {
-    /* already gone */
-  }
+  await store.remove("public", key).catch((err) => console.error("could not delete image", key, err));
 }
 
 export async function deletePrivateDocument(key: string) {
-  try {
-    await unlink(resolveKey(PRIVATE_DIR, key));
-  } catch {
-    /* already gone */
-  }
+  await store.remove("private", key).catch((err) => console.error("could not delete document", key, err));
 }

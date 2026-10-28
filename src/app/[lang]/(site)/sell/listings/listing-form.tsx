@@ -7,6 +7,7 @@ import { ArrowLeft, ArrowRight, ImagePlus, Loader2, X } from "lucide-react";
 import { saveListingAction } from "@/actions/listings";
 import { useLocale, useT } from "@/i18n/client";
 import { localePath, pick } from "@/i18n/locales";
+import { shrinkImage } from "@/lib/shrink-image";
 import { applicableChecks, CATEGORIES, getCategory, needsBattery, optionLabel } from "@/lib/catalog";
 import { functionalScore, isCustomCheck, MAX_CUSTOM_CHECKS, type ConditionCheckEntry } from "@/lib/condition";
 import {
@@ -79,9 +80,10 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
     const room = MAX_LISTING_IMAGES - v.images.length;
     const batch = Array.from(files).slice(0, room);
     setUploadError(null);
-    for (const file of batch) {
+    for (const original of batch) {
+      const file = await shrinkImage(original);
       if (file.size > 8 * 1024 * 1024) {
-        setUploadError(t.tooLarge(file.name));
+        setUploadError(t.tooLarge(original.name));
         continue;
       }
       setUploading((n) => n + 1);
@@ -89,8 +91,10 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
         const body = new FormData();
         body.append("file", file);
         const res = await fetch("/api/uploads", { method: "POST", body });
-        const json = await res.json();
-        if (!res.ok) setUploadError(json.error ?? t.uploadFailed);
+        // A host's own error page (e.g. "request too large") isn't JSON.
+        const json = await res.json().catch(() => ({}));
+        if (res.status === 413) setUploadError(t.tooLarge(original.name));
+        else if (!res.ok) setUploadError(json.error ?? t.uploadFailed);
         else setV((prev) => ({ ...prev, images: [...prev.images, { id: json.id, url: json.url }].slice(0, MAX_LISTING_IMAGES) }));
       } catch {
         setUploadError(t.offline);

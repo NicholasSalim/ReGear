@@ -4,11 +4,24 @@ import { useLocale, useT } from "@/i18n/client";
 import { pick } from "@/i18n/locales";
 import type { ActionState } from "@/lib/action";
 import { ID_TYPE_LABELS, ID_TYPES } from "@/lib/constants";
+import { shrinkImage } from "@/lib/shrink-image";
 import { ActionForm, FormMessage, SubmitButton } from "@/components/forms";
 import { Field } from "@/components/ui";
 import { RichText } from "@/components/rich-text";
 
 type FormAction = (state: ActionState, formData: FormData) => Promise<ActionState>;
+
+/** Swap a large photo for a smaller copy, so the form stays within the host's request size limit. */
+async function shrinkChosenFile(e: React.ChangeEvent<HTMLInputElement>) {
+  const input = e.currentTarget;
+  const file = input.files?.[0];
+  if (!file) return;
+  const smaller = await shrinkImage(file);
+  if (smaller === file) return;
+  const files = new DataTransfer();
+  files.items.add(smaller);
+  input.files = files.files;
+}
 
 export function SellerProfileForm({
   action,
@@ -77,7 +90,7 @@ export function VerificationForm({ action }: { action: FormAction }) {
                 </Field>
               </div>
               <Field label={t.documentPhoto} name="document" error={s.fieldErrors?.document} hint={t.documentPhotoHint}>
-                <input id="document" name="document" type="file" accept="image/jpeg,image/png,image/webp" className="block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:font-medium" />
+                <input id="document" name="document" type="file" accept="image/jpeg,image/png,image/webp" onChange={shrinkChosenFile} className="block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:font-medium" />
               </Field>
               <div>
                 <label className="flex items-start gap-2 text-sm text-slate-700">

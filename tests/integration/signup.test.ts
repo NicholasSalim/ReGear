@@ -8,7 +8,7 @@ const { confirmSignup, resendSignupCode, startSignup, MAX_CODE_ATTEMPTS } = awai
 const { validateSessionToken, hashToken } = await import("@/lib/auth/session");
 const { hashPassword } = await import("@/lib/auth/password");
 
-const EMAIL = "new.person@test.dev";
+const EMAIL = "new.person@signup.test";
 
 async function signUp(email = EMAIL) {
   return startSignup({ name: "New Person", email, passwordHash: await hashPassword("Pass-word-1"), locale: "en", termsVersion: "test" });
@@ -23,9 +23,9 @@ async function codeSentTo(email = EMAIL) {
 describe("sign-up by emailed code", () => {
   beforeEach(async () => {
     await db.signupRequest.deleteMany();
-    await db.emailOutbox.deleteMany({ where: { to: { endsWith: "@test.dev" } } });
-    await db.session.deleteMany({ where: { user: { email: { endsWith: "@test.dev" } } } });
-    await db.user.deleteMany({ where: { email: { endsWith: "@test.dev" } } });
+    await db.emailOutbox.deleteMany({ where: { to: { endsWith: "@signup.test" } } });
+    await db.session.deleteMany({ where: { user: { email: { endsWith: "@signup.test" } } } });
+    await db.user.deleteMany({ where: { email: { endsWith: "@signup.test" } } });
   });
 
   it("creates no account until the code is entered, then a confirmed one", async () => {
@@ -81,7 +81,7 @@ describe("sign-up by emailed code", () => {
   });
 
   it("doesn't let a session of an unconfirmed account sign anyone in", async () => {
-    const user = await db.user.create({ data: { email: "legacy@test.dev", name: "Legacy", passwordHash: await hashPassword("Legacy-pass-1") } });
+    const user = await db.user.create({ data: { email: "legacy@signup.test", name: "Legacy", passwordHash: await hashPassword("Legacy-pass-1") } });
     await db.session.create({ data: { id: hashToken("t".repeat(43)), userId: user.id, expiresAt: new Date(Date.now() + 86_400_000) } });
     expect(await validateSessionToken("t".repeat(43))).toBeNull();
     await db.user.update({ where: { id: user.id }, data: { emailVerifiedAt: new Date() } });

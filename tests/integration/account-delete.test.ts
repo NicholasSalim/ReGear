@@ -131,7 +131,20 @@ describe("account deletion", () => {
 
     const order = await db.order.findUniqueOrThrow({ where: { id: orderId } });
     expect(order.status).toBe("COMPLETED");
-    expect(JSON.parse(order.shippingAddress)).toEqual({ fullName: "", phone: "", line1: "", line2: "", postalCode: "", city: "Jakarta", region: "DKI Jakarta", country: "Indonesia" });
+    // Everything that identifies the buyer is blanked, courier note and map pin included; the city stays for records.
+    expect(JSON.parse(order.shippingAddress)).toEqual({
+      fullName: "",
+      phone: "",
+      line1: "",
+      line2: "",
+      postalCode: "",
+      note: "",
+      latitude: null,
+      longitude: null,
+      city: "Jakarta",
+      region: "DKI Jakarta",
+      country: "Indonesia",
+    });
     expect(await db.review.count({ where: { orderId } })).toBe(1);
 
     // The email is free again.

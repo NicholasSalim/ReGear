@@ -45,8 +45,8 @@ export function isBlocked(b: DeletionBlockers) {
   return b.admin || b.purchases > 0 || b.sales > 0 || b.balance;
 }
 
-/** Address fields that identify the buyer; the city and country stay for records. */
-const REDACTED_ADDRESS = { fullName: "", phone: "", line1: "", line2: "", postalCode: "" };
+/** Address fields that identify the buyer, including the courier note and map pin; the district, city and province stay for records. */
+const REDACTED_ADDRESS = { fullName: "", phone: "", line1: "", line2: "", postalCode: "", note: "", latitude: null, longitude: null };
 
 /**
  * Deletes the account in one transaction and returns what to invalidate.
@@ -98,6 +98,7 @@ export async function deleteAccount(userId: string) {
 
     // 6. Everything else personal.
     await tx.favorite.deleteMany({ where: { userId } });
+    await tx.address.deleteMany({ where: { userId } });
     await tx.emailToken.deleteMany({ where: { userId } });
     await tx.emailOutbox.deleteMany({ where: { userId } });
     await tx.oAuthAccount.deleteMany({ where: { userId } });

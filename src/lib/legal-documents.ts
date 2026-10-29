@@ -39,7 +39,7 @@ const privacy: Record<Locale, LegalDocument> = {
             list: [
               "Akun: nama, alamat email, dan kata sandi. Kata sandi disimpan sebagai hash satu arah (scrypt), sehingga kami sendiri tidak bisa membacanya. Kami juga mencatat versi Syarat dan Kebijakan ini yang Anda setujui dan kapan.",
               "Masuk dengan Google: jika Anda memilihnya, Google memberi kami ID akun Google, alamat email, dan nama Anda (izin \"openid\", \"email\", \"profile\"). Kami tidak menerima kontak, file, atau data Google lainnya.",
-              "Pembelian: alamat pengiriman (nama penerima, nomor telepon, alamat), pesanan, pengembalian, sengketa, dan ulasan yang Anda tulis.",
+              "Pembelian: alamat yang Anda simpan (nama penerima, nomor telepon, alamat, catatan untuk kurir, dan pin lokasi di peta jika Anda menambahkannya), pesanan, pengembalian, sengketa, dan ulasan yang Anda tulis.",
               "Penjualan: nama toko, deskripsi, dan lokasi toko; iklan, laporan kondisi, dan foto barang. Saat foto diunggah, kami membuat ulang gambarnya sehingga metadata seperti lokasi GPS dan nomor seri kamera terhapus.",
               "Verifikasi penjual (opsional): nama sesuai identitas, nomor telepon, alamat, jenis dokumen, empat karakter terakhir nomor dokumen (nomor lengkapnya tidak disimpan), dan foto dokumen identitas. Data ini hanya dikumpulkan dengan persetujuan eksplisit Anda saat mengajukan verifikasi.",
               "Pesan: pesan dan bukti yang Anda tulis dalam sengketa, catatan pengembalian, dan alasan pembatalan.",
@@ -86,11 +86,11 @@ const privacy: Record<Locale, LegalDocument> = {
           {
             list: [
               "Publik: nama, deskripsi, dan lokasi toko; iklan dan fotonya; ulasan, yang hanya menampilkan nama depan pembeli.",
-              "Penjual dalam pesanan Anda: nama penerima, nomor telepon, dan alamat pengiriman, hanya setelah Anda membayar, agar barang bisa dikirim.",
+              "Penjual dalam pesanan Anda: nama penerima, nomor telepon, alamat pengiriman, catatan untuk kurir, dan pin lokasi (jika ada), hanya setelah Anda membayar, agar barang bisa dikirim.",
               "Pembeli dalam pesanan Anda: informasi toko dan nomor resi pengiriman.",
               "Pihak dalam sengketa: pembeli, penjual, dan petugas ReGear bisa membaca seluruh pesan sengketa.",
               "Petugas ReGear: data yang diperlukan untuk meninjau verifikasi, sengketa, dan moderasi. Setiap kali dokumen identitas dilihat, hal itu tercatat.",
-              "Penyedia layanan kami: penyedia hosting dan penyimpanan, penyedia pengiriman email, Google (jika Anda masuk dengan Google), dan mitra pembayaran. Mereka memproses data hanya atas instruksi kami. Jasa ekspedisi menerima alamat dari penjual yang mengirim barang.",
+              "Penyedia layanan kami: penyedia hosting dan penyimpanan, penyedia pengiriman email, Google (jika Anda masuk dengan Google), dan mitra pembayaran. Mereka memproses data hanya atas instruksi kami. Saat Anda membuka peta untuk memasang pin alamat, browser Anda memuat peta dan hasil pencarian tempat langsung dari OpenStreetMap, yang menerima alamat IP dan kata kunci pencarian Anda. Jasa ekspedisi menerima alamat dari penjual yang mengirim barang.",
               "Otoritas: bila diwajibkan oleh hukum atau perintah yang sah.",
             ],
           },
@@ -183,7 +183,7 @@ const privacy: Record<Locale, LegalDocument> = {
             list: [
               "Account: your name, email address and password. Passwords are stored as a one-way hash (scrypt), so even we can't read them. We also record which version of these Terms and this Policy you agreed to, and when.",
               "Sign in with Google: if you choose it, Google gives us your Google account ID, email address and name (the \"openid\", \"email\" and \"profile\" permissions). We receive no contacts, files or other Google data.",
-              "Purchases: your shipping address (recipient name, phone number, address), orders, returns, disputes and the reviews you write.",
+              "Purchases: the addresses you save (recipient name, phone number, address, a note for the courier, and a map pin if you add one), orders, returns, disputes and the reviews you write.",
               "Selling: your shop name, description and location; your listings, condition reports and item photos. When a photo is uploaded we re-create the image, which removes metadata such as GPS location and camera serial numbers.",
               "Seller verification (optional): your legal name, phone number, address, document type, the last four characters of the document number (the full number is never stored) and a photo of your ID document. This is only collected with your explicit consent when you apply.",
               "Messages: what you write in disputes, return notes and cancellation reasons.",
@@ -230,11 +230,11 @@ const privacy: Record<Locale, LegalDocument> = {
           {
             list: [
               "Everyone: your shop's name, description and location; listings and their photos; reviews, which show only the buyer's first name.",
-              "The seller in your order: the recipient name, phone number and shipping address, only after you pay, so they can ship the item.",
+              "The seller in your order: the recipient name, phone number, shipping address, courier note and map pin (if any), only after you pay, so they can ship the item.",
               "The buyer in your order: your shop details and the shipment tracking number.",
               "People in a dispute: the buyer, the seller and ReGear staff can read the whole dispute thread.",
               "ReGear staff: what they need to review verifications, disputes and moderation. Every view of an ID document is recorded.",
-              "Our service providers: hosting and storage, email delivery, Google (if you sign in with Google) and our payment partner. They process data only on our instructions. Couriers receive the address from the seller who ships the item.",
+              "Our service providers: hosting and storage, email delivery, Google (if you sign in with Google) and our payment partner. They process data only on our instructions. When you open the map to pin an address, your browser loads the map and place-search results directly from OpenStreetMap, which receives your IP address and what you search for. Couriers receive the address from the seller who ships the item.",
               "Authorities: when required by law or a valid order.",
             ],
           },

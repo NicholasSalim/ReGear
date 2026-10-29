@@ -13,6 +13,8 @@ export type ActionState = {
   message?: string;
   error?: string;
   fieldErrors?: Record<string, string>;
+  /** The id of what the action created, for forms that act on it next. */
+  id?: string;
 };
 
 export const initialActionState: ActionState = {};

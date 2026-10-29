@@ -23,7 +23,7 @@ import {
   InvalidTransitionError,
   isWithinReturnWindow,
 } from "@/lib/orders/state";
-import type { Address } from "@/lib/validation";
+import type { ShippingAddress } from "@/lib/addresses";
 
 // Order domain service. All order mutations live here so that authorization,
 // state transitions, listing inventory and the event log stay consistent no
@@ -85,7 +85,7 @@ function assertSeller(order: { seller: { userId: string } }, userId: string) {
 
 // Checkout -----------------------------------------------------------------
 
-export async function createOrder(buyerId: string, listingId: string, address: Address): Promise<Result> {
+export async function createOrder(buyerId: string, listingId: string, address: ShippingAddress): Promise<Result> {
   return db.$transaction(async (tx) => {
     const listing = await tx.listing.findUnique({
       where: { id: listingId },

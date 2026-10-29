@@ -1,7 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import type { CurrentUser } from "@/lib/auth/dal";
-import type { Address } from "@/lib/validation";
+import type { ShippingAddress } from "@/lib/addresses";
 
 // Private, per-user reads. Every function takes the authenticated user and
 // scopes the query to rows they are allowed to see (no IDOR by id guessing).
@@ -75,7 +75,7 @@ export async function getOrderForUser(orderId: string, user: CurrentUser) {
     order.buyerId === user.id ? "BUYER" : order.seller.userId === user.id ? "SELLER" : user.role === "ADMIN" ? "ADMIN" : null;
   if (!role) return null;
 
-  const address = parse<Address>(order.shippingAddress, {} as Address);
+  const address = parse<ShippingAddress>(order.shippingAddress, {} as ShippingAddress);
   return {
     ...order,
     role,

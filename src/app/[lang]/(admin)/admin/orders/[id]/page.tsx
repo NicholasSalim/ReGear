@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import type { ShippingAddress } from "@/lib/addresses";
+import { ShippingAddressBlock } from "@/components/shipping-address";
 import { notFound } from "next/navigation";
 import { Link } from "@/i18n/client";
 import { eventText } from "@/i18n/messages";
@@ -44,7 +46,7 @@ export default async function AdminOrderPage({ params }: PageProps<"/[lang]/admi
   });
   if (!order) notFound();
 
-  let address: Record<string, string> = {};
+  let address: Partial<ShippingAddress> = {};
   try {
     address = JSON.parse(order.shippingAddress);
   } catch {
@@ -90,7 +92,7 @@ export default async function AdminOrderPage({ params }: PageProps<"/[lang]/admi
               <span className="block text-xs text-slate-500">{order.seller.user.email}</span>
             </Row>
             <Row label={t.shipTo}>
-              {[address.fullName, address.line1, address.line2, address.city, address.region, address.postalCode, address.country].filter(Boolean).join(", ") || t.none}
+              <ShippingAddressBlock address={address} />
             </Row>
           </dl>
         </section>

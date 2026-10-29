@@ -313,6 +313,35 @@ export const addressSchema = z.object({
 });
 export type Address = z.infer<typeof addressSchema>;
 
+export const ADDRESS_LIMIT = 10;
+
+// A map pin inside Indonesia's bounding box; an empty field means "no pin".
+const coordinate = (min: number, max: number) =>
+  z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? undefined : Number(v)),
+    z.number(vmsg("pinOutside")).min(min, vmsg("pinOutside")).max(max, vmsg("pinOutside")).optional(),
+  );
+
+/** An address-book entry as the form sends it. Region codes are checked against the official list by the caller. */
+export const savedAddressSchema = z
+  .object({
+    label: text(1, 30),
+    recipientName: text(2, 100),
+    phone,
+    provinceCode: z.string().regex(/^\d{2}$/, vmsg("region")),
+    cityCode: z.string().regex(/^\d{2}\.\d{2}$/, vmsg("region")),
+    districtCode: z.string().regex(/^\d{2}\.\d{2}\.\d{2}$/, vmsg("region")),
+    postalCode: z.string().trim().regex(/^\d{5}$/, vmsg("postalCodeId")),
+    street: text(5, 200),
+    detail: text(0, 100),
+    note: text(0, 150),
+    latitude: coordinate(-11.5, 6.5),
+    longitude: coordinate(94.5, 141.5),
+    makeDefault: z.preprocess((v) => v === "on" || v === "true" || v === true, z.boolean()),
+  })
+  .refine((a) => (a.latitude === undefined) === (a.longitude === undefined), { message: vmsg("pinOutside"), path: ["latitude"] });
+export type SavedAddressInput = z.infer<typeof savedAddressSchema>;
+
 export const shipSchema = z.object({
   carrier: choice(CARRIERS),
   trackingNumber: z.string().trim().regex(/^[A-Za-z0-9-]{5,40}$/, vmsg("tracking")),

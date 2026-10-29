@@ -7,6 +7,8 @@ import { Link } from "@/i18n/client";
 import { getDictionary } from "@/i18n/server";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth/dal";
+import { listAddresses } from "@/lib/addresses";
+import { ADDRESS_LIMIT } from "@/lib/validation";
 import { PAYMENT_HOLD_MINUTES } from "@/lib/constants";
 import { formatMoney } from "@/lib/format";
 import { mediaUrl } from "@/lib/media";
@@ -63,9 +65,16 @@ async function Checkout({ params }: { params: PageProps<"/[lang]/checkout/[listi
     return <EmptyState title={t.verifyFirst} description={t.verifyFirstHint(user.email)} />;
   }
 
+  const addresses = await listAddresses(user.id);
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_20rem]">
-      <CheckoutForm action={checkoutAction.bind(null, listing.id)} defaultName={user.name} holdMinutes={PAYMENT_HOLD_MINUTES} />
+      <CheckoutForm
+        action={checkoutAction.bind(null, listing.id)}
+        addresses={addresses}
+        defaultName={user.name}
+        holdMinutes={PAYMENT_HOLD_MINUTES}
+        limit={ADDRESS_LIMIT}
+      />
       <aside className="card h-fit space-y-4 p-5 text-sm">
         <div className="flex gap-3">
           <div className="relative size-16 shrink-0 overflow-hidden rounded-lg bg-slate-100">

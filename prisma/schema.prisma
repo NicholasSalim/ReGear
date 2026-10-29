@@ -42,6 +42,7 @@ model User {
   sellerProfile   SellerProfile?
   purchases       Order[]          @relation("BuyerOrders")
   favorites       Favorite[]
+  addresses       Address[]
   uploads         Upload[]
   reviewsWritten  Review[]         @relation("ReviewBuyer")
   disputeMessages DisputeMessage[]
@@ -52,6 +53,37 @@ model User {
   // Trigram indexes (pg_trgm) serve the admin and storefront "contains" searches.
   @@index([email(ops: raw("gin_trgm_ops"))], type: Gin, map: "User_email_trgm_idx")
   @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "User_name_trgm_idx")
+}
+
+// A buyer's saved delivery address. Region names are copied from the
+// official list (src/lib/regions) when saved, next to their codes. The map
+// pin is optional. Checkout copies the chosen address into the order, so
+// editing or deleting it later doesn't change past orders.
+model Address {
+  id            String   @id @default(cuid())
+  userId        String
+  label         String
+  recipientName String
+  phone         String
+  provinceCode  String
+  province      String
+  cityCode      String
+  city          String
+  districtCode  String
+  district      String
+  postalCode    String
+  street        String
+  detail        String   @default("")
+  note          String   @default("") // for the courier, e.g. "black gate next to the mosque"
+  latitude      Float?
+  longitude     Float?
+  isDefault     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 // A sign-up waiting for its emailed code. No account exists until the code is

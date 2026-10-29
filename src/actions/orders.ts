@@ -8,11 +8,11 @@ import { audit } from "@/lib/audit";
 import { invalidate } from "@/lib/cache";
 import { actionI18n, formToObject, runAction, type ActionState } from "@/lib/action";
 import { requireUserStrict } from "@/lib/auth/dal";
+import { getAddress, shippingSnapshot } from "@/lib/addresses";
 import { rateLimit } from "@/lib/security/rate-limit";
 import * as orders from "@/lib/orders/service";
 import { enqueueDisputeMessageEmails } from "@/lib/email/notify";
 import {
-  addressSchema,
   disputeMessageSchema,
   disputeSchema,
   id as idSchema,
@@ -35,8 +35,11 @@ export async function checkoutAction(listingId: string, _prev: ActionState, form
     idSchema.parse(listingId);
     const limited = await rateLimit(`checkout:${user.id}`, 20, 3600);
     if (!limited.ok) return { error: t.actions.checkoutLimit };
-    const address = addressSchema.parse(formToObject(formData));
-    const res = await orders.createOrder(user.id, listingId, address);
+    // The address comes from the buyer's own address book; the order keeps a copy.
+    const addressId = String(formData.get("addressId") ?? "");
+    const address = /^[a-z0-9]{20,32}$/i.test(addressId) ? await getAddress(user.id, addressId) : null;
+    if (!address) return { error: t.actions.chooseAddress };
+    const res = await orders.createOrder(user.id, listingId, shippingSnapshot(address));
     invalidate(res.tags);
     orderId = res.orderId;
   });

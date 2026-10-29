@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { CircleDot, Package, ShieldAlert } from "lucide-react";
 import { Link } from "@/i18n/client";
+import { ShippingAddressBlock } from "@/components/shipping-address";
 import { eventText } from "@/i18n/messages";
 import { pick } from "@/i18n/locales";
 import { getDictionary, getLocale } from "@/i18n/server";
@@ -269,22 +270,7 @@ export async function OrderDetail({ order, now }: { order: OrderForUser; now: Da
           {order.address && (
             <section className="card p-5 text-sm">
               <h2 className="mb-2 font-bold">{t.shipTo}</h2>
-              <address className="text-slate-700 not-italic">
-                {[
-                  order.address.fullName,
-                  order.address.line1,
-                  order.address.line2,
-                  [order.address.city, order.address.region].filter(Boolean).join(", ") + (order.address.postalCode ? ` ${order.address.postalCode}` : ""),
-                  order.address.country,
-                  order.address.phone,
-                ]
-                  .filter(Boolean)
-                  .map((line, i) => (
-                    <span key={i} className="block">
-                      {line}
-                    </span>
-                  ))}
-              </address>
+              <ShippingAddressBlock address={order.address} />
             </section>
           )}
         </aside>

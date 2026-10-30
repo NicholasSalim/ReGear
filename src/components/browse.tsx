@@ -1,4 +1,4 @@
-import { SlidersHorizontal } from "lucide-react";
+import { ChevronDown, SlidersHorizontal } from "lucide-react";
 import { Link } from "@/i18n/client";
 import { localePath, pick, type Locale } from "@/i18n/locales";
 import { getDictionary, getLocale, type Dictionary } from "@/i18n/server";
@@ -92,14 +92,26 @@ function Filters({
   locale: Locale;
   t: Dictionary;
 }) {
+  const activeFilters =
+    params.grade.length +
+    [!fixedCategory && params.category, params.min, params.max, params.brand, params.verified, params.warranty].filter(Boolean).length;
+
   // Plain GET form: works without JavaScript and produces shareable, crawlable URLs.
+  // Below the sidebar layout the filters start closed so listings come first; the
+  // checkbox opens them with CSS alone, and the sidebar always shows them.
   return (
     <aside aria-label={t.browse.filtersAria}>
-      <details open className="card group p-4 lg:sticky lg:top-32">
-        <summary className="flex cursor-pointer list-none items-center gap-2 font-semibold lg:pointer-events-none">
+      <div className="card p-4 lg:sticky lg:top-32">
+        <input id="f-open" type="checkbox" className="peer sr-only lg:hidden" />
+        <label
+          htmlFor="f-open"
+          className="flex cursor-pointer items-center gap-2 rounded font-semibold peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-700 peer-checked:[&_.chevron]:rotate-180 lg:pointer-events-none"
+        >
           <SlidersHorizontal className="size-4" aria-hidden /> {t.browse.filters}
-        </summary>
-        <form method="get" action={localePath(basePath, locale)} className="mt-4 space-y-5 text-sm">
+          {activeFilters > 0 && <span className="num rounded-full bg-brand-50 px-2 text-xs text-brand-800 lg:hidden">{activeFilters}</span>}
+          <ChevronDown className="chevron ml-auto size-4 transition-transform lg:hidden" aria-hidden />
+        </label>
+        <form method="get" action={localePath(basePath, locale)} className="mt-4 hidden space-y-5 text-sm peer-checked:block lg:block">
           {params.q && <input type="hidden" name="q" value={params.q} />}
           {params.sort !== "newest" && <input type="hidden" name="sort" value={params.sort} />}
 
@@ -177,7 +189,7 @@ function Filters({
             </Link>
           </div>
         </form>
-      </details>
+      </div>
     </aside>
   );
 }

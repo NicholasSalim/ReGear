@@ -93,7 +93,7 @@ export function CompareTray() {
     <div className={`fixed inset-x-0 bottom-4 z-40 px-4 ${changedThisView ? "compare-tray-enter" : ""}`} role="region" aria-label={t.compare.trayAria}>
       <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-3 rounded-2xl bg-inverse px-4 py-3 text-white shadow-2xl">
         <GitCompareArrows className="size-5 shrink-0 text-white/70" aria-hidden />
-        <ul className="flex min-w-0 flex-1 flex-wrap gap-2">
+        <ul className="flex min-w-0 flex-1 flex-wrap gap-2 max-sm:hidden">
           {items.map((i) => (
             <li key={i.id} className="flex max-w-[12rem] items-center gap-1 rounded-full bg-white/10 py-1 pr-1 pl-3 text-xs">
               <span className="truncate">{i.title}</span>
@@ -108,8 +108,8 @@ export function CompareTray() {
             </li>
           ))}
         </ul>
-        {mixed && <span className="text-xs text-amber-300">{t.compare.mixed}</span>}
-        <button type="button" onClick={() => write([])} className="text-xs text-white/70 hover:text-white">
+        {mixed && <span className="text-xs text-amber-300 max-sm:hidden">{t.compare.mixed}</span>}
+        <button type="button" onClick={() => write([])} className="text-xs text-white/70 hover:text-white max-sm:ml-auto">
           {t.compare.clear}
         </button>
         <Link

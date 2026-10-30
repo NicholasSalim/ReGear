@@ -40,7 +40,7 @@ export async function ListingCard({ listing, priority }: { listing: CardData; pr
             src={mediaUrl(cover.key)}
             alt=""
             fill
-            sizes="(min-width: 1280px) 300px, (min-width: 640px) 45vw, 100vw"
+            sizes="(min-width: 1280px) 300px, (min-width: 1024px) 30vw, 50vw"
             className="object-cover"
             priority={priority}
           />
@@ -51,20 +51,20 @@ export async function ListingCard({ listing, priority }: { listing: CardData; pr
           </span>
         )}
       </Link>
-      {checks.length > 0 && <ConditionStrip checks={checks} label={stripLabel(checks, t.condition)} className="px-4 pt-3" />}
-      <div className="flex flex-1 flex-col gap-2 px-4 pt-3 pb-4">
+      {checks.length > 0 && <ConditionStrip checks={checks} label={stripLabel(checks, t.condition)} className="px-3 pt-2.5 sm:px-4 sm:pt-3" />}
+      <div className="flex flex-1 flex-col gap-1.5 px-3 pt-2.5 pb-3 sm:gap-2 sm:px-4 sm:pt-3 sm:pb-4">
         <div className="flex flex-wrap items-center gap-1.5">
           <GradeBadge grade={listing.conditionGrade} />
           <WarrantyBadge type={listing.warrantyType} months={listing.warrantyMonths} />
         </div>
-        <h3 className="line-clamp-2 text-[0.95rem] leading-snug font-semibold text-ink" style={{ fontStretch: "100%" }}>
+        <h3 className="line-clamp-2 text-sm leading-snug font-semibold text-ink sm:text-[0.95rem]" style={{ fontStretch: "100%" }}>
           <Link href={`/listings/${listing.slug}`} className="after:absolute after:inset-0 after:content-['']">
             {listing.title}
           </Link>
         </h3>
-        {checks.length > 0 && <p className="text-xs text-slate-500">{stripLabel(checks, t.condition)}</p>}
+        {checks.length > 0 && <p className="text-xs text-slate-500 max-sm:hidden">{stripLabel(checks, t.condition)}</p>}
         <div className="mt-auto flex flex-wrap items-baseline gap-x-2 pt-1">
-          <span className="num wide text-xl font-extrabold text-ink">{formatMoney(listing.priceIdr)}</span>
+          <span className="num wide text-xl font-extrabold text-ink max-sm:text-base max-sm:[font-stretch:100%]">{formatMoney(listing.priceIdr)}</span>
           {discount >= 5 && listing.originalPriceIdr && (
             <span className="num text-xs text-slate-500">
               <span className="line-through">{formatMoney(listing.originalPriceIdr)}</span> {t.listing.newSuffix}
@@ -85,7 +85,7 @@ export async function ListingCard({ listing, priority }: { listing: CardData; pr
           <VerifiedBadge status={listing.seller.verificationStatus} />
         </div>
       </div>
-      <div className="relative z-10 border-t border-rule px-4 py-2">
+      <div className="relative z-10 border-t border-rule px-3 py-2 sm:px-4">
         <CompareToggle id={listing.id} title={listing.title} category={listing.category} />
       </div>
     </article>
@@ -94,7 +94,7 @@ export async function ListingCard({ listing, priority }: { listing: CardData; pr
 
 export function ListingGrid({ listings, priorityCount = 0 }: { listings: CardData[]; priorityCount?: number }) {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
       {listings.map((l, i) => (
         <ListingCard key={l.id} listing={l} priority={i < priorityCount} />
       ))}

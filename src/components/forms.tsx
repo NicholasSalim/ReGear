@@ -1,8 +1,8 @@
 "use client";
 
-import { createContext, startTransition, useActionState, useContext, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { createContext, startTransition, useActionState, useContext, useEffect, useRef, useState, type ComponentProps, type FormEvent, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
-import { CheckCircle2, AlertCircle } from "lucide-react";
+import { CheckCircle2, AlertCircle, Eye, EyeOff } from "lucide-react";
 import { useT } from "@/i18n/client";
 import type { ActionState } from "@/lib/action";
 import { buttonClass, type ButtonVariant } from "@/components/ui";
@@ -37,6 +37,36 @@ export function SubmitButton({
     <button type="submit" name={name} value={value} disabled={pending || disabled} className={buttonClass(variant, className)} aria-busy={pending}>
       {pending ? (pendingText ?? t.forms.working) : children}
     </button>
+  );
+}
+
+/** A password field with a button that shows what was typed. It hides again when the form is submitted. */
+export function PasswordInput({ className, ...props }: Omit<ComponentProps<"input">, "type">) {
+  const t = useT().forms;
+  const [visible, setVisible] = useState(false);
+  const input = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const form = input.current?.form;
+    if (!form) return;
+    const hide = () => setVisible(false);
+    form.addEventListener("submit", hide);
+    return () => form.removeEventListener("submit", hide);
+  }, []);
+
+  return (
+    <div className="relative">
+      <input ref={input} type={visible ? "text" : "password"} className={`input pr-10 ${className ?? ""}`} {...props} />
+      <button
+        type="button"
+        onClick={() => setVisible((v) => !v)}
+        aria-label={visible ? t.hidePassword : t.showPassword}
+        aria-controls={props.id}
+        className="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-r-lg text-slate-500 hover:text-ink"
+      >
+        {visible ? <EyeOff className="size-4" aria-hidden /> : <Eye className="size-4" aria-hidden />}
+      </button>
+    </div>
   );
 }
 

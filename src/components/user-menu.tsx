@@ -29,7 +29,7 @@ export async function UserMenu() {
         </span>
         <span className="hidden max-w-[8rem] truncate text-sm font-medium sm:block">{user.name}</span>
       </summary>
-      <div className="absolute right-0 mt-2 w-56 rounded-xl border border-slate-200 bg-white p-1.5 text-sm shadow-lg">
+      <div className="absolute right-0 mt-2 w-56 rounded-xl border border-slate-200 bg-surface p-1.5 text-sm shadow-lg">
         <MenuLink href="/account" icon={<LayoutDashboard className="size-4" />}>
           {t.nav.myAccount}
         </MenuLink>

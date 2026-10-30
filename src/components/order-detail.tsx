@@ -233,7 +233,7 @@ export async function OrderDetail({ order, now }: { order: OrderForUser; now: Da
             <ol className="relative space-y-4 border-l border-slate-200 pl-6">
               {[...order.events].reverse().map((e) => (
                 <li key={e.id} className="relative">
-                  <CircleDot className="absolute top-0.5 -left-[1.95rem] size-4 bg-white text-brand-600" aria-hidden />
+                  <CircleDot className="absolute top-0.5 -left-[1.95rem] size-4 bg-surface text-brand-700" aria-hidden />
                   <p className="text-sm text-ink">{eventText(e, dict)}</p>
                   <p className="text-xs text-slate-500">{formatDateTime(e.createdAt, locale)}</p>
                 </li>

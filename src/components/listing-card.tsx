@@ -46,7 +46,7 @@ export async function ListingCard({ listing, priority }: { listing: CardData; pr
           />
         ) : null}
         {listing.status !== "ACTIVE" && (
-          <span className="absolute top-3 left-3 rounded-[var(--radius-tag)] bg-ink px-2 py-0.5 text-xs font-semibold text-white">
+          <span className="absolute top-3 left-3 rounded-[var(--radius-tag)] bg-inverse px-2 py-0.5 text-xs font-semibold text-white">
             {listing.status === "SOLD" ? t.listing.soldTag : t.listing.reservedTag}
           </span>
         )}

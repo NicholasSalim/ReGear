@@ -4,6 +4,7 @@ import { LocaleProvider } from "@/i18n/client";
 import { alternatesFor } from "@/i18n/metadata";
 import { LOCALES } from "@/i18n/locales";
 import { getDictionary, getLocale } from "@/i18n/server";
+import { THEME_SCRIPT } from "@/lib/theme";
 import "../globals.css";
 
 // Variable Archivo with the width axis: expanded for labels/headlines, normal for reading.
@@ -41,9 +42,13 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: LayoutProps<"/[lang]">) {
   const [locale, t] = await Promise.all([getLocale(), getDictionary()]);
   return (
-    <html lang={locale} className={`${archivo.variable} h-full`}>
+    // The inline script sets data-theme on <html> before React hydrates.
+    <html lang={locale} className={`${archivo.variable} h-full`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body className="flex min-h-full flex-col">
-        <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded focus:bg-white focus:px-3 focus:py-2">
+        <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded focus:bg-surface focus:px-3 focus:py-2">
           {t.common.skipToContent}
         </a>
         <LocaleProvider locale={locale}>{children}</LocaleProvider>

@@ -233,8 +233,8 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
           {v.images.map((img, i) => (
             <li key={img.id} className="group relative aspect-square overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
               <Image src={img.url} alt={t.photoAlt(i + 1)} fill sizes="160px" className="object-cover" />
-              {i === 0 && <span className="absolute top-1 left-1 rounded bg-ink/80 px-1.5 text-[10px] font-semibold text-white">{t.cover}</span>}
-              <div className="absolute inset-x-0 bottom-0 flex justify-between bg-ink/60 p-1 opacity-0 transition group-focus-within:opacity-100 group-hover:opacity-100">
+              {i === 0 && <span className="absolute top-1 left-1 rounded bg-inverse/80 px-1.5 text-[10px] font-semibold text-white">{t.cover}</span>}
+              <div className="absolute inset-x-0 bottom-0 flex justify-between bg-inverse/60 p-1 opacity-0 transition group-focus-within:opacity-100 group-hover:opacity-100">
                 <button type="button" onClick={() => moveImage(i, -1)} className="rounded p-1 text-white hover:bg-white/20" aria-label={t.moveLeft}><ArrowLeft className="size-3.5" /></button>
                 <button type="button" onClick={() => set("images", v.images.filter((x) => x.id !== img.id))} className="rounded p-1 text-white hover:bg-white/20" aria-label={t.removePhoto}><X className="size-3.5" /></button>
                 <button type="button" onClick={() => moveImage(i, 1)} className="rounded p-1 text-white hover:bg-white/20" aria-label={t.moveRight}><ArrowRight className="size-3.5" /></button>
@@ -527,7 +527,7 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
         </div>
       </Section>
 
-      <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-end gap-3 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-lg backdrop-blur">
+      <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-end gap-3 rounded-2xl border border-slate-200 bg-surface/95 p-4 shadow-lg backdrop-blur">
         <p className="mr-auto max-w-xl text-xs text-slate-600">
           <RichText text={t.publishNote} newTab />
         </p>

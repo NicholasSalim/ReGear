@@ -24,9 +24,9 @@ export default async function SellerOrdersPage({ searchParams }: PageProps<"/[la
     <>
       <PageHeader title={t.salesTitle} description={t.salesIntro} />
       <nav className="mb-4 flex flex-wrap gap-2 text-sm" aria-label={t.filterAria}>
-        <Link href="/sell/orders" className={`rounded-full px-3 py-1 ${!status ? "bg-ink text-white" : "bg-white ring-1 ring-slate-200"}`}>{t.all}</Link>
+        <Link href="/sell/orders" className={`rounded-full px-3 py-1 ${!status ? "bg-inverse text-white" : "bg-surface ring-1 ring-slate-200"}`}>{t.all}</Link>
         {(["PAID", "SHIPPED", "DELIVERED", "RETURN_IN_PROGRESS", "DISPUTED", "COMPLETED"] as const).map((s) => (
-          <Link key={s} href={`/sell/orders?status=${s}`} className={`rounded-full px-3 py-1 ${status === s ? "bg-ink text-white" : "bg-white ring-1 ring-slate-200"}`}>
+          <Link key={s} href={`/sell/orders?status=${s}`} className={`rounded-full px-3 py-1 ${status === s ? "bg-inverse text-white" : "bg-surface ring-1 ring-slate-200"}`}>
             {pick(ORDER_STATUS_INFO[s].label, locale)}
           </Link>
         ))}

@@ -60,7 +60,7 @@ export type CheckStatus = (typeof CHECK_STATUSES)[number];
 
 export const CHECK_STATUS_INFO: Record<CheckStatus, { label: Localized; tone: string }> = {
   PASS: { label: L("Works perfectly", "Berfungsi sempurna"), tone: "text-pass" },
-  MINOR: { label: L("Minor issue", "Masalah kecil"), tone: "text-[#9a6a00]" },
+  MINOR: { label: L("Minor issue", "Masalah kecil"), tone: "text-minor-text" },
   FAIL: { label: L("Not working", "Tidak berfungsi"), tone: "text-fail" },
   NA: { label: L("Not applicable", "Tidak berlaku"), tone: "text-slate-500" },
 };

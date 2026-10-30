@@ -27,7 +27,7 @@ export default async function VerificationPage() {
       <PageHeader title={t.verificationHeading} description={t.verificationIntro} />
 
       {seller.verificationStatus === "VERIFIED" && (
-        <Status icon={<BadgeCheck className="size-6 text-brand-600" />} title={t.verifiedTitle}>
+        <Status icon={<BadgeCheck className="size-6 text-brand-700" />} title={t.verifiedTitle}>
           {t.verifiedBody(seller.verifiedAt ? formatDate(seller.verifiedAt, locale) : "—")}
         </Status>
       )}

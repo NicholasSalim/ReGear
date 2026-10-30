@@ -6,6 +6,9 @@
  * like printing on equipment, normal for reading. Cobalt is reserved for
  * actions; pass/minor/fail/na are signal colours used only for condition data.
  */
+/* Lets a few components say what differs in dark mode, such as which icon shows. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 @theme {
   --font-sans: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
 
@@ -22,6 +25,16 @@
   --color-paper: #f4f5f7;
   --color-rule: #dfe2e8;
   --color-plate: #eceef2;
+  /* Panels and cards. */
+  --color-surface: #ffffff;
+  /* Chips and bars that keep white text in both themes. */
+  --color-inverse: #1a2233;
+  /* Fills that keep white text in both themes. */
+  --color-action-hover: #1a31b0;
+  --color-danger: #e11d48;
+  --color-danger-hover: #be123c;
+  /* "Minor" as small text, darker than the strip's amber so it can be read. */
+  --color-minor-text: #9a6a00;
 
   --color-pass: #17885c;
   --color-minor: #c98a00;
@@ -55,7 +68,11 @@
     text-wrap: pretty;
   }
   :focus-visible {
-    @apply outline-2 outline-offset-2 outline-brand-600;
+    @apply outline-2 outline-offset-2 outline-brand-700;
+  }
+  /* Edge's own reveal button would sit next to the one in PasswordInput. */
+  input::-ms-reveal {
+    display: none;
   }
   @media (prefers-reduced-motion: reduce) {
     *,
@@ -69,14 +86,14 @@
 
 @layer components {
   .input {
-    @apply block w-full rounded-lg border border-rule bg-white px-3 py-2 text-sm text-ink placeholder:text-slate-400 focus:border-brand-600 focus:ring-3 focus:ring-brand-600/15 focus:outline-none disabled:bg-plate aria-invalid:border-fail;
+    @apply block w-full rounded-lg border border-rule bg-surface px-3 py-2 text-sm text-ink placeholder:text-slate-400 focus:border-brand-600 focus:ring-3 focus:ring-brand-600/15 focus:outline-none disabled:bg-plate aria-invalid:border-fail;
   }
   .label {
     @apply mb-1 block text-sm font-medium text-slate-700;
   }
   /* Flat panels: hairline border, no drop shadow. Hierarchy comes from spacing and type. */
   .card {
-    @apply rounded-[var(--radius-panel)] border border-rule bg-white;
+    @apply rounded-[var(--radius-panel)] border border-rule bg-surface;
   }
   .container-page {
     @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
@@ -125,6 +142,101 @@
     opacity: 0;
     transform: translateY(100%);
   }
+}
+
+/*
+ * Dark theme. Components use the normal palette classes (text-slate-600, bg-rose-50)
+ * and this block redefines what those mean, so every page follows from one place.
+ * Each scale is flipped: the 50s become dark tints and the 700s become light text.
+ * Anything that keeps white text on it uses surface, inverse, action-hover or danger,
+ * because those don't flip; brand-500 and brand-600 stay put for the same reason.
+ */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-ink: #eef0f5;
+  --color-paper: #12161f;
+  --color-rule: #2f3747;
+  --color-plate: #262d3b;
+  --color-surface: #1a202c;
+  --color-inverse: #323c50;
+  --color-action-hover: #3350e0;
+  --color-danger: #d92d4f;
+  --color-danger-hover: #c0243f;
+  --color-minor-text: #e0a526;
+
+  --color-pass: #2fb981;
+  --color-minor: #e0a526;
+  --color-fail: #f0665e;
+  --color-na: #4a5468;
+
+  --color-brand-50: #1c2342;
+  --color-brand-100: #252e5a;
+  --color-brand-200: #34407a;
+  --color-brand-700: #a9b8ff;
+  --color-brand-800: #bfcaff;
+  --color-brand-900: #d3dbff;
+
+  --color-slate-50: #212837;
+  --color-slate-100: #2a3242;
+  --color-slate-200: #384153;
+  --color-slate-300: #4a5468;
+  --color-slate-400: #7d879b;
+  --color-slate-500: #9aa4b5;
+  --color-slate-600: #b4bccb;
+  --color-slate-700: #cdd3de;
+  --color-slate-800: #e2e6ed;
+  --color-slate-900: #f0f2f6;
+
+  --color-rose-50: color-mix(in srgb, #f43f5e 14%, #1a202c);
+  --color-rose-100: color-mix(in srgb, #f43f5e 24%, #1a202c);
+  --color-rose-200: color-mix(in srgb, #f43f5e 36%, #1a202c);
+  --color-rose-600: #fb7185;
+  --color-rose-700: #fda4af;
+  --color-rose-800: #fecdd3;
+  --color-rose-900: #ffe4e6;
+  --color-amber-50: color-mix(in srgb, #f59e0b 14%, #1a202c);
+  --color-amber-100: color-mix(in srgb, #f59e0b 24%, #1a202c);
+  --color-amber-200: color-mix(in srgb, #f59e0b 36%, #1a202c);
+  --color-amber-600: #fbbf24;
+  --color-amber-700: #fcd34d;
+  --color-amber-800: #fde68a;
+  --color-amber-900: #fef3c7;
+  --color-emerald-50: color-mix(in srgb, #10b981 14%, #1a202c);
+  --color-emerald-100: color-mix(in srgb, #10b981 24%, #1a202c);
+  --color-emerald-200: color-mix(in srgb, #10b981 36%, #1a202c);
+  --color-emerald-600: #34d399;
+  --color-emerald-700: #6ee7b7;
+  --color-emerald-800: #a7f3d0;
+  --color-emerald-900: #d1fae5;
+  --color-sky-50: color-mix(in srgb, #0ea5e9 14%, #1a202c);
+  --color-sky-100: color-mix(in srgb, #0ea5e9 24%, #1a202c);
+  --color-sky-200: color-mix(in srgb, #0ea5e9 36%, #1a202c);
+  --color-sky-600: #38bdf8;
+  --color-sky-700: #7dd3fc;
+  --color-sky-800: #bae6fd;
+  --color-sky-900: #e0f2fe;
+  --color-indigo-50: color-mix(in srgb, #6366f1 14%, #1a202c);
+  --color-indigo-100: color-mix(in srgb, #6366f1 24%, #1a202c);
+  --color-indigo-200: color-mix(in srgb, #6366f1 36%, #1a202c);
+  --color-indigo-600: #818cf8;
+  --color-indigo-700: #a5b4fc;
+  --color-indigo-800: #c7d2fe;
+  --color-indigo-900: #e0e7ff;
+  --color-violet-50: color-mix(in srgb, #8b5cf6 14%, #1a202c);
+  --color-violet-100: color-mix(in srgb, #8b5cf6 24%, #1a202c);
+  --color-violet-200: color-mix(in srgb, #8b5cf6 36%, #1a202c);
+  --color-violet-600: #a78bfa;
+  --color-violet-700: #c4b5fd;
+  --color-violet-800: #ddd6fe;
+  --color-violet-900: #ede9fe;
+  --color-teal-50: color-mix(in srgb, #14b8a6 14%, #1a202c);
+  --color-teal-100: color-mix(in srgb, #14b8a6 24%, #1a202c);
+  --color-teal-200: color-mix(in srgb, #14b8a6 36%, #1a202c);
+  --color-teal-600: #2dd4bf;
+  --color-teal-700: #5eead4;
+  --color-teal-800: #99f6e4;
+  --color-teal-900: #ccfbf1;
 }
 
 /* app/global-not-found.tsx holds both languages; its inline script marks the page English for /en/... addresses. */

@@ -3,7 +3,7 @@
 import { Link, useT } from "@/i18n/client";
 import { changePasswordAction, deleteAccountAction, updateProfileAction } from "@/actions/auth";
 import type { DeletionBlockers } from "@/lib/account/delete";
-import { ActionForm, FormMessage, SubmitButton } from "@/components/forms";
+import { ActionForm, FormMessage, PasswordInput, SubmitButton } from "@/components/forms";
 import { Field } from "@/components/ui";
 
 export function SettingsForms({ name, email, hasPassword, googleEmail }: { name: string; email: string; hasPassword: boolean; googleEmail?: string }) {
@@ -35,14 +35,14 @@ export function SettingsForms({ name, email, hasPassword, googleEmail }: { name:
             <FormMessage state={s} />
             {hasPassword && (
               <Field label={t.currentPassword} name="currentPassword" error={s.fieldErrors?.currentPassword}>
-                <input id="currentPassword" name="currentPassword" type="password" autoComplete="current-password" className="input" />
+                <PasswordInput id="currentPassword" name="currentPassword" autoComplete="current-password" />
               </Field>
             )}
             <Field label={t.newPassword} name="newPassword" error={s.fieldErrors?.newPassword}>
-              <input id="newPassword" name="newPassword" type="password" autoComplete="new-password" className="input" />
+              <PasswordInput id="newPassword" name="newPassword" autoComplete="new-password" />
             </Field>
             <Field label={t.confirmPassword} name="confirmPassword" error={s.fieldErrors?.confirmPassword}>
-              <input id="confirmPassword" name="confirmPassword" type="password" autoComplete="new-password" className="input" />
+              <PasswordInput id="confirmPassword" name="confirmPassword" autoComplete="new-password" />
             </Field>
             <SubmitButton>{hasPassword ? t.changePassword : t.setPasswordButton}</SubmitButton>
           </>
@@ -112,7 +112,7 @@ export function DeleteAccountForm({ email, hasPassword, blockers }: { email: str
               </Field>
               {hasPassword && (
                 <Field label={t.password} name="deletePassword" error={s.fieldErrors?.password}>
-                  <input id="deletePassword" name="password" type="password" autoComplete="current-password" className="input" />
+                  <PasswordInput id="deletePassword" name="password" autoComplete="current-password" />
                 </Field>
               )}
               <SubmitButton variant="danger" pendingText={t.deleting}>

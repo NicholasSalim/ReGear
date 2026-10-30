@@ -6,6 +6,7 @@ import { LOCALES, localePath } from "@/i18n/locales";
 import { dictionaryFor } from "@/i18n/server";
 import { LogoMark } from "@/components/condition-strip";
 import { NotFoundContent } from "@/components/not-found-content";
+import { THEME_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
 // Shown for addresses that match no route. It renders outside app/[lang] and
@@ -23,6 +24,7 @@ export default function GlobalNotFound() {
     <html lang="id" className={`${archivo.variable} h-full`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: PICK_LANGUAGE }} />
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body className="flex min-h-full flex-col">
         {LOCALES.map((locale) => {

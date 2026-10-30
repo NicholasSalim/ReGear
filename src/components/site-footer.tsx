@@ -5,11 +5,12 @@ import { pick } from "@/i18n/locales";
 import { getDictionary, getLocale } from "@/i18n/server";
 import { CATEGORIES } from "@/lib/catalog";
 import { Logo } from "@/components/site-header";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export async function SiteFooter() {
   const [locale, t] = await Promise.all([getLocale(), getDictionary()]);
   return (
-    <footer className="mt-16 border-t border-slate-200 bg-white">
+    <footer className="mt-16 border-t border-slate-200 bg-surface">
       <div className="container-page grid gap-8 py-12 sm:grid-cols-2 lg:grid-cols-5">
         <div>
           <Logo />
@@ -19,6 +20,7 @@ export async function SiteFooter() {
             <Suspense fallback={null}>
               <LanguageSwitcher />
             </Suspense>
+            <ThemeToggle />
           </div>
         </div>
         <FooterCol title={t.footer.shop}>

@@ -73,7 +73,7 @@ export default async function AdminUsersPage({ searchParams }: PageProps<"/[lang
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                  {u.role === "ADMIN" && <Badge className="bg-ink text-white ring-ink">{t.role.ADMIN}</Badge>}
+                  {u.role === "ADMIN" && <Badge className="bg-inverse text-white ring-inverse">{t.role.ADMIN}</Badge>}
                   {u.deletedAt && <Badge className="bg-slate-100 text-slate-600 ring-slate-500/20">{t.deleted}</Badge>}
                   {u.lockedUntil && u.lockedUntil > now && <Badge className="bg-rose-50 text-rose-700 ring-rose-600/20">{t.locked}</Badge>}
                 </div>

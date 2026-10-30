@@ -23,7 +23,8 @@ export const clientId: typeof clientEn = {
     retry: "Coba lagi",
   },
   language: { label: "Bahasa", switchTo: { id: "Ganti ke Bahasa Indonesia", en: "Switch to English" } },
-  forms: { working: "Memproses…", choose: "Pilih…", loading: "Memuat…" },
+  theme: { darkMode: "Mode gelap" },
+  forms: { working: "Memproses…", choose: "Pilih…", loading: "Memuat…", showPassword: "Tampilkan kata sandi", hidePassword: "Sembunyikan kata sandi" },
   nav: { section: "Bagian" },
   auth: {
     email: "Email",

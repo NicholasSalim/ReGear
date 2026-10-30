@@ -2,7 +2,7 @@
 
 import { Link, useT } from "@/i18n/client";
 import { confirmSignupAction, loginAction, registerAction, resendSignupCodeAction } from "@/actions/auth";
-import { ActionButton, FormMessage, SubmitButton, useActionForm } from "@/components/forms";
+import { ActionButton, FormMessage, PasswordInput, SubmitButton, useActionForm } from "@/components/forms";
 import { Field } from "@/components/ui";
 import { RichText } from "@/components/rich-text";
 
@@ -17,7 +17,7 @@ export function LoginForm({ next, googleEnabled }: { next?: string; googleEnable
         <input id="email" name="email" type="email" autoComplete="email" required className="input" aria-invalid={!!state.fieldErrors?.email} />
       </Field>
       <Field label={t.password} name="password" error={state.fieldErrors?.password}>
-        <input id="password" name="password" type="password" autoComplete="current-password" required className="input" aria-invalid={!!state.fieldErrors?.password} />
+        <PasswordInput id="password" name="password" autoComplete="current-password" required aria-invalid={!!state.fieldErrors?.password} />
       </Field>
       <p className="-mt-2 text-right text-sm">
         <Link href="/forgot-password" className="font-medium text-brand-700 hover:underline">
@@ -52,7 +52,7 @@ export function RegisterForm({ next }: { next?: string }) {
         <input id="email" name="email" type="email" autoComplete="email" required className="input" aria-invalid={!!state.fieldErrors?.email} />
       </Field>
       <Field label={t.password} name="password" error={state.fieldErrors?.password} hint={t.passwordHint}>
-        <input id="password" name="password" type="password" autoComplete="new-password" required minLength={8} maxLength={128} className="input" aria-invalid={!!state.fieldErrors?.password} />
+        <PasswordInput id="password" name="password" autoComplete="new-password" required minLength={8} maxLength={128} aria-invalid={!!state.fieldErrors?.password} />
       </Field>
       <div>
         <label className="flex items-start gap-2 text-sm text-slate-700">

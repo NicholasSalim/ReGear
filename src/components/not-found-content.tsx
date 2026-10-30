@@ -40,7 +40,7 @@ export function NotFoundContent({ locale }: { locale: Locale }) {
             <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400" aria-hidden />
             <input id={id("search")} name="q" type="search" maxLength={100} placeholder={dict.nav.searchPlaceholder} className="input h-11 pl-9" />
           </div>
-          <button type="submit" className="h-11 rounded-lg bg-brand-600 px-5 text-sm font-semibold text-white hover:bg-brand-700">
+          <button type="submit" className="h-11 rounded-lg bg-brand-600 px-5 text-sm font-semibold text-white hover:bg-action-hover">
             {t.searchButton}
           </button>
         </form>

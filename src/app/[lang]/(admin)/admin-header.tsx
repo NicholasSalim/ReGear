@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { ExternalLink, LogOut } from "lucide-react";
 import { Link } from "@/i18n/client";
 import { LanguageSwitcher } from "@/i18n/language-switcher";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { getDictionary } from "@/i18n/server";
 import { getCurrentUser } from "@/lib/auth/dal";
 import { payments } from "@/lib/payments";
@@ -18,7 +19,7 @@ export async function AdminHeader() {
     (b): b is string => !!b,
   );
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-800 bg-ink text-white">
+    <header className="sticky top-0 z-30 border-b border-white/10 bg-inverse text-white">
       <div className="container-page flex h-14 items-center gap-3">
         <Link href="/admin" className="flex items-center gap-2" aria-label={f.homeAria}>
           <LogoMark />
@@ -31,15 +32,16 @@ export async function AdminHeader() {
           ))}
         </ul>
         <div className="ml-auto flex items-center gap-1 sm:gap-3">
-          <Link href="/" className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium text-slate-200 hover:bg-white/10 hover:text-white">
+          <Link href="/" className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium text-white/85 hover:bg-white/10 hover:text-white">
             <ExternalLink className="size-4" aria-hidden />
             <span className="max-sm:sr-only">{f.viewSite}</span>
           </Link>
-          <div className="max-sm:hidden [&_a]:text-slate-300 [&_a:hover]:text-white [&_a[aria-current]]:text-white [&_span]:text-slate-500">
+          <div className="max-sm:hidden [&_a]:text-white/70 [&_a:hover]:text-white [&_a[aria-current]]:text-white [&_span]:text-white/40">
             <Suspense fallback={null}>
               <LanguageSwitcher />
             </Suspense>
           </div>
+          <ThemeToggle className="text-white/85 hover:bg-white/10 hover:text-white" />
           <Suspense fallback={<Skeleton className="h-8 w-24 bg-white/10" />}>
             <AdminAccount />
           </Suspense>
@@ -55,9 +57,9 @@ async function AdminAccount() {
   if (!user) return null;
   return (
     <div className="flex items-center gap-2">
-      <span className="hidden max-w-[10rem] truncate text-sm text-slate-300 sm:block">{user.name}</span>
+      <span className="hidden max-w-[10rem] truncate text-sm text-white/70 sm:block">{user.name}</span>
       <form action={logoutAction}>
-        <button type="submit" className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium text-slate-200 hover:bg-white/10 hover:text-white">
+        <button type="submit" className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium text-white/85 hover:bg-white/10 hover:text-white">
           <LogOut className="size-4" aria-hidden />
           <span className="max-sm:sr-only">{t.nav.signOut}</span>
         </button>

@@ -7,6 +7,7 @@ import { getDictionary, getLocale } from "@/i18n/server";
 import { CATEGORIES } from "@/lib/catalog";
 import { UserMenu } from "@/components/user-menu";
 import { SiteSearch } from "@/components/site-search";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { buttonClass, Skeleton } from "@/components/ui";
 import { LogoMark } from "@/components/condition-strip";
 
@@ -24,13 +25,13 @@ export async function Logo() {
 export async function SiteHeader() {
   const [locale, t] = await Promise.all([getLocale(), getDictionary()]);
   return (
-    <header className="sticky top-0 z-30 border-b border-rule bg-white/95 backdrop-blur">
+    <header className="sticky top-0 z-30 border-b border-rule bg-surface/95 backdrop-blur">
       <div className="container-page flex h-16 items-center gap-2 sm:gap-4">
         <Logo />
         <SiteSearch label={t.nav.searchLabel} placeholder={t.nav.searchPlaceholder} />
         <div className="ml-auto flex items-center gap-1 sm:gap-2">
           {/* Buy shows the whole marketplace; Sell opens the seller dashboard (sign-in and shop setup come first when needed).
-              On phones the icons and the language switcher (also in the footer) make way for them. */}
+              On phones the icons make way for them, and the language switcher and theme toggle are in the footer instead. */}
           <nav className="flex items-center gap-1" aria-label={t.nav.mainNav}>
             <Link href="/listings" className={buttonClass("ghost", "px-2 sm:px-3")}>
               <ShoppingBag className="size-4 max-sm:hidden" aria-hidden /> {t.nav.buy}
@@ -43,6 +44,9 @@ export async function SiteHeader() {
             <Suspense fallback={null}>
               <LanguageSwitcher />
             </Suspense>
+          </div>
+          <div className="max-sm:hidden">
+            <ThemeToggle />
           </div>
           <nav className="flex items-center gap-1" aria-label={t.nav.accountNav}>
             <Suspense fallback={<Skeleton className="h-9 w-16 sm:w-40" />}>

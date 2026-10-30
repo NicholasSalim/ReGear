@@ -15,7 +15,7 @@ export function Gallery({ images, title }: { images: Img[]; title: string }) {
 
   return (
     <div>
-      <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-slate-200 bg-white">
+      <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-slate-200 bg-surface">
         <Image
           src={mediaUrl(current.key)}
           alt={current.alt || title}

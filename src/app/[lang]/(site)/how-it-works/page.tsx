@@ -20,7 +20,7 @@ export default async function HowItWorksPage() {
       <section id="grading" className="mt-12 scroll-mt-28">
         <h2 className="text-xl font-bold">{t.how.gradesHeading}</h2>
         <p className="mt-2 text-slate-600">{t.how.gradesIntro}</p>
-        <dl className="mt-6 divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white">
+        <dl className="mt-6 divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-surface">
           {CONDITION_GRADES.map((g) => (
             <div key={g} className="flex flex-col gap-1 p-4 sm:flex-row sm:items-center sm:gap-6">
               <dt className="w-32 shrink-0">

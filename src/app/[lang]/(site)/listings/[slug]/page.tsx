@@ -103,7 +103,7 @@ export default async function ListingPage({ params }: PageProps<"/[lang]/listing
 
             <ul className="mt-5 space-y-3 border-t border-slate-100 pt-4 text-sm text-slate-700">
               <li className="flex gap-2">
-                <ShieldCheck className="size-4 shrink-0 text-brand-600" aria-hidden />
+                <ShieldCheck className="size-4 shrink-0 text-brand-700" aria-hidden />
                 <span>
                   <strong>{warrantyLabel(listing.warrantyType, locale)}</strong>
                   {listing.warrantyType !== "NONE" && t.listing.warrantyMonths(listing.warrantyMonths)}
@@ -111,14 +111,14 @@ export default async function ListingPage({ params }: PageProps<"/[lang]/listing
                 </span>
               </li>
               <li className="flex gap-2">
-                <Undo2 className="size-4 shrink-0 text-brand-600" aria-hidden />
+                <Undo2 className="size-4 shrink-0 text-brand-700" aria-hidden />
                 {listing.returnWindowDays > 0 ? t.listing.returnsDays(listing.returnWindowDays) : t.listing.noReturns}
               </li>
               <li className="flex gap-2">
-                <Truck className="size-4 shrink-0 text-brand-600" aria-hidden /> {t.listing.shipsFrom(listing.location)}
+                <Truck className="size-4 shrink-0 text-brand-700" aria-hidden /> {t.listing.shipsFrom(listing.location)}
               </li>
               <li className="flex gap-2">
-                <CalendarClock className="size-4 shrink-0 text-brand-600" aria-hidden />
+                <CalendarClock className="size-4 shrink-0 text-brand-700" aria-hidden />
                 {listing.publishedAt ? t.listing.listed(formatDate(listing.publishedAt, locale)) : t.listing.listedRecently}
               </li>
             </ul>

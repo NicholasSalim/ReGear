@@ -169,7 +169,7 @@ function Filters({
           </fieldset>
 
           <div className="flex gap-2">
-            <button type="submit" className="flex-1 rounded-lg bg-brand-600 px-3 py-2 font-semibold text-white hover:bg-brand-700">
+            <button type="submit" className="flex-1 rounded-lg bg-brand-600 px-3 py-2 font-semibold text-white hover:bg-action-hover">
               {t.browse.apply}
             </button>
             <Link href={basePath} className="rounded-lg px-3 py-2 font-medium text-slate-600 hover:bg-slate-100">
@@ -189,7 +189,7 @@ function SortForm({ params, basePath, t }: { params: BrowseParams; basePath: str
         <Link
           key={value}
           href={`${basePath}${toQuery(params, { sort: value, page: 1 }, basePath !== "/listings")}`}
-          className={`rounded-full px-3 py-1 ${params.sort === value ? "bg-ink text-white" : "text-slate-600 hover:bg-slate-200"}`}
+          className={`rounded-full px-3 py-1 ${params.sort === value ? "bg-inverse text-white" : "text-slate-600 hover:bg-slate-200"}`}
           aria-current={params.sort === value ? "true" : undefined}
           scroll={false}
         >
@@ -206,13 +206,13 @@ function Pagination({ params, pages, basePath, t }: { params: BrowseParams; page
   return (
     <nav aria-label={t.browse.paginationAria} className="mt-8 flex items-center justify-center gap-2 text-sm">
       {params.page > 1 && (
-        <Link rel="prev" href={`${basePath}${toQuery(params, { page: params.page - 1 }, omit)}`} className="rounded-lg px-3 py-2 ring-1 ring-slate-300 hover:bg-white">
+        <Link rel="prev" href={`${basePath}${toQuery(params, { page: params.page - 1 }, omit)}`} className="rounded-lg px-3 py-2 ring-1 ring-slate-300 hover:bg-surface">
           {t.browse.previous}
         </Link>
       )}
       <span className="px-3 text-slate-600">{t.browse.pageOf(params.page, pages)}</span>
       {params.page < pages && (
-        <Link rel="next" href={`${basePath}${toQuery(params, { page: params.page + 1 }, omit)}`} className="rounded-lg px-3 py-2 ring-1 ring-slate-300 hover:bg-white">
+        <Link rel="next" href={`${basePath}${toQuery(params, { page: params.page + 1 }, omit)}`} className="rounded-lg px-3 py-2 ring-1 ring-slate-300 hover:bg-surface">
           {t.browse.next}
         </Link>
       )}

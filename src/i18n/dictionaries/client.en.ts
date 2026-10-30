@@ -22,7 +22,8 @@ export const clientEn = {
     retry: "Try again",
   },
   language: { label: "Language", switchTo: { id: "Ganti ke Bahasa Indonesia", en: "Switch to English" } },
-  forms: { working: "Working…", choose: "Choose…", loading: "Loading…" },
+  theme: { darkMode: "Dark mode" },
+  forms: { working: "Working…", choose: "Choose…", loading: "Loading…", showPassword: "Show password", hidePassword: "Hide password" },
   nav: { section: "Section" },
   auth: {
     email: "Email",

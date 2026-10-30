@@ -27,7 +27,7 @@ export async function GradeBadge({ grade, className }: { grade: string; classNam
   if (!info) return null;
   const locale = await getLocale();
   return (
-    <Badge className={cn("bg-white text-ink ring-rule", className)}>
+    <Badge className={cn("bg-surface text-ink ring-rule", className)}>
       <span aria-hidden className={cn("size-2 rounded-[2px]", GRADE_PIP[grade as ConditionGrade])} />
       {pick(info.label, locale)}
     </Badge>
@@ -86,7 +86,7 @@ export async function ListingStatusBadge({ status }: { status: string }) {
     ACTIVE: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
     DRAFT: "bg-slate-100 text-slate-700 ring-slate-500/20",
     RESERVED: "bg-amber-50 text-amber-800 ring-amber-600/20",
-    SOLD: "bg-slate-800 text-white ring-slate-800",
+    SOLD: "bg-inverse text-white ring-inverse",
     REMOVED: "bg-rose-50 text-rose-700 ring-rose-600/20",
   };
   const label = LISTING_STATUS_LABELS[status as ListingStatus];

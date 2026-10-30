@@ -16,7 +16,7 @@ export default async function HomePage() {
   const [locale, t] = await Promise.all([getLocale(), getDictionary()]);
   return (
     <>
-      <section className="border-b border-rule bg-white">
+      <section className="border-b border-rule bg-surface">
         <div className="container-page grid gap-12 py-14 lg:grid-cols-[1.1fr_1fr] lg:items-center lg:py-16">
           <div className="max-w-xl">
             <h1 className="wide text-[2.5rem] leading-[1.02] font-extrabold tracking-[-0.035em] sm:text-[3.4rem] xl:text-[3.9rem]">
@@ -38,7 +38,7 @@ export default async function HomePage() {
                   className="input h-12 pl-11 text-base"
                 />
               </div>
-              <button type="submit" className="h-12 rounded-lg bg-brand-600 px-5 font-semibold text-white hover:bg-brand-700">
+              <button type="submit" className="h-12 rounded-lg bg-brand-600 px-5 font-semibold text-white hover:bg-action-hover">
                 {t.home.search}
               </button>
             </form>
@@ -58,7 +58,7 @@ export default async function HomePage() {
         <LatestListings />
       </section>
 
-      <section className="border-t border-rule bg-white">
+      <section className="border-t border-rule bg-surface">
         <div className="container-page grid gap-10 py-14 lg:grid-cols-[18rem_1fr]">
           <div>
             <h2 className="text-2xl font-extrabold">{t.home.howBuyingWorks}</h2>
@@ -69,8 +69,8 @@ export default async function HomePage() {
           </div>
           <ol className="grid gap-px overflow-hidden rounded-[var(--radius-panel)] border border-rule bg-rule sm:grid-cols-2 lg:grid-cols-4">
             {t.home.steps.map(([title, body], i) => (
-              <li key={title} className="bg-white p-5">
-                <span className="num wide block text-3xl font-extrabold text-brand-600">{i + 1}</span>
+              <li key={title} className="bg-surface p-5">
+                <span className="num wide block text-3xl font-extrabold text-brand-700">{i + 1}</span>
                 <h3 className="mt-3 font-bold" style={{ fontStretch: "100%" }}>{title}</h3>
                 <p className="mt-1 text-sm text-slate-600">{body}</p>
               </li>
@@ -123,7 +123,7 @@ async function InspectionSheet({ listing }: { listing: ListingDetail }) {
       className="group block rounded-2xl border border-rule bg-paper p-2 transition-colors hover:border-slate-400"
       aria-label={t.home.reportFor(listing.title)}
     >
-      <div className="rounded-xl border border-rule bg-white">
+      <div className="rounded-xl border border-rule bg-surface">
         <div className="flex gap-4 p-5">
           <div className="relative size-20 shrink-0 overflow-hidden rounded-lg bg-plate">
             {listing.images[0] && <Image src={mediaUrl(listing.images[0].key)} alt="" fill sizes="80px" className="object-cover" priority />}

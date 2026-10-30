@@ -27,7 +27,7 @@ export async function LegalPage({ document: key }: { document: LegalDocumentKey 
         <RichText text={fill(doc.intro)} />
       </p>
 
-      <nav aria-labelledby="legal-contents" className="mt-8 rounded-xl border border-rule bg-white p-5">
+      <nav aria-labelledby="legal-contents" className="mt-8 rounded-xl border border-rule bg-surface p-5">
         <h2 id="legal-contents" className="text-sm font-semibold">{t.contents}</h2>
         <ol className="mt-2 grid gap-1 text-sm sm:grid-cols-2">
           {doc.sections.map((s) => (

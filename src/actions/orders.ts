@@ -1,5 +1,6 @@
 "use server";
 
+import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { localePath } from "@/i18n/locales";
 import type { Dictionary } from "@/i18n/server";
@@ -187,6 +188,8 @@ export async function postDisputeMessageAction(disputeId: string, _prev: ActionS
       await tx.dispute.update({ where: { id: disputeId }, data: { updatedAt: new Date() } });
       await enqueueDisputeMessageEmails(tx, disputeId, role);
     });
+    // The dispute page reads uncached; re-render it with the new message.
+    refresh();
     return { ok: true };
   });
 }

@@ -1,5 +1,6 @@
 "use server";
 
+import { refresh } from "next/cache";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { invalidate, listingTags, TAGS } from "@/lib/cache";
@@ -67,6 +68,7 @@ export async function markDisputeUnderReviewAction(disputeId: string, _prev?: Ac
     });
     if (!updated) return { error: (await actionI18n()).t.actions.disputeNotOpen };
     await audit(admin.id, "dispute.review", "Dispute", disputeId);
+    refresh();
     return { ok: true };
   });
 }
@@ -91,10 +93,9 @@ export async function moderateListingAction(listingId: string, _prev: ActionStat
     const reason = text(5, 500).parse(formData.get("reason") ?? "");
     const listing = await db.listing.findUnique({ where: { id: listingId }, select: { id: true, sellerId: true, status: true } });
     if (!listing) return { error: t.actions.listingNotFound };
-    if (listing.status === "RESERVED" || listing.status === "SOLD") {
-      return { error: t.actions.moderationLocked };
-    }
-    await db.listing.update({ where: { id: listingId }, data: { status: "REMOVED" } });
+    // Conditional, so an order placed since the read above keeps its listing.
+    const removed = await db.listing.updateMany({ where: { id: listingId, status: { notIn: ["RESERVED", "SOLD"] } }, data: { status: "REMOVED" } });
+    if (removed.count !== 1) return { error: t.actions.moderationLocked };
     invalidate(listingTags(listing));
     await audit(admin.id, "listing.moderate_remove", "Listing", listingId, { reason });
     return { ok: true, message: t.actions.listingRemoved };

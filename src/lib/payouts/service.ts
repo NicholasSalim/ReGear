@@ -42,16 +42,19 @@ export const maskAccount = (account: string) => `•••• ${account.slice(-4
 // Payout account --------------------------------------------------------------
 
 /**
- * Save where withdrawals go. Nothing here can ask the bank who owns the
+ * Save where withdrawals go. Once a seller is verified, the holder name has
+ * to match the verified one. Nothing here can ask the bank who owns the
  * account: the admin paying it checks the holder name their bank shows, and
- * a name that doesn't match the verified one holds withdrawals for review.
- * The seller is emailed every time, since changing it is how an account
+ * an account saved before verification under another name still holds
+ * withdrawals for review. The seller is emailed every time, since changing it is how an account
  * takeover would steal the balance.
  */
 export async function setPayoutAccount(userId: string, input: { bank: string; accountNumber: string; accountName: string }) {
   const seller = await db.sellerProfile.findUnique({ where: { userId }, select: { id: true } });
   if (!seller) throw new DomainError("sellerNotFound");
   if (!BANKS.some((b) => b.code === input.bank)) throw new DomainError("bankNotSupported");
+  const verification = await db.verificationRequest.findFirst({ where: { sellerId: seller.id, status: "APPROVED" }, orderBy: { reviewedAt: "desc" }, select: { legalName: true } });
+  if (verification && !namesMatch(verification.legalName, input.accountName)) throw new DomainError("accountNameMismatch");
 
   await db.$transaction(async (tx) => {
     await tx.sellerProfile.update({
@@ -73,8 +76,10 @@ const nameWords = (name: string) => name.toUpperCase().replace(/[^A-Z\s]/g, " ")
 
 /** Bank names are often shortened: every word of the shorter name must appear in the longer one. */
 export function namesMatch(a: string, b: string) {
-  const [short, long] = [nameWords(a), nameWords(b)].sort((x, y) => x.length - y.length);
-  return short.length > 0 && short.every((w) => long.some((l) => l === w || (w.length === 1 && l.startsWith(w))));
+  const [x, y] = [nameWords(a), nameWords(b)];
+  const within = (short: string[], long: string[]) => short.length > 0 && short.length <= long.length && short.every((w) => long.some((l) => l === w || (w.length === 1 && l.startsWith(w))));
+  // Names of the same length can be shortened on either side: "Budi Santoso" and "Budi S".
+  return within(x, y) || within(y, x);
 }
 
 async function reviewReasons(tx: Tx, seller: { id: string; payoutAccountName: string | null; payoutAccountSetAt: Date | null }, amountIdr: number) {

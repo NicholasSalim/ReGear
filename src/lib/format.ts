@@ -5,14 +5,17 @@ import { INTL_LOCALE, type Locale } from "@/i18n/locales";
 // Money uses Indonesian digit grouping in both languages ("Rp 1.500.000").
 export const currencyCode = "IDR";
 
+// Dates read in Indonesian western time wherever the server runs (Vercel is on UTC).
+const TIME_ZONE = "Asia/Jakarta";
+
 const money = new Intl.NumberFormat("id-ID", { style: "currency", currency: currencyCode, maximumFractionDigits: 0 });
 const dateFmt: Record<Locale, Intl.DateTimeFormat> = {
-  id: new Intl.DateTimeFormat(INTL_LOCALE.id, { dateStyle: "medium" }),
-  en: new Intl.DateTimeFormat(INTL_LOCALE.en, { dateStyle: "medium" }),
+  id: new Intl.DateTimeFormat(INTL_LOCALE.id, { dateStyle: "medium", timeZone: TIME_ZONE }),
+  en: new Intl.DateTimeFormat(INTL_LOCALE.en, { dateStyle: "medium", timeZone: TIME_ZONE }),
 };
 const dateTimeFmt: Record<Locale, Intl.DateTimeFormat> = {
-  id: new Intl.DateTimeFormat(INTL_LOCALE.id, { dateStyle: "medium", timeStyle: "short" }),
-  en: new Intl.DateTimeFormat(INTL_LOCALE.en, { dateStyle: "medium", timeStyle: "short" }),
+  id: new Intl.DateTimeFormat(INTL_LOCALE.id, { dateStyle: "medium", timeStyle: "short", timeZone: TIME_ZONE }),
+  en: new Intl.DateTimeFormat(INTL_LOCALE.en, { dateStyle: "medium", timeStyle: "short", timeZone: TIME_ZONE }),
 };
 
 /** "Rp 1.500.000" */

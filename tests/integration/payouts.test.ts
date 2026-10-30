@@ -102,6 +102,21 @@ describe("payout account", () => {
   it("refuses a bank that isn't offered", async () => {
     await expect(service.setPayoutAccount(f.sellerUser.id, { bank: "nobank", accountNumber: "1234567", accountName: "Budi" })).rejects.toMatchObject({ code: "bankNotSupported" });
   });
+
+  it("refuses an account in someone else's name once the seller is verified", async () => {
+    await expect(service.setPayoutAccount(f.sellerUser.id, { bank: "bca", accountNumber: "1234567890", accountName: "Someone Else" })).rejects.toMatchObject({ code: "accountNameMismatch" });
+    expect(await db.sellerProfile.findUniqueOrThrow({ where: { id: f.seller.id } })).toMatchObject({ payoutAccountName: null });
+    expect(await emailsOf("payout-account-changed")).toHaveLength(0);
+  });
+
+  it("accepts the shortened names banks use", async () => {
+    await expect(service.setPayoutAccount(f.sellerUser.id, { bank: "bca", accountNumber: "1234567890", accountName: "BUDI S" })).resolves.toMatchObject({ accountName: "BUDI S" });
+  });
+
+  it("still lets an unverified seller save an account", async () => {
+    await db.verificationRequest.deleteMany({ where: { sellerId: f.seller.id } });
+    await expect(service.setPayoutAccount(f.sellerUser.id, { bank: "bca", accountNumber: "1234567890", accountName: "Someone Else" })).resolves.toMatchObject({ accountName: "Someone Else" });
+  });
 });
 
 describe("withdrawals", () => {
@@ -241,6 +256,7 @@ describe("account holder names", () => {
   it("match despite case, punctuation, initials and titles", () => {
     expect(service.namesMatch("Budi Santoso", "BUDI SANTOSO")).toBe(true);
     expect(service.namesMatch("Budi S.", "BUDI SANTOSO")).toBe(true);
+    expect(service.namesMatch("BUDI SANTOSO", "Budi S.")).toBe(true);
     expect(service.namesMatch("Ir. Budi Santoso", "BUDI SANTOSO")).toBe(true);
     expect(service.namesMatch("Budi Hartono", "BUDI SANTOSO")).toBe(false);
     expect(service.namesMatch("Andi Wijaya", "BUDI SANTOSO")).toBe(false);

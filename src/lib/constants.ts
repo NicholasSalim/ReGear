@@ -171,7 +171,7 @@ export const DISPUTE_RESOLUTION_LABELS: Record<(typeof DISPUTE_RESOLUTIONS)[numb
   RELEASE_TO_SELLER: L("Release payment to seller", "Teruskan pembayaran ke penjual"),
 };
 
-export const CARRIERS = ["DHL", "FedEx", "UPS", "USPS", "JNE", "J&T", "SiCepat", "Other"] as const;
+export const CARRIERS = ["JNE", "J&T", "SiCepat", "AnterAja", "Ninja Xpress", "Pos Indonesia", "ID Express", "Lion Parcel", "GoSend", "GrabExpress", "DHL", "Other"] as const;
 export const CARRIER_LABELS: Partial<Record<(typeof CARRIERS)[number], Localized>> = { Other: L("Other", "Lainnya") };
 
 // Business rules

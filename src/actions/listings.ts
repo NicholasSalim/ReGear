@@ -11,6 +11,7 @@ import { functionalScore } from "@/lib/condition";
 import { gradeRank } from "@/lib/data/catalog";
 import { slugify } from "@/lib/format";
 import { listingSchema, id as idSchema, type ListingInput } from "@/lib/validation";
+import { updateOpenListing } from "@/lib/listings";
 import { DomainError } from "@/lib/orders/service";
 
 const UNVERIFIED_ACTIVE_LIMIT = 5;
@@ -99,15 +100,18 @@ export async function saveListingAction(listingId: string | null, payload: unkno
 
     const listing = await db.$transaction(async (tx) => {
       const status = data.publish ? "ACTIVE" : "DRAFT";
+      if (
+        existing &&
+        !(await updateOpenListing(tx, existing.id, {
+          ...listingData,
+          status,
+          ...(status === "ACTIVE" && existing.status !== "ACTIVE" ? { publishedAt: new Date() } : {}),
+        }))
+      ) {
+        return null; // A buyer reserved it since the check above.
+      }
       const row = existing
-        ? await tx.listing.update({
-            where: { id: existing.id },
-            data: {
-              ...listingData,
-              status,
-              ...(status === "ACTIVE" && existing.status !== "ACTIVE" ? { publishedAt: new Date() } : {}),
-            },
-          })
+        ? { id: existing.id, sellerId: existing.sellerId, status }
         : await tx.listing.create({
             data: {
               ...listingData,
@@ -132,6 +136,7 @@ export async function saveListingAction(listingId: string | null, payload: unkno
       }
       return row;
     });
+    if (!listing) return { error: t.actions.listingLocked };
 
     savedId = listing.id;
     invalidate(listingTags(listing));
@@ -161,10 +166,11 @@ export async function setListingStatusAction(listingId: string, status: "ACTIVE"
       }
       await assertCanPublish(seller, listing.id);
     }
-    await db.listing.update({
-      where: { id: listing.id },
-      data: { status, ...(status === "ACTIVE" && listing.status !== "ACTIVE" ? { publishedAt: new Date() } : {}) },
+    const updated = await updateOpenListing(db, listing.id, {
+      status,
+      ...(status === "ACTIVE" && listing.status !== "ACTIVE" ? { publishedAt: new Date() } : {}),
     });
+    if (!updated) return { error: t.actions.listingUnchangeable };
     invalidate(listingTags(listing));
     await audit(user.id, "listing.status", "Listing", listing.id, { from: listing.status, to: status });
     return { ok: true };

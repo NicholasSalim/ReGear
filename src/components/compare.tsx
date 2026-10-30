@@ -12,6 +12,9 @@ type Item = { id: string; title: string; category: string };
 const KEY = "regear:compare";
 const listeners = new Set<() => void>();
 let cache: Item[] | null = null;
+// True once this page view has changed the list. The tray also mounts on page
+// load when items are already saved, and shouldn't look like it just arrived.
+let changedThisView = false;
 const EMPTY: Item[] = [];
 
 function read(): Item[] {
@@ -31,6 +34,7 @@ function read(): Item[] {
 }
 
 function write(items: Item[]) {
+  changedThisView = true;
   cache = items;
   try {
     localStorage.setItem(KEY, JSON.stringify(items));
@@ -86,7 +90,7 @@ export function CompareTray() {
   const mixed = new Set(items.map((i) => i.category)).size > 1;
 
   return (
-    <div className="fixed inset-x-0 bottom-4 z-40 px-4" role="region" aria-label={t.compare.trayAria}>
+    <div className={`fixed inset-x-0 bottom-4 z-40 px-4 ${changedThisView ? "compare-tray-enter" : ""}`} role="region" aria-label={t.compare.trayAria}>
       <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-3 rounded-2xl bg-ink px-4 py-3 text-white shadow-2xl">
         <GitCompareArrows className="size-5 shrink-0 text-brand-200" aria-hidden />
         <ul className="flex min-w-0 flex-1 flex-wrap gap-2">

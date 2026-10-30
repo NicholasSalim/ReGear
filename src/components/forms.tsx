@@ -43,14 +43,14 @@ export function SubmitButton({
 export function FormMessage({ state }: { state: ActionState }) {
   if (state.error) {
     return (
-      <p role="alert" className="flex items-start gap-2 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+      <p key="error" role="alert" className="form-message flex items-start gap-2 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
         <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden /> {state.error}
       </p>
     );
   }
   if (state.ok && state.message) {
     return (
-      <p role="status" className="flex items-start gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+      <p key="ok" role="status" className="form-message flex items-start gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
         <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden /> {state.message}
       </p>
     );

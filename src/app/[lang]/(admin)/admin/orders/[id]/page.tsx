@@ -67,7 +67,7 @@ export default async function AdminOrderPage({ params }: PageProps<"/[lang]/admi
         }
         actions={<OrderStatusBadge status={order.status} />}
       />
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <section className="card p-5" aria-labelledby="money">
           <h2 id="money" className="mb-2 font-bold">{t.summary}</h2>
           <dl className="divide-y divide-slate-100">

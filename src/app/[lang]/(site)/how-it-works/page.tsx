@@ -31,7 +31,7 @@ export default async function HowItWorksPage() {
           ))}
         </dl>
         <h3 className="mt-8 font-semibold">{t.how.ratingsHeading}</h3>
-        <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+        <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
           {(Object.keys(CHECK_STATUS_INFO) as CheckStatus[]).map((s) => (
             <li key={s} className={`text-sm font-medium ${CHECK_STATUS_INFO[s].tone}`}>
               {pick(CHECK_STATUS_INFO[s].label, locale)}

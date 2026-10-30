@@ -25,7 +25,7 @@ export default async function AdminOverviewPage() {
   return (
     <>
       <PageHeader title={t.overviewTitle} />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard label={t.users} value={users} hint={t.sellers(sellers)} />
         <StatCard label={t.activeListings} value={activeListings} />
         <StatCard label={t.gmv} value={formatMoney(gmv._sum.totalIdr ?? 0)} hint={t.fees(formatMoney(fees._sum.platformFeeIdr ?? 0))} />

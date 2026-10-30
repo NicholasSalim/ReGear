@@ -108,10 +108,52 @@ async function CompareTable({ searchParams }: { searchParams: PageProps<"/[lang]
     return label ? pick(label, locale) : status;
   };
 
+  const itemHead = (l: ListingDetail, sizes: string) => (
+    <>
+      <Link href={`/listings/${l.slug}`} className="block">
+        <div className="relative mb-2 aspect-[4/3] overflow-hidden rounded-lg bg-slate-100">
+          {l.images[0] && <Image src={mediaUrl(l.images[0].key)} alt={l.title} fill sizes={sizes} className="object-cover" />}
+        </div>
+        <span className="line-clamp-2 font-semibold text-ink hover:text-brand-700">{l.title}</span>
+      </Link>
+      <div className="mt-1 flex items-center justify-between gap-2">
+        <span className="text-xs text-slate-500">{statusLabel(l.status)}</span>
+        <RemoveFromCompare id={l.id} shown={listings.map((other) => other.id)} />
+      </div>
+    </>
+  );
+
   return (
     <>
       {categories.size > 1 && <p className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">{t.compare.mixedCategories}</p>}
-      <div className="card overflow-x-auto">
+      {/* Phones: one block per attribute, with every item's value listed underneath, so the page only scrolls down. */}
+      <div className="md:hidden">
+        <div className="grid grid-cols-2 gap-3 text-sm">
+          {listings.map((l) => (
+            <div key={l.id} className="card p-3">
+              {itemHead(l, "50vw")}
+            </div>
+          ))}
+        </div>
+        <dl className="card mt-4 divide-y divide-slate-100 text-sm">
+          {rows.map((row) => (
+            <div key={row.label} className="p-4">
+              <dt className="mb-1.5 font-semibold text-ink">{row.label}</dt>
+              <dd>
+                <ul className="-mx-2 space-y-0.5">
+                  {listings.map((l) => (
+                    <li key={l.id} className={`flex items-start justify-between gap-3 rounded-md px-2 py-1.5 ${row.isBest?.(l) ? "bg-brand-50 font-semibold text-brand-900" : ""}`}>
+                      <span className="min-w-0 flex-1 truncate text-xs leading-5 font-normal text-slate-600">{l.title}</span>
+                      <span className="max-w-[60%] text-right">{row.render(l)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+      <div className="card overflow-x-auto max-md:hidden">
         <table className="w-full min-w-[640px] border-collapse text-sm">
           <caption className="sr-only">{t.compare.caption}</caption>
           <thead>
@@ -119,16 +161,7 @@ async function CompareTable({ searchParams }: { searchParams: PageProps<"/[lang]
               <th scope="col" className="w-44 p-4 text-left align-bottom text-sm font-semibold text-slate-500"><span className="sr-only">{t.compare.listing}</span></th>
               {listings.map((l) => (
                 <th key={l.id} scope="col" className="p-4 text-left align-top font-normal">
-                  <Link href={`/listings/${l.slug}`} className="block">
-                    <div className="relative mb-2 aspect-[4/3] overflow-hidden rounded-lg bg-slate-100">
-                      {l.images[0] && <Image src={mediaUrl(l.images[0].key)} alt={l.title} fill sizes="240px" className="object-cover" />}
-                    </div>
-                    <span className="line-clamp-2 font-semibold text-ink hover:text-brand-700">{l.title}</span>
-                  </Link>
-                  <div className="mt-1 flex items-center justify-between">
-                    <span className="text-xs text-slate-500">{statusLabel(l.status)}</span>
-                    <RemoveFromCompare id={l.id} shown={listings.map((other) => other.id)} />
-                  </div>
+                  {itemHead(l, "240px")}
                 </th>
               ))}
             </tr>

@@ -17,7 +17,7 @@ export default async function HomePage() {
   return (
     <>
       <section className="border-b border-rule bg-surface">
-        <div className="container-page grid gap-12 py-14 lg:grid-cols-[1.1fr_1fr] lg:items-center lg:py-16">
+        <div className="container-page grid grid-cols-1 gap-12 py-14 lg:grid-cols-[1.1fr_1fr] lg:items-center lg:py-16">
           <div className="max-w-xl">
             <h1 className="wide text-[2.5rem] leading-[1.02] font-extrabold tracking-[-0.035em] sm:text-[3.4rem] xl:text-[3.9rem]">
               {t.home.heading}
@@ -59,7 +59,7 @@ export default async function HomePage() {
       </section>
 
       <section className="border-t border-rule bg-surface">
-        <div className="container-page grid gap-10 py-14 lg:grid-cols-[18rem_1fr]">
+        <div className="container-page grid grid-cols-1 gap-10 py-14 lg:grid-cols-[18rem_1fr]">
           <div>
             <h2 className="text-2xl font-extrabold">{t.home.howBuyingWorks}</h2>
             <p className="mt-3 text-slate-600">{t.home.howBuyingIntro}</p>
@@ -67,7 +67,7 @@ export default async function HomePage() {
               {t.home.readProtection}
             </Link>
           </div>
-          <ol className="grid gap-px overflow-hidden rounded-[var(--radius-panel)] border border-rule bg-rule sm:grid-cols-2 lg:grid-cols-4">
+          <ol className="grid grid-cols-1 gap-px overflow-hidden rounded-[var(--radius-panel)] border border-rule bg-rule sm:grid-cols-2 lg:grid-cols-4">
             {t.home.steps.map(([title, body], i) => (
               <li key={title} className="bg-surface p-5">
                 <span className="num wide block text-3xl font-extrabold text-brand-700">{i + 1}</span>

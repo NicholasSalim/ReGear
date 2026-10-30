@@ -61,13 +61,13 @@ export default async function AdminVerificationsPage({ searchParams }: PageProps
       ) : (
         <ul className="space-y-4">
           {pending.map((r) => (
-            <li key={r.id} className="card grid gap-5 p-5 md:grid-cols-[1fr_16rem]">
+            <li key={r.id} className="card grid grid-cols-1 gap-5 p-5 md:grid-cols-[1fr_16rem]">
               <div className="space-y-2 text-sm">
                 <p className="text-base font-semibold">
                   <Link href={`/admin/users/${r.seller.userId}`} className="hover:text-brand-700">{r.seller.displayName}</Link>
                   <span className="ml-2 text-xs font-normal text-slate-500">{r.seller.user.email}</span>
                 </p>
-                <dl className="grid gap-2 sm:grid-cols-2">
+                <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <div><dt className="text-slate-500">{t.legalName}</dt><dd>{r.legalName}</dd></div>
                   <div><dt className="text-slate-500">{t.phone}</dt><dd>{r.phone}</dd></div>
                   <div><dt className="text-slate-500">{t.document}</dt><dd>{pick(ID_TYPE_LABELS[r.idType as keyof typeof ID_TYPE_LABELS], locale)} ···{r.idNumberLast4}</dd></div>

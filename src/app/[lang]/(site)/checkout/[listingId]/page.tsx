@@ -71,7 +71,7 @@ async function Checkout({ params }: { params: PageProps<"/[lang]/checkout/[listi
 
   const addresses = await listAddresses(user.id);
   return (
-    <div className="grid gap-8 lg:grid-cols-[1fr_20rem]">
+    <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_20rem]">
       <CheckoutForm
         action={checkoutAction.bind(null, listing.id)}
         addresses={addresses}

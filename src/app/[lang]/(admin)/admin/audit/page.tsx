@@ -23,6 +23,9 @@ function entityHref(entity: string, id: string) {
   return null;
 }
 
+// On phones a cell shows its column name above the value.
+const stacked = "max-md:block max-md:px-4 max-md:py-1 max-md:before:block max-md:before:text-xs max-md:before:text-slate-500 max-md:before:content-[attr(data-label)]";
+
 export default async function AuditPage({ searchParams }: PageProps<"/[lang]/admin/audit">) {
   const [locale, dict] = await Promise.all([getLocale(), getDictionary()]);
   const t = dict.admin;
@@ -58,9 +61,10 @@ export default async function AuditPage({ searchParams }: PageProps<"/[lang]/adm
       {entries.length === 0 ? (
         <EmptyState title={t.searchBar.none} />
       ) : (
-        <div className="card overflow-x-auto">
-          <table className="w-full min-w-[720px] text-sm">
-            <thead className="bg-slate-50 text-left text-xs text-slate-500">
+        <div className="card md:overflow-x-auto">
+          {/* Phones: each row stacks into a card, with its column name above each value. */}
+          <table className="w-full text-sm max-md:block">
+            <thead className="bg-slate-50 text-left text-xs text-slate-500 max-md:hidden">
               <tr>
                 <th className="p-3 font-medium">{t.when}</th>
                 <th className="p-3 font-medium">{t.actor}</th>
@@ -69,31 +73,31 @@ export default async function AuditPage({ searchParams }: PageProps<"/[lang]/adm
                 <th className="p-3 font-medium">{t.ip}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 max-md:block">
               {entries.map((e) => {
                 const href = entityHref(e.entity, e.entityId);
                 return (
-                  <tr key={e.id}>
-                    <td className="p-3 whitespace-nowrap text-slate-500">{formatDateTime(e.createdAt, locale)}</td>
-                    <td className="p-3">
+                  <tr key={e.id} className="max-md:block max-md:py-1.5">
+                    <td data-label={t.when} className={`p-3 text-slate-500 md:whitespace-nowrap ${stacked}`}>{formatDateTime(e.createdAt, locale)}</td>
+                    <td data-label={t.actor} className={`p-3 max-md:break-all ${stacked}`}>
                       {e.actor ? (
                         <Link href={`/admin/users/${e.actor.id}`} className="hover:text-brand-700">{e.actor.email}</Link>
                       ) : (
                         t.system
                       )}
                     </td>
-                    <td className="p-3">
+                    <td data-label={t.action} className={`p-3 ${stacked}`}>
                       {t.auditActions[e.action] ?? e.action}
                       <span className="num block text-xs text-slate-400">{e.action}</span>
                     </td>
-                    <td className="p-3 num text-xs">
+                    <td data-label={t.entity} className={`p-3 num text-xs ${stacked}`}>
                       {href ? (
                         <Link href={href} className="text-brand-700 hover:underline">{e.entity}:{e.entityId.slice(0, 10)}</Link>
                       ) : (
                         `${e.entity}:${e.entityId.slice(0, 10)}`
                       )}
                     </td>
-                    <td className="p-3 text-slate-500">{e.ip ?? "—"}</td>
+                    <td data-label={t.ip} className={`p-3 text-slate-500 ${stacked}`}>{e.ip ?? "—"}</td>
                   </tr>
                 );
               })}

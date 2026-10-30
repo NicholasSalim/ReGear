@@ -64,7 +64,7 @@ export default async function ListingPage({ params }: PageProps<"/[lang]/listing
         <span className="text-slate-700">{listing.brand}</span>
       </nav>
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_24rem]">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_24rem]">
         <div className="space-y-6">
           <Gallery images={listing.images} title={listing.title} />
           <ConditionReportView listing={listing} />
@@ -82,7 +82,7 @@ export default async function ListingPage({ params }: PageProps<"/[lang]/listing
               <span className="text-xs text-slate-500">{category}</span>
             </div>
             <h1 className="mt-2 text-xl font-bold leading-snug text-ink">{listing.title}</h1>
-            <div className="mt-3 flex items-baseline gap-3">
+            <div className="mt-3 flex flex-wrap items-baseline gap-x-3">
               <span className="text-3xl font-extrabold text-ink">{formatMoney(listing.priceIdr)}</span>
               {listing.originalPriceIdr && (
                 <span className="text-sm text-slate-400 line-through">{t.common.priceNew(formatMoney(listing.originalPriceIdr))}</span>

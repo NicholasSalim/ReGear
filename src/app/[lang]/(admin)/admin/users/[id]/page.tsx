@@ -93,7 +93,7 @@ export default async function AdminUserPage({ params }: PageProps<"/[lang]/admin
           </div>
         }
       />
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <section className="card p-5" aria-labelledby="account">
           <h2 id="account" className="mb-2 font-bold">{t.account}</h2>
           <dl className="divide-y divide-slate-100">
@@ -160,7 +160,7 @@ export default async function AdminUserPage({ params }: PageProps<"/[lang]/admin
         </section>
       )}
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <section className="card p-5" aria-labelledby="purchases">
           <div className="mb-2 flex items-baseline justify-between gap-3">
             <h2 id="purchases" className="font-bold">{t.purchases(user._count.purchases)}</h2>

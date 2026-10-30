@@ -64,7 +64,7 @@ export async function ConditionReportView({ listing }: { listing: ListingDetail 
         {labelled.map((c) => (
           <li key={c.key} className="flex items-start gap-3 px-4 py-2.5 text-sm">
             <span className="mt-1.5">{STATUS_ICON[c.status]}</span>
-            <span className="flex-1">
+            <span className="min-w-0 flex-1">
               <span className="font-medium text-ink">{c.label}</span>
               {isCustomCheck(c.key) && (
                 <span className="ml-2 rounded-[var(--radius-tag)] bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600">{t.condition.addedBySeller}</span>
@@ -76,7 +76,7 @@ export async function ConditionReportView({ listing }: { listing: ListingDetail 
         ))}
       </ul>
 
-      <div className="mt-5 grid gap-4 text-sm sm:grid-cols-2">
+      <div className="mt-5 grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
         <div className="flex items-center gap-2">
           <ScanLine className="size-4 text-slate-500" aria-hidden />
           {report.serialVerified ? t.condition.serialChecked : t.condition.serialNotVerified}
@@ -126,7 +126,7 @@ export async function SpecTable({ listing }: { listing: ListingDetail }) {
   return (
     <section aria-labelledby="specs-heading" className="card p-5 sm:p-6">
       <h2 id="specs-heading" className="text-xl font-extrabold">{t.condition.specifications}</h2>
-      <dl className="mt-4 grid gap-x-8 sm:grid-cols-2">
+      <dl className="mt-4 grid grid-cols-1 gap-x-8 sm:grid-cols-2">
         {rows.map(([k, v]) => (
           <div key={k} className="flex justify-between gap-4 border-b border-rule py-2 text-sm">
             <dt className="text-slate-500">{k}</dt>

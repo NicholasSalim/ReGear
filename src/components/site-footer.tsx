@@ -11,7 +11,7 @@ export async function SiteFooter() {
   const [locale, t] = await Promise.all([getLocale(), getDictionary()]);
   return (
     <footer className="mt-16 border-t border-slate-200 bg-surface">
-      <div className="container-page grid gap-8 py-12 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="container-page grid grid-cols-1 gap-8 py-12 sm:grid-cols-2 lg:grid-cols-5">
         <div>
           <Logo />
           <p className="mt-3 text-sm text-slate-600">{t.footer.tagline}</p>

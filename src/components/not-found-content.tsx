@@ -27,7 +27,7 @@ export function NotFoundContent({ locale }: { locale: Locale }) {
   const id = (name: string) => `notfound-${name}-${locale}`;
 
   return (
-    <div className="container-page grid flex-1 items-center gap-10 py-12 lg:grid-cols-[1fr_26rem] lg:gap-16 lg:py-20">
+    <div className="container-page grid grid-cols-1 flex-1 items-center gap-10 py-12 lg:grid-cols-[1fr_26rem] lg:gap-16 lg:py-20">
       <div className="max-w-xl">
         <h1 className="text-4xl font-extrabold sm:text-5xl">{t.heading}</h1>
         <p className="mt-4 text-lg text-slate-600">{t.body}</p>

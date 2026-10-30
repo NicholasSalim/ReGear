@@ -64,7 +64,7 @@ export function VerificationForm({ action }: { action: FormAction }) {
           <FormMessage state={s} />
           {!s.ok && (
             <>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Field label={t.legalName} name="legalName" error={s.fieldErrors?.legalName}>
                   <input id="legalName" name="legalName" autoComplete="name" maxLength={100} className="input" />
                 </Field>

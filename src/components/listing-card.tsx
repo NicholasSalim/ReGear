@@ -63,7 +63,7 @@ export async function ListingCard({ listing, priority }: { listing: CardData; pr
           </Link>
         </h3>
         {checks.length > 0 && <p className="text-xs text-slate-500">{stripLabel(checks, t.condition)}</p>}
-        <div className="mt-auto flex items-baseline gap-2 pt-1">
+        <div className="mt-auto flex flex-wrap items-baseline gap-x-2 pt-1">
           <span className="num wide text-xl font-extrabold text-ink">{formatMoney(listing.priceIdr)}</span>
           {discount >= 5 && listing.originalPriceIdr && (
             <span className="num text-xs text-slate-500">

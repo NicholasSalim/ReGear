@@ -42,7 +42,7 @@ export default async function SellerPayoutsPage() {
       <PageHeader title={t.sellerTitle} description={t.sellerIntro} />
       {payouts.mode === "simulated" && <p className="mb-4 rounded-lg bg-indigo-50 p-3 text-xs text-indigo-800">{t.simulatedNote}</p>}
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <StatCard label={t.available} value={formatMoney(data.balance)} hint={t.availableHint} />
         <StatCard label={t.beingWithdrawn} value={formatMoney(data.beingWithdrawn)} />
       </div>

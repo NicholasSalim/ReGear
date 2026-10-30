@@ -55,6 +55,8 @@
     @apply bg-paper text-ink antialiased;
     font-size: 15px;
     line-height: 1.55;
+    /* A long word or email wraps instead of pushing the page wider. */
+    overflow-wrap: break-word;
   }
   h1,
   h2,

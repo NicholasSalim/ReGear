@@ -9,7 +9,7 @@ import { Field } from "@/components/ui";
 export function SettingsForms({ name, email, hasPassword, googleEmail }: { name: string; email: string; hasPassword: boolean; googleEmail?: string }) {
   const t = useT().settings;
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <ActionForm action={updateProfileAction} className="card space-y-4 p-6">
         {(s) => (
           <>
@@ -61,7 +61,7 @@ export function DeleteAccountForm({ email, hasPassword, blockers }: { email: str
         <h2 id="delete-account" className="font-bold text-rose-700">{t.title}</h2>
         <p className="text-sm text-slate-600">{t.intro}</p>
       </div>
-      <div className="grid gap-4 text-sm sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
         <div>
           <h3 className="font-semibold">{t.removedTitle}</h3>
           <ul className="mt-1 list-disc space-y-0.5 pl-5 text-slate-600">

@@ -49,7 +49,7 @@ async function Dispute({ params }: { params: PageProps<"/[lang]/disputes/[id]">[
   const resolution = dispute.resolution ? DISPUTE_RESOLUTION_LABELS[dispute.resolution as keyof typeof DISPUTE_RESOLUTION_LABELS] : undefined;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_18rem]">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_18rem]">
       <div className="space-y-6">
         <div>
           <Link href={orderHref} className="text-sm text-slate-500 hover:text-brand-700">{t.backToOrder}</Link>

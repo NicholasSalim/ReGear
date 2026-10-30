@@ -29,7 +29,7 @@ export async function LegalPage({ document: key }: { document: LegalDocumentKey 
 
       <nav aria-labelledby="legal-contents" className="mt-8 rounded-xl border border-rule bg-surface p-5">
         <h2 id="legal-contents" className="text-sm font-semibold">{t.contents}</h2>
-        <ol className="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <ol className="mt-2 grid grid-cols-1 gap-1 text-sm sm:grid-cols-2">
           {doc.sections.map((s) => (
             <li key={s.id}>
               <a href={`#${s.id}`} className="text-slate-600 hover:text-brand-700">

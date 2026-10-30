@@ -35,7 +35,7 @@ export default async function AdminPayoutsPage({ searchParams }: PageProps<"/[la
           <Link href={`/admin/users/${w.seller.userId}`} className="hover:text-brand-700">{w.seller.displayName}</Link> · {w.seller.user.email}
         </span>
       </p>
-      <dl className="grid gap-2 sm:grid-cols-2">
+      <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <div>
           <dt className="text-slate-500">{t.account}</dt>
           <dd>
@@ -68,7 +68,7 @@ export default async function AdminPayoutsPage({ searchParams }: PageProps<"/[la
       <PageHeader title={t.adminTitle} description={t.adminIntro} />
       {d.mode === "simulated" && <p className="mb-4 rounded-lg bg-indigo-50 p-3 text-xs text-indigo-800">{t.simulatedMode}</p>}
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <StatCard label={t.owed} value={formatMoney(d.owedIdr)} hint={t.owedHint} />
         <StatCard label={t.inFlight} value={formatMoney(d.inFlightIdr)} hint={t.openCount(d.inFlightCount)} />
       </div>
@@ -80,7 +80,7 @@ export default async function AdminPayoutsPage({ searchParams }: PageProps<"/[la
         ) : (
           <ul className="space-y-4">
             {d.review.map((w) => (
-              <li key={w.id} className="card grid gap-5 p-5 md:grid-cols-[1fr_18rem]">
+              <li key={w.id} className="card grid grid-cols-1 gap-5 p-5 md:grid-cols-[1fr_18rem]">
                 {details(w)}
                 <WithdrawalReviewForm action={withdrawalDecisionAction.bind(null, w.id)} id={w.id} />
               </li>
@@ -97,7 +97,7 @@ export default async function AdminPayoutsPage({ searchParams }: PageProps<"/[la
         ) : (
           <ul className="space-y-4">
             {d.toPay.map((w) => (
-              <li key={w.id} className="card grid gap-5 p-5 md:grid-cols-[1fr_18rem]">
+              <li key={w.id} className="card grid grid-cols-1 gap-5 p-5 md:grid-cols-[1fr_18rem]">
                 {details(w)}
                 <WithdrawalPayForm action={withdrawalDecisionAction.bind(null, w.id)} id={w.id} />
               </li>

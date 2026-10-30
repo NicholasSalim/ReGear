@@ -5,6 +5,7 @@ import { LanguageSwitcher } from "@/i18n/language-switcher";
 import { pick } from "@/i18n/locales";
 import { getDictionary, getLocale } from "@/i18n/server";
 import { CATEGORIES } from "@/lib/catalog";
+import { PhoneCategories } from "@/components/phone-categories";
 import { UserMenu } from "@/components/user-menu";
 import { SiteSearch } from "@/components/site-search";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -24,6 +25,22 @@ export async function Logo() {
 
 export async function SiteHeader() {
   const [locale, t] = await Promise.all([getLocale(), getDictionary()]);
+  const categoryLinks = (
+    <>
+      {CATEGORIES.map((c) => (
+        <Link key={c.slug} href={`/c/${c.slug}`} className="py-1 hover:text-brand-700">
+          {pick(c.name, locale)}
+        </Link>
+      ))}
+      <Link href="/compare" className="py-1 hover:text-brand-700">
+        {t.nav.compare}
+      </Link>
+      <Link href="/how-it-works" className="py-1 hover:text-brand-700">
+        {t.nav.howItWorks}
+      </Link>
+    </>
+  );
+
   return (
     <header className="sticky top-0 z-30 border-b border-rule bg-surface/95 backdrop-blur">
       <div className="container-page flex h-16 items-center gap-2 sm:gap-4">
@@ -55,19 +72,10 @@ export async function SiteHeader() {
           </nav>
         </div>
       </div>
-      <nav className="container-page flex gap-6 overflow-x-auto pb-2.5 text-sm font-medium text-slate-600 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label={t.nav.categoriesNav}>
-        {CATEGORIES.map((c) => (
-          <Link key={c.slug} href={`/c/${c.slug}`} className="shrink-0 py-1 hover:text-brand-700">
-            {pick(c.name, locale)}
-          </Link>
-        ))}
-        <Link href="/compare" className="shrink-0 py-1 hover:text-brand-700">
-          {t.nav.compare}
-        </Link>
-        <Link href="/how-it-works" className="shrink-0 py-1 hover:text-brand-700">
-          {t.nav.howItWorks}
-        </Link>
+      <nav className="container-page flex flex-wrap gap-x-6 pb-2.5 text-sm font-medium text-slate-600 max-sm:hidden" aria-label={t.nav.categoriesNav}>
+        {categoryLinks}
       </nav>
+      <PhoneCategories label={t.nav.categoriesNav}>{categoryLinks}</PhoneCategories>
     </header>
   );
 }

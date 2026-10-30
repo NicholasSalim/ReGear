@@ -112,7 +112,7 @@ export function AddressForm({
         </div>
       </Field>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label={t.recipientName} name="recipientName" error={err.recipientName}>
           <input id="recipientName" name="recipientName" autoComplete="name" defaultValue={initial?.recipientName ?? defaultName} maxLength={100} className="input" aria-invalid={!!err.recipientName} />
         </Field>

@@ -15,7 +15,7 @@ export default async function AccountPage() {
   return (
     <>
       <PageHeader title={t.account.hi(user.name.split(" ")[0])} description={user.email} />
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard label={t.account.openOrders} value={open.length} />
         <StatCard label={t.account.allPurchases} value={orders.length} />
         <StatCard label={t.account.savedItems} value={favorites.length} />

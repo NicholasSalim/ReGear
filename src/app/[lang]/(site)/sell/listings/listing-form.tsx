@@ -260,7 +260,7 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
       </Section>
 
       <Section title={t.basics}>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <Field label={t.title} name="title" error={err("title")} hint={t.titleHint}>
               <input id="title" className="input" value={v.title} maxLength={120} onChange={(e) => set("title", e.target.value)} />
@@ -291,7 +291,7 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
       </Section>
 
       <Section title={t.specsTitle(pick(category.singular, locale))} description={t.specsHint}>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {category.specFields.map((f) => {
             const id = `spec-${f.key}`;
             const value = v.specs[f.key];
@@ -333,7 +333,7 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
       <Section title={t.report} description={t.reportHint}>
         <fieldset>
           <legend className="label">{t.overallGrade}</legend>
-          <div className="grid gap-2 sm:grid-cols-5">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-5">
             {CONDITION_GRADES.map((g) => (
               <label key={g} className={`cursor-pointer rounded-lg border p-3 text-sm ${v.conditionGrade === g ? "border-brand-600 bg-brand-50" : "border-slate-200 hover:border-slate-300"}`}>
                 <input type="radio" name="conditionGrade" value={g} checked={v.conditionGrade === g} onChange={() => set("conditionGrade", g)} className="sr-only" />
@@ -345,7 +345,7 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
           {err("conditionGrade") && <p className="mt-1 text-xs font-medium text-rose-600">{err("conditionGrade")}</p>}
         </fieldset>
 
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {hasBattery && (
             <Field label={t.battery} name="batteryHealth" error={err("batteryHealth")} hint={t.batteryHint}>
               <input id="batteryHealth" type="number" min={1} max={100} className="input" value={v.batteryHealth} onChange={(e) => set("batteryHealth", e.target.value)} />
@@ -471,7 +471,7 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
           </span>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label={t.accessories} name="includedAccessories" hint={t.accessoriesHint}>
             <input id="includedAccessories" className="input" value={v.includedAccessories} onChange={(e) => set("includedAccessories", e.target.value)} />
           </Field>
@@ -494,7 +494,7 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
       </Section>
 
       <Section title={t.pricing}>
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Field label={t.price} name="price" error={err("priceIdr")} hint={t.priceRange(formatMoney(MIN_PRICE_IDR), formatMoney(MAX_PRICE_IDR))}>
             <input id="price" inputMode="numeric" placeholder={t.pricePlaceholder} className="input" value={v.price} onChange={(e) => set("price", e.target.value)} />
           </Field>

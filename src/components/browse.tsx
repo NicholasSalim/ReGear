@@ -28,7 +28,7 @@ export async function BrowseView({
   const basePath = fixedCategory ? `/c/${fixedCategory}` : "/listings";
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[16rem_1fr]">
+    <div className="grid grid-cols-1 gap-8 lg:grid-cols-[16rem_1fr]">
       <Filters params={params} brands={brands} basePath={basePath} fixedCategory={fixedCategory} locale={locale} t={t} />
       <div>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">

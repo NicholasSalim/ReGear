@@ -80,7 +80,7 @@ export async function OrderDetail({ order, now }: { order: OrderForUser; now: Da
         </ol>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_20rem]">
         <div className="space-y-6">
           {/* Item */}
           <section className="card flex gap-4 p-4">
@@ -192,7 +192,7 @@ export async function OrderDetail({ order, now }: { order: OrderForUser; now: Da
           {order.returnRequest && (
             <section className="card space-y-3 p-5" aria-labelledby="return-heading">
               <h2 id="return-heading" className="font-bold">{t.returnRequest}</h2>
-              <dl className="grid gap-2 text-sm sm:grid-cols-2">
+              <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
                 <div>
                   <dt className="text-slate-500">{t.status}</dt>
                   <dd className="font-medium">{pick(RETURN_STATUS_LABELS[order.returnRequest.status as ReturnStatus], locale)}</dd>

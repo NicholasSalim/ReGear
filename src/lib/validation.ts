@@ -2,7 +2,7 @@ import { z } from "zod";
 import { translateValidation, vmsg } from "@/i18n/messages";
 import type { Locale } from "@/i18n/locales";
 import type { Dictionary } from "@/i18n/server";
-import { applicableChecks, getCategory, needsBattery, CATEGORY_SLUGS } from "@/lib/catalog";
+import { applicableChecks, getCategory, needsBattery, CATEGORY_SLUGS, type Category } from "@/lib/catalog";
 import { isCustomCheck, MAX_CUSTOM_CHECKS } from "@/lib/condition";
 import { formatMoney } from "@/lib/format";
 import {
@@ -181,6 +181,40 @@ export const listingBaseSchema = z.object({
   publish: checkbox,
 });
 
+/** Typed spec values for a category: unknown keys are dropped, and missing or invalid values reported. */
+function checkSpecs(category: Category, specs: Record<string, unknown>) {
+  const cleanSpecs: Record<string, string | number | boolean> = {};
+  const issues: { path: string[]; message: string }[] = [];
+  for (const field of category.specFields) {
+    const raw = specs[field.key];
+    const empty = raw === undefined || raw === "" || raw === null;
+    if (empty) {
+      if (field.type === "boolean") cleanSpecs[field.key] = false;
+      else if (field.required) issues.push({ path: ["specs", field.key], message: vmsg("specRequired", field.label) });
+      continue;
+    }
+    if (field.type === "number") {
+      const n = Number(raw);
+      if (!Number.isFinite(n) || n < 0 || n > 1_000_000) {
+        issues.push({ path: ["specs", field.key], message: vmsg("specNumber", field.label) });
+        continue;
+      }
+      cleanSpecs[field.key] = n;
+    } else if (field.type === "boolean") {
+      cleanSpecs[field.key] = raw === true || raw === "true" || raw === "on";
+    } else if (field.type === "select") {
+      if (!field.options?.includes(String(raw))) {
+        issues.push({ path: ["specs", field.key], message: vmsg("specChoose", field.label) });
+        continue;
+      }
+      cleanSpecs[field.key] = String(raw);
+    } else {
+      cleanSpecs[field.key] = String(raw).trim().slice(0, 120);
+    }
+  }
+  return { cleanSpecs, issues };
+}
+
 /**
  * Full listing validation including category-specific rules: required spec
  * fields, typed spec values, a complete condition checklist and warranty
@@ -190,34 +224,8 @@ export const listingSchema = listingBaseSchema.superRefine((data, ctx) => {
   const category = getCategory(data.category);
   if (!category) return;
 
-  const cleanSpecs: Record<string, string | number | boolean> = {};
-  for (const field of category.specFields) {
-    const raw = data.specs[field.key];
-    const empty = raw === undefined || raw === "" || raw === null;
-    if (empty) {
-      if (field.type === "boolean") cleanSpecs[field.key] = false;
-      else if (field.required) ctx.addIssue({ code: "custom", path: ["specs", field.key], message: vmsg("specRequired", field.label) });
-      continue;
-    }
-    if (field.type === "number") {
-      const n = Number(raw);
-      if (!Number.isFinite(n) || n < 0 || n > 1_000_000) {
-        ctx.addIssue({ code: "custom", path: ["specs", field.key], message: vmsg("specNumber", field.label) });
-        continue;
-      }
-      cleanSpecs[field.key] = n;
-    } else if (field.type === "boolean") {
-      cleanSpecs[field.key] = raw === true || raw === "true" || raw === "on";
-    } else if (field.type === "select") {
-      if (!field.options?.includes(String(raw))) {
-        ctx.addIssue({ code: "custom", path: ["specs", field.key], message: vmsg("specChoose", field.label) });
-        continue;
-      }
-      cleanSpecs[field.key] = String(raw);
-    } else {
-      cleanSpecs[field.key] = String(raw).trim().slice(0, 120);
-    }
-  }
+  const { cleanSpecs, issues } = checkSpecs(category, data.specs);
+  for (const issue of issues) ctx.addIssue({ code: "custom", ...issue });
   data.specs = cleanSpecs;
 
   // Sellers choose which of the checks that apply to this device to include,
@@ -268,6 +276,20 @@ export const listingSchema = listingBaseSchema.superRefine((data, ctx) => {
 });
 
 export type ListingInput = z.infer<typeof listingSchema>;
+
+/**
+ * Parses a listing form. The category rules only run once the basic fields are
+ * valid, so when those fail this adds the spec errors too: the seller sees both at once.
+ */
+export function parseListing(payload: unknown): ListingInput {
+  const parsed = listingSchema.safeParse(payload);
+  if (parsed.success) return parsed.data;
+  const raw = (payload ?? {}) as { category?: unknown; specs?: unknown };
+  const category = typeof raw.category === "string" ? getCategory(raw.category) : undefined;
+  const specs = raw.specs && typeof raw.specs === "object" ? (raw.specs as Record<string, unknown>) : null;
+  if (!category || !specs || parsed.error.issues.some((i) => i.path[0] === "specs")) throw parsed.error;
+  throw new z.ZodError([...parsed.error.issues, ...checkSpecs(category, specs).issues.map((issue) => ({ code: "custom" as const, input: payload, ...issue }))]);
+}
 
 // Browse -------------------------------------------------------------------
 

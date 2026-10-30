@@ -59,6 +59,10 @@ async function Checkout({ params }: { params: PageProps<"/[lang]/checkout/[listi
     return <EmptyState title={t.ownListing} action={<ButtonLink href="/sell/listings">{t.manageListings}</ButtonLink>} />;
   }
   if (listing.status !== "ACTIVE") {
+    const own = await db.order.findFirst({ where: { listingId, buyerId: user.id, status: "PENDING_PAYMENT" }, select: { id: true } });
+    if (own) {
+      return <EmptyState title={t.reservedByYou} description={t.reservedByYouHint} action={<ButtonLink href={`/account/orders/${own.id}`}>{t.finishPayment}</ButtonLink>} />;
+    }
     return <EmptyState title={t.unavailable} description={t.unavailableHint} action={<ButtonLink href="/listings">{t.keepBrowsing}</ButtonLink>} />;
   }
   if (!user.emailVerified) {

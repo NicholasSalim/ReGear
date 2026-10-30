@@ -73,7 +73,7 @@ export default async function AdminOrderPage({ params }: PageProps<"/[lang]/admi
           <dl className="divide-y divide-slate-100">
             <Row label={t.price}>{formatMoney(order.priceIdr)}</Row>
             <Row label={t.shipping}>{formatMoney(order.shippingIdr)}</Row>
-            <Row label={t.total}>{formatMoney(order.totalIdr)}</Row>
+            <Row label={order.paidAt ? t.total : t.orderTotal}>{formatMoney(order.totalIdr)}</Row>
             <Row label={t.fee}>{formatMoney(order.platformFeeIdr)}</Row>
             <Row label={t.refunded}>{order.refundIdr ? formatMoney(order.refundIdr) : t.none}</Row>
             <Row label={t.sellerCredit}>{order.balanceEntries.length ? formatMoney(credited) : t.notCredited}</Row>

@@ -127,7 +127,7 @@ async function CompareTable({ searchParams }: { searchParams: PageProps<"/[lang]
                   </Link>
                   <div className="mt-1 flex items-center justify-between">
                     <span className="text-xs text-slate-500">{statusLabel(l.status)}</span>
-                    <RemoveFromCompare id={l.id} />
+                    <RemoveFromCompare id={l.id} shown={listings.map((other) => other.id)} />
                   </div>
                 </th>
               ))}

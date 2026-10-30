@@ -94,6 +94,15 @@ describe("Midtrans adapter", () => {
     expect(request(fetch, 1)).toMatchObject({ url: "https://api.sandbox.midtrans.com/v2/cm1/expire", init: { method: "POST" } });
   });
 
+  it("has nothing to refund for a demo order from the seed, in the sandbox only", async () => {
+    const input = { idempotencyKey: "order:cm1:refund", orderId: "cm1", ref: "sim_ch_abc", amountIdr: 2_000 };
+    const fetch = respond();
+    expect(await midtrans.refund(input)).toEqual({ ref: "order-cm1-refund" });
+    expect(fetch).not.toHaveBeenCalled();
+    respond({ body: { status_code: "404" } });
+    await expect(createMidtrans(KEY, "production").refund(input)).rejects.toThrow(/404/);
+  });
+
   it("refunds with a key Midtrans accepts, and treats a repeated key as done", async () => {
     const fetch = respond({ body: { status_code: "200" } }, { body: { status_code: "406", status_message: "Duplicate refund ID" } }, { body: { status_code: "412" } });
     const input = { idempotencyKey: "order:cm1:refund", orderId: "cm1", ref: "tx-1", amountIdr: 2_000 };

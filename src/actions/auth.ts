@@ -68,7 +68,10 @@ export async function confirmSignupAction(_prev: ActionState, formData: FormData
   if (!result.ok) {
     if (result.reason === "wrong") return { fieldErrors: { code: t.actions.codeWrong(result.attemptsLeft) } };
     await clearSignupCookie();
-    return { error: result.reason === "exists" ? t.actions.signupExists : t.actions.codeExpired };
+    // The confirm page can't show without the cookie, so the explanation travels with the redirect.
+    const next = String(formData.get("next") ?? "");
+    const target = result.reason === "exists" ? `/login?error=signup_exists` : `/register?error=signup_expired`;
+    redirect(`${localePath(target, locale)}${next ? `&next=${encodeURIComponent(next)}` : ""}`);
   }
 
   await clearSignupCookie();

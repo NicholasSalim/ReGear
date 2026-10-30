@@ -7,6 +7,7 @@ import type { Locale } from "@/i18n/locales";
 import { DomainError } from "@/lib/orders/service";
 import { InvalidTransitionError } from "@/lib/orders/state";
 import { fieldErrors } from "@/lib/validation";
+import { MidtransError } from "@/lib/midtrans";
 
 export type ActionState = {
   ok?: boolean;
@@ -44,6 +45,7 @@ export async function runAction(fn: () => Promise<ActionState | void>): Promise<
     if (err instanceof InvalidTransitionError) return { error: t.domain.invalidTransition };
     if (err instanceof z.ZodError) return { error: t.validation.fixFields, fieldErrors: fieldErrors(err, t, locale) };
     console.error("[action] unexpected error", err);
+    if (err instanceof MidtransError) return { error: t.domain.paymentProviderError };
     return { error: t.domain.genericError };
   }
 }

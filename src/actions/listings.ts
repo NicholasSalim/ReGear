@@ -10,7 +10,7 @@ import { categorySearchTerms } from "@/lib/catalog";
 import { functionalScore } from "@/lib/condition";
 import { gradeRank } from "@/lib/data/catalog";
 import { slugify } from "@/lib/format";
-import { listingSchema, id as idSchema, type ListingInput } from "@/lib/validation";
+import { parseListing, id as idSchema, type ListingInput } from "@/lib/validation";
 import { updateOpenListing } from "@/lib/listings";
 import { DomainError } from "@/lib/orders/service";
 
@@ -47,7 +47,7 @@ export async function saveListingAction(listingId: string | null, payload: unkno
     if (!seller) return { error: t.actions.needSellerProfile };
     if (listingId !== null) idSchema.parse(listingId);
 
-    const data = listingSchema.parse(payload);
+    const data = parseListing(payload);
 
     const existing = listingId
       ? await db.listing.findUnique({ where: { id: listingId }, select: { id: true, sellerId: true, status: true } })

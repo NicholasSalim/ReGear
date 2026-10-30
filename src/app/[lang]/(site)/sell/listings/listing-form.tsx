@@ -118,6 +118,7 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
   function submit(publish: boolean) {
     setErrors({});
     setFormError(null);
+    setUploadError(null);
     const payload = {
       title: v.title,
       category: v.category,

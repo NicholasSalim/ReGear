@@ -114,9 +114,11 @@ export function createMidtrans(serverKey: string, environment: keyof typeof HOST
       return status(orderId);
     },
 
-    async refund({ idempotencyKey, orderId, amountIdr }) {
+    async refund({ idempotencyKey, orderId, ref, amountIdr }) {
       // Midtrans refund keys allow only letters, digits, "-" and "_".
       const refundKey = idempotencyKey.replace(/[^A-Za-z0-9_-]/g, "-");
+      // Demo orders from the seed were never paid through Midtrans, so there's nothing to send back.
+      if (environment === "sandbox" && ref.startsWith("sim_")) return { ref: refundKey };
       const b = await core(orderId, "refund", { refund_key: refundKey, amount: amountIdr, reason: "ReGear order refund" });
       // 406 "Duplicate refund ID": an earlier attempt with this key already went through.
       if (b.status_code === "200" || b.status_code === "406") return { ref: refundKey };

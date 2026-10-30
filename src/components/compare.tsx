@@ -120,7 +120,8 @@ export function CompareTray() {
   );
 }
 
-export function RemoveFromCompare({ id }: { id: string }) {
+/** Removes one item from the comparison on screen, which may be a shared link rather than this browser's own list. */
+export function RemoveFromCompare({ id, shown }: { id: string; shown: string[] }) {
   const items = useCompare();
   const t = useT();
   const locale = useLocale();
@@ -129,9 +130,9 @@ export function RemoveFromCompare({ id }: { id: string }) {
       type="button"
       className="text-xs text-slate-500 underline hover:text-rose-600"
       onClick={() => {
-        const next = items.filter((i) => i.id !== id);
-        write(next);
-        window.location.assign(localePath(next.length ? `/compare?ids=${next.map((i) => i.id).join(",")}` : "/compare", locale));
+        const next = shown.filter((other) => other !== id);
+        write(items.filter((i) => i.id !== id));
+        window.location.assign(localePath(next.length ? `/compare?ids=${next.join(",")}` : "/compare", locale));
       }}
     >
       {t.compare.removeOne}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getCategory } from "@/lib/catalog";
-import { browseSchema, listingSchema, parseRupiah, registerSchema, verificationSchema } from "@/lib/validation";
+import { browseSchema, listingSchema, parseListing, parseRupiah, registerSchema, verificationSchema } from "@/lib/validation";
 import { safeRedirectPath } from "@/lib/security/request";
 
 const phoneChecks = getCategory("phones")!.checks.map((c) => ({ key: c.key, status: "PASS" as const }));
@@ -141,5 +141,23 @@ describe("rupiah amounts", () => {
 
   it("accepts grouped amounts in the price filter and ignores junk", () => {
     expect(browseSchema.parse({ min: "1.000.000", max: "abc" })).toMatchObject({ min: 1_000_000, max: undefined });
+  });
+});
+
+describe("parseListing", () => {
+  it("reports basic fields and specs in the same round", () => {
+    try {
+      parseListing({ category: "phones", description: "short", specs: { storage: -5 } });
+      expect.unreachable();
+    } catch (err) {
+      const paths = (err as { issues: { path: string[] }[] }).issues.map((i) => i.path.join("."));
+      expect(paths).toContain("description");
+      expect(paths).toContain("specs.storage");
+    }
+  });
+
+  it("survives a payload that isn't a listing at all", () => {
+    expect(() => parseListing(null)).toThrow();
+    expect(() => parseListing({ category: "nope", specs: "x" })).toThrow();
   });
 });

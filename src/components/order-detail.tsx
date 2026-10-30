@@ -248,7 +248,7 @@ export async function OrderDetail({ order, now }: { order: OrderForUser; now: Da
             <dl className="space-y-2">
               <Row label={t.item} value={formatMoney(order.priceIdr)} />
               <Row label={t.shipping} value={order.shippingIdr ? formatMoney(order.shippingIdr) : t.free} />
-              <Row label={t.totalPaid} value={formatMoney(order.totalIdr)} strong />
+              <Row label={order.paidAt ? t.totalPaid : t.orderTotal} value={formatMoney(order.totalIdr)} strong />
               {!isBuyer && (
                 <>
                   <Row label={t.fee} value={`−${formatMoney(order.platformFeeIdr)}`} />

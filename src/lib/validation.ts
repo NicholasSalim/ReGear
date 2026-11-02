@@ -169,7 +169,8 @@ export const listingBaseSchema = z.object({
   warrantyMonths: z.coerce.number().int().min(0).max(36),
   warrantyTerms: text(0, 1000),
   returnWindowDays: z.coerce.number().int().min(0).max(30),
-  acceptsOffers: checkbox,
+  // Absent means no: this field is newer than some saved drafts and clients.
+  acceptsOffers: checkbox.default(false),
   specs: z.record(z.string().max(40), z.union([z.string().max(120), z.number(), z.boolean()])),
   batteryHealth: z.coerce.number().int().min(1).max(100).optional().nullable(),
   cosmeticScore: z.coerce.number().int().min(1).max(10),

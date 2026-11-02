@@ -627,14 +627,14 @@ export const id: typeof en = {
   },
   events: {
     CREATED: (p: { minutes: number }) => `Pesanan dibuat. Barang dipesan selama ${p.minutes} menit sambil menunggu pembayaran.`,
-    PAID: () => "Pembayaran diterima dan ditahan dengan aman oleh ReGear sampai Anda mengonfirmasi barang.",
+    PAID: () => "Pembayaran diterima. ReGear menahannya sampai pembeli menerima barang.",
     CANCELLED: (p: { by: "buyer" | "seller"; reason?: string; refunded?: boolean }) =>
       `Pesanan dibatalkan oleh ${p.by === "buyer" ? "pembeli" : "penjual"}${p.reason ? `: ${p.reason}` : "."}${p.refunded ? " Dana dikembalikan penuh." : ""}`,
     EXPIRED: () => "Pembayaran tidak diselesaikan tepat waktu; barang dilepas kembali.",
     SHIPPED: (p: { carrier: string; tracking: string }) => `Dikirim dengan ${p.carrier}, nomor resi ${p.tracking}.`,
     DELIVERED: (p: { auto: boolean; returnDays: number }) =>
       `${p.auto ? "Ditandai diterima secara otomatis setelah perkiraan waktu pengiriman." : "Pembeli mengonfirmasi penerimaan."}${
-        p.returnDays > 0 ? ` Anda punya waktu ${p.returnDays} hari untuk memeriksa barang dan mengajukan pengembalian.` : ""
+        p.returnDays > 0 ? ` Pembeli punya waktu ${p.returnDays} hari untuk memeriksa barang dan mengajukan pengembalian.` : ""
       }`,
     COMPLETED: (p: { by: "buyer" | "window" }) =>
       p.by === "buyer"

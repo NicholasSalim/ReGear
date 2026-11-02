@@ -625,14 +625,14 @@ export const en = {
   },
   events: {
     CREATED: (p: { minutes: number }) => `Order placed. Item reserved for ${p.minutes} minutes pending payment.`,
-    PAID: () => "Payment received and held securely by ReGear until you confirm the item.",
+    PAID: () => "Payment received. ReGear holds it until the buyer accepts the item.",
     CANCELLED: (p: { by: "buyer" | "seller"; reason?: string; refunded?: boolean }) =>
       `Order cancelled by the ${p.by}${p.reason ? `: ${p.reason}` : "."}${p.refunded ? " Full refund issued." : ""}`,
     EXPIRED: () => "Payment was not completed in time; the item was released.",
     SHIPPED: (p: { carrier: string; tracking: string }) => `Shipped with ${p.carrier}, tracking number ${p.tracking}.`,
     DELIVERED: (p: { auto: boolean; returnDays: number }) =>
       `${p.auto ? "Marked delivered automatically after carrier transit time." : "Buyer confirmed delivery."}${
-        p.returnDays > 0 ? ` You have ${p.returnDays} days to inspect the item and request a return.` : ""
+        p.returnDays > 0 ? ` The buyer has ${p.returnDays} days to inspect the item and request a return.` : ""
       }`,
     COMPLETED: (p: { by: "buyer" | "window" }): string =>
       p.by === "buyer"

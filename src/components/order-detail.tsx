@@ -150,19 +150,19 @@ export async function OrderDetail({ order, now }: { order: OrderForUser; now: Da
                   <ActionButton action={payOrderAction.bind(null, order.id)}>{t.pay(formatMoney(order.totalIdr))}</ActionButton>
                 </>
               )}
-              {(isBuyer || isSeller) && (s === "PENDING_PAYMENT" || s === "PAID") && (
-                <Reveal label={t.cancelOrder} variant="ghost">
-                  <CancelForm action={cancelOrderAction.bind(null, order.id)} />
-                </Reveal>
-              )}
+              {isBuyer && s === "PAID" && <p className="w-full text-sm text-slate-600">{t.waitingForShipment}</p>}
               {isSeller && s === "PAID" && (
                 <div className="w-full">
                   <ShipForm action={shipOrderAction.bind(null, order.id)} title={t.shipTitle} submit={t.markShipped} />
                 </div>
               )}
-              {isBuyer && s === "PAID" && <p className="text-sm text-slate-600">{t.waitingForShipment}</p>}
+              {(isBuyer || isSeller) && (s === "PENDING_PAYMENT" || s === "PAID") && (
+                <Reveal label={t.cancelOrder} variant="ghost">
+                  <CancelForm action={cancelOrderAction.bind(null, order.id)} />
+                </Reveal>
+              )}
               {isBuyer && s === "SHIPPED" && <ActionButton action={confirmDeliveryAction.bind(null, order.id)}>{t.receivedItem}</ActionButton>}
-              {isSeller && s === "SHIPPED" && <p className="text-sm text-slate-600">{t.inTransit}</p>}
+              {isSeller && s === "SHIPPED" && <p className="w-full text-sm text-slate-600">{t.inTransit}</p>}
               {isBuyer && s === "DELIVERED" && (
                 <>
                   <p className="w-full text-sm text-slate-600">{t.inspectIntro}</p>
@@ -176,20 +176,20 @@ export async function OrderDetail({ order, now }: { order: OrderForUser; now: Da
                   )}
                 </>
               )}
-              {isSeller && s === "DELIVERED" && <p className="text-sm text-slate-600">{t.sellerDelivered}</p>}
+              {isSeller && s === "DELIVERED" && <p className="w-full text-sm text-slate-600">{t.sellerDelivered}</p>}
               {s === "COMPLETED" && isBuyer && !order.review && (
                 <div className="w-full">
                   <ReviewForm action={leaveReviewAction.bind(null, order.id)} />
                 </div>
               )}
               {s === "COMPLETED" && (
-                <p className="text-sm text-slate-600">
+                <p className="w-full text-sm text-slate-600">
                   {t.complete}
                   {order.review ? t.youRated(order.review.rating) : ""}
                 </p>
               )}
               {(s === "CANCELLED" || s === "REFUNDED") && (
-                <p className="text-sm text-slate-600">
+                <p className="w-full text-sm text-slate-600">
                   {t.closed}
                   {order.refundIdr ? t.refunded(formatMoney(order.refundIdr)) : ""}.
                 </p>

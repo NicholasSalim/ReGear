@@ -27,7 +27,7 @@ export default async function SavedSearchesPage() {
         <ul className="card divide-y divide-rule">
           {searches.map((s) => (
             <li key={s.id} className="flex flex-wrap items-center gap-4 p-4">
-              <div className="min-w-0 flex-1 text-sm">
+              <div className="min-w-44 flex-1 text-sm">
                 {/* Named in the viewer's language from the filters; the stored label is only for emails. */}
                 <p className="font-semibold text-ink">{describeSearch(s.parsed, dict, locale)}</p>
                 <p className="text-xs text-slate-500">

@@ -79,7 +79,7 @@ type SellerOffer = Awaited<ReturnType<typeof getSellerOffers>>[number];
 
 function OfferItem({ offer, t, locale }: { offer: SellerOffer; t: Dictionary["offers"]; locale: Locale }) {
   return (
-    <div className="flex min-w-0 flex-1 gap-3">
+    <div className="flex min-w-60 flex-1 gap-3">
       <div className="relative size-16 shrink-0 overflow-hidden rounded-lg bg-plate">
         {offer.listing.images[0] && <Image src={mediaUrl(offer.listing.images[0].key)} alt="" fill sizes="64px" className="object-cover" />}
       </div>

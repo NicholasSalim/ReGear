@@ -34,14 +34,14 @@ export default async function BuyerOffersPage() {
                 <div className="relative size-16 shrink-0 overflow-hidden rounded-lg bg-plate">
                   {o.listing.images[0] && <Image src={mediaUrl(o.listing.images[0].key)} alt="" fill sizes="64px" className="object-cover" />}
                 </div>
-                <div className="min-w-0 flex-1 text-sm">
+                <div className="min-w-44 flex-1 text-sm">
                   <Link href={`/listings/${o.listing.slug}`} className="font-semibold text-ink hover:underline">
                     {o.listing.title}
                   </Link>
                   <p className="text-slate-600">{t.youOffered(formatMoney(o.amountIdr), formatDate(o.createdAt, locale))}</p>
                   <p className="text-xs text-slate-500">{t.asking(formatMoney(o.listing.priceIdr))}</p>
                 </div>
-                <div className="flex flex-col items-end gap-2">
+                <div className="flex flex-col items-start gap-2 sm:items-end">
                   <OfferStatusBadge status={status} />
                   {status === "ACCEPTED" && o.listing.status === "ACTIVE" && (
                     <>

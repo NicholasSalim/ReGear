@@ -1,104 +1,105 @@
 import Image from "next/image";
-import { Search } from "lucide-react";
 import { Link } from "@/i18n/client";
-import { localePath, pick } from "@/i18n/locales";
+import { pick } from "@/i18n/locales";
 import { getDictionary, getLocale } from "@/i18n/server";
 import { CATEGORIES, getCategory } from "@/lib/catalog";
 import { CHECK_STATUS_INFO } from "@/lib/constants";
-import { getCategoryCounts, getFeaturedReport, getLatestListings, type ListingDetail } from "@/lib/data/catalog";
+import {
+  getCategoryCounts,
+  getCategoryCovers,
+  getDeals,
+  getFeaturedReport,
+  getLatestListings,
+  getTopBrands,
+  type ListingDetail,
+} from "@/lib/data/catalog";
 import { formatMoney } from "@/lib/format";
 import { mediaUrl } from "@/lib/media";
 import { GradeBadge, VerifiedBadge } from "@/components/badges";
 import { ConditionStrip, stripLabel, summarizeChecks } from "@/components/condition-strip";
-import { ListingGrid } from "@/components/listing-card";
+import { CategoryIcon } from "@/components/category-icon";
+import { RecentlyViewed } from "@/components/recently-viewed";
+import { TileRow } from "@/components/listing-card";
 
+// The front page reads like a department store's: a banner, the departments,
+// then shelves of things to buy, and an invitation to sell at the end.
 export default async function HomePage() {
-  const [locale, t] = await Promise.all([getLocale(), getDictionary()]);
+  const t = await getDictionary();
   return (
-    <>
-      <section className="border-b border-rule bg-surface">
-        <div className="container-page grid grid-cols-1 gap-12 py-14 lg:grid-cols-[1.1fr_1fr] lg:items-center lg:py-16">
+    <div className="pb-4">
+      <section className="container-page pt-6">
+        <div className="grid grid-cols-1 gap-10 rounded-3xl bg-inverse px-6 py-10 text-white sm:px-10 lg:grid-cols-[1.1fr_1fr] lg:items-center lg:py-12">
           <div className="max-w-xl">
-            <h1 className="wide text-[2.5rem] leading-[1.02] font-extrabold tracking-[-0.035em] sm:text-[3.4rem] xl:text-[3.9rem]">
-              {t.home.heading}
-            </h1>
-            <p className="mt-5 text-lg text-slate-600">{t.home.intro}</p>
-            <form action={localePath("/listings", locale)} method="get" role="search" className="mt-8 flex max-w-lg gap-2">
-              <label htmlFor="hero-search" className="sr-only">
-                {t.nav.searchLabel}
-              </label>
-              <div className="relative flex-1">
-                <Search className="pointer-events-none absolute top-1/2 left-3.5 size-5 -translate-y-1/2 text-slate-400" aria-hidden />
-                <input
-                  id="hero-search"
-                  name="q"
-                  type="search"
-                  maxLength={100}
-                  placeholder={t.home.searchPlaceholder}
-                  className="input h-12 pl-11 text-base"
-                />
-              </div>
-              <button type="submit" className="h-12 rounded-lg bg-brand-600 px-5 font-semibold text-white hover:bg-action-hover">
-                {t.home.search}
-              </button>
-            </form>
-            <CategoryChips />
+            <h1 className="wide text-[2.1rem] leading-[1.05] font-extrabold tracking-[-0.03em] sm:text-[2.7rem] xl:text-[3.1rem]">{t.home.heading}</h1>
+            <p className="mt-4 text-base text-white/75 sm:text-lg">{t.home.intro}</p>
+            <div className="mt-7 flex flex-wrap gap-3">
+              <Link href="/listings" className="press inline-flex h-11 items-center rounded-full bg-white px-6 font-semibold text-[#1a2233] hover:bg-white/90">
+                {t.home.shopNow}
+              </Link>
+              <Link
+                href="/sell/listings/new"
+                className="press inline-flex h-11 items-center rounded-full px-5 font-semibold text-white ring-1 ring-white/40 hover:bg-white/10"
+              >
+                {t.home.sellYourGear}
+              </Link>
+            </div>
+            <Link href="/how-it-works" className="mt-5 inline-block text-sm font-semibold text-white/80 underline-offset-4 hover:text-white hover:underline">
+              {t.home.seeHowItWorks}
+            </Link>
           </div>
           <FeaturedReport />
         </div>
       </section>
 
-      <section className="container-page py-14">
-        <div className="mb-6 flex items-baseline justify-between gap-4">
-          <h2 className="text-2xl font-extrabold">{t.home.justListed}</h2>
-          <Link href="/listings" className="text-sm font-semibold text-brand-700 hover:underline">
-            {t.home.browseAll}
-          </Link>
-        </div>
-        <LatestListings />
-      </section>
+      <CategoryTiles />
 
-      <section className="border-t border-rule bg-surface">
-        <div className="container-page grid grid-cols-1 gap-10 py-14 lg:grid-cols-[18rem_1fr]">
-          <div>
-            <h2 className="text-2xl font-extrabold">{t.home.howBuyingWorks}</h2>
-            <p className="mt-3 text-slate-600">{t.home.howBuyingIntro}</p>
-            <Link href="/how-it-works#protection" className="mt-4 inline-block text-sm font-semibold text-brand-700 hover:underline">
-              {t.home.readProtection}
-            </Link>
-          </div>
-          <ol className="grid grid-cols-1 gap-px overflow-hidden rounded-[var(--radius-panel)] border border-rule bg-rule sm:grid-cols-2 lg:grid-cols-4">
-            {t.home.steps.map(([title, body], i) => (
-              <li key={title} className="bg-surface p-5">
-                <span className="num wide block text-3xl font-extrabold text-brand-700">{i + 1}</span>
-                <h3 className="mt-3 font-bold" style={{ fontStretch: "100%" }}>{title}</h3>
-                <p className="mt-1 text-sm text-slate-600">{body}</p>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </section>
-    </>
+      <RecentlyViewed title={t.home.recentlyViewed} clear={t.home.clearRecent} />
+      <Deals />
+      <JustListed />
+      <Brands />
+      <SellBanner />
+    </div>
   );
 }
 
-async function CategoryChips() {
-  const [locale, t, counts] = await Promise.all([getLocale(), getDictionary(), getCategoryCounts()]);
+/** The departments as picture tiles, each showing something that's actually for sale there. */
+async function CategoryTiles() {
+  const [locale, t, counts, covers] = await Promise.all([getLocale(), getDictionary(), getCategoryCounts(), getCategoryCovers()]);
   return (
-    <nav aria-label={t.home.shopByCategory} className="mt-6 flex flex-wrap gap-2">
-      {CATEGORIES.map((c) => (
-        <Link
-          key={c.slug}
-          href={`/c/${c.slug}`}
-          className="inline-flex items-center gap-2 rounded-full border border-rule px-3 py-1.5 text-sm font-medium text-slate-700 hover:border-slate-400 hover:text-ink"
-        >
-          {pick(c.name, locale)}
-          <span className="num text-xs text-slate-400">{counts[c.slug] ?? 0}</span>
-        </Link>
-      ))}
-    </nav>
+    <section className="container-page pt-12" aria-labelledby="shop-by-category">
+      <h2 id="shop-by-category" className="text-2xl font-extrabold">
+        {t.home.shopByCategory}
+      </h2>
+      <ul className="mt-5 grid grid-cols-4 gap-x-3 gap-y-5 sm:gap-x-4 lg:grid-cols-8">
+        {CATEGORIES.map((c) => {
+          const cover = covers[c.slug];
+          return (
+            <li key={c.slug}>
+              <Link href={`/c/${c.slug}`} className="group block text-center">
+                <span className="relative block aspect-square overflow-hidden rounded-2xl bg-plate">
+                  {cover ? (
+                    <Image
+                      src={mediaUrl(cover)}
+                      alt=""
+                      fill
+                      sizes="(min-width: 1024px) 140px, 22vw"
+                      className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.04]"
+                    />
+                  ) : (
+                    <CategoryIcon slug={c.slug} className="absolute inset-0 m-auto size-1/3 text-slate-400" />
+                  )}
+                </span>
+                <span className="mt-2 block text-xs leading-snug font-medium text-ink group-hover:underline sm:text-sm">{pick(c.name, locale)}</span>
+                <span className="num block text-xs text-slate-500">{counts[c.slug] ?? 0}</span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
+
 
 async function FeaturedReport() {
   const listing = await getFeaturedReport();
@@ -115,12 +116,12 @@ async function InspectionSheet({ listing }: { listing: ListingDetail }) {
   const checks = report.checks.map((c) => ({ ...c, label: c.label ?? labels.get(c.key) ?? c.key }));
   const s = summarizeChecks(checks);
   const flagged = checks.filter((c) => c.status === "MINOR" || c.status === "FAIL");
-  const shown = [...flagged, ...checks.filter((c) => c.status === "PASS")].slice(0, 5);
+  const shown = [...flagged, ...checks.filter((c) => c.status === "PASS")].slice(0, 3);
 
   return (
     <Link
       href={`/listings/${listing.slug}`}
-      className="group block rounded-2xl border border-rule bg-paper p-2 transition-colors hover:border-slate-400"
+      className="group block rounded-2xl bg-white/10 p-2 text-ink transition-colors hover:bg-white/15"
       aria-label={t.home.reportFor(listing.title)}
     >
       <div className="rounded-xl border border-rule bg-surface">
@@ -186,7 +187,79 @@ async function InspectionSheet({ listing }: { listing: ListingDetail }) {
   );
 }
 
-async function LatestListings() {
-  const listings = await getLatestListings(8);
-  return <ListingGrid listings={listings} priorityCount={4} />;
+async function Deals() {
+  const [t, deals] = await Promise.all([getDictionary(), getDeals(6)]);
+  if (!deals.length) return null;
+  return (
+    <Shelf title={t.home.deals} href="/deals" more={t.home.seeAll}>
+      <TileRow listings={deals} />
+    </Shelf>
+  );
+}
+
+async function JustListed() {
+  const [t, listings] = await Promise.all([getDictionary(), getLatestListings(12)]);
+  return (
+    <Shelf title={t.home.justListed} href="/listings" more={t.home.browseAll}>
+      <TileRow listings={listings} />
+    </Shelf>
+  );
+}
+
+async function Brands() {
+  const [t, brands] = await Promise.all([getDictionary(), getTopBrands(14)]);
+  if (!brands.length) return null;
+  return (
+    <section className="container-page pt-12">
+      <h2 className="text-2xl font-extrabold">{t.home.brands}</h2>
+      <ul className="mt-5 flex flex-wrap gap-2">
+        {brands.map((b) => (
+          <li key={b.brand}>
+            <Link
+              href={`/listings?brand=${encodeURIComponent(b.brand)}`}
+              className="press inline-flex items-center gap-2 rounded-full border border-rule bg-surface px-4 py-2 text-sm font-medium text-ink hover:border-slate-400"
+            >
+              {b.brand}
+              <span className="num text-xs text-slate-400">{b.count}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+async function SellBanner() {
+  const t = await getDictionary();
+  return (
+    <section className="container-page pt-14">
+      <div className="flex flex-col gap-6 rounded-3xl bg-inverse px-6 py-10 text-white sm:px-10 lg:flex-row lg:items-center lg:justify-between lg:py-12">
+        <div>
+          <h2 className="wide text-3xl leading-tight font-extrabold sm:text-4xl">{t.home.sellTitle}</h2>
+          <p className="mt-3 max-w-lg text-white/75">{t.home.sellBody}</p>
+        </div>
+        <Link
+          href="/sell/listings/new"
+          className="press inline-flex h-11 shrink-0 items-center self-start rounded-full bg-white px-6 font-semibold text-[#1a2233] hover:bg-white/90 lg:self-auto"
+        >
+          {t.home.sellCta}
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+/** A titled row of tiles with a link to the rest, as on a department store's front page. */
+function Shelf({ title, href, more, children }: { title: string; href: string; more: string; children: React.ReactNode }) {
+  return (
+    <section className="container-page pt-12">
+      <div className="mb-5 flex items-end justify-between gap-4">
+        <h2 className="text-2xl font-extrabold">{title}</h2>
+        <Link href={href} className="shrink-0 text-sm font-semibold text-brand-700 hover:underline">
+          {more}
+        </Link>
+      </div>
+      {children}
+    </section>
+  );
 }

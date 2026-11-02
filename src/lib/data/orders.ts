@@ -1,5 +1,6 @@
 import "server-only";
 import { db } from "@/lib/db";
+import { cardSelect } from "@/lib/data/catalog";
 import type { CurrentUser } from "@/lib/auth/dal";
 import type { ShippingAddress } from "@/lib/addresses";
 
@@ -120,33 +121,17 @@ export async function getFavorites(userId: string) {
   const rows = await db.favorite.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
-    select: {
-      listing: {
-        select: {
-          id: true,
-          slug: true,
-          title: true,
-          category: true,
-          brand: true,
-          priceIdr: true,
-          originalPriceIdr: true,
-          conditionGrade: true,
-          warrantyType: true,
-          warrantyMonths: true,
-          location: true,
-          status: true,
-          images: { select: { key: true, width: true, height: true, alt: true }, orderBy: { position: "asc" }, take: 1 },
-          conditionReport: { select: { batteryHealth: true, functionalScore: true, checks: true } },
-          seller: { select: { displayName: true, slug: true, verificationStatus: true } },
-        },
-      },
-    },
+    select: { listing: { select: cardSelect } },
   });
   return rows.map((r) => r.listing).filter((l) => ["ACTIVE", "RESERVED", "SOLD"].includes(l.status));
 }
 
-export async function getSellerDashboard(sellerId: string) {
-  const [listingCounts, orderCounts, revenue, needsAction] = await Promise.all([
+/** Orders that count as a sale: paid for and not cancelled or refunded. */
+const SOLD_STATUSES = ["PAID", "SHIPPED", "DELIVERED", "RETURN_IN_PROGRESS", "DISPUTED", "COMPLETED"];
+const DAY_MS = 86_400_000;
+
+export async function getSellerDashboard(sellerId: string, now = new Date()) {
+  const [listingCounts, orderCounts, revenue, needsAction, recentSales, watchers] = await Promise.all([
     db.listing.groupBy({ by: ["status"], where: { sellerId }, _count: { _all: true } }),
     db.order.groupBy({ by: ["status"], where: { sellerId }, _count: { _all: true } }),
     db.order.aggregate({ where: { sellerId, status: "COMPLETED" }, _sum: { totalIdr: true, platformFeeIdr: true, refundIdr: true } }),
@@ -159,11 +144,26 @@ export async function getSellerDashboard(sellerId: string) {
       orderBy: { createdAt: "asc" },
       take: 20,
     }),
+    db.order.aggregate({
+      where: { sellerId, status: { in: SOLD_STATUSES }, paidAt: { gte: new Date(now.getTime() - 30 * DAY_MS) } },
+      _sum: { totalIdr: true },
+      _count: { _all: true },
+    }),
+    // How many buyers are watching the shop's listings that are still for sale.
+    db.favorite.count({ where: { listing: { sellerId, status: "ACTIVE" } } }),
   ]);
   const count = (rows: { status: string; _count: { _all: number } }[], s: string) => rows.find((r) => r.status === s)?._count._all ?? 0;
   return {
     listings: { active: count(listingCounts, "ACTIVE"), draft: count(listingCounts, "DRAFT"), sold: count(listingCounts, "SOLD"), reserved: count(listingCounts, "RESERVED") },
-    orders: { toShip: count(orderCounts, "PAID"), inTransit: count(orderCounts, "SHIPPED"), completed: count(orderCounts, "COMPLETED") },
+    orders: {
+      toShip: count(orderCounts, "PAID"),
+      inTransit: count(orderCounts, "SHIPPED"),
+      completed: count(orderCounts, "COMPLETED"),
+      returns: count(orderCounts, "RETURN_IN_PROGRESS"),
+      disputes: count(orderCounts, "DISPUTED"),
+    },
+    last30: { count: recentSales._count._all, totalIdr: recentSales._sum.totalIdr ?? 0 },
+    watchers,
     earningsIdr: (revenue._sum.totalIdr ?? 0) - (revenue._sum.platformFeeIdr ?? 0) - (revenue._sum.refundIdr ?? 0),
     needsAction: needsAction.map((o) => ({ ...o, snapshot: parse<OrderSnapshot>(o.listingSnapshot, {} as OrderSnapshot) })),
   };

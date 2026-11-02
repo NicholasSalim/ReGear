@@ -85,7 +85,12 @@ function assertSeller(order: { seller: { userId: string } }, userId: string) {
 
 // Checkout -----------------------------------------------------------------
 
-export async function createOrder(buyerId: string, listingId: string, address: ShippingAddress): Promise<Result> {
+/**
+ * Reserve the listing and open an order awaiting payment. With `offerId`, the
+ * item is priced at that offer, which must be this buyer's, for this listing,
+ * accepted and not expired; it's used up in the same transaction.
+ */
+export async function createOrder(buyerId: string, listingId: string, address: ShippingAddress, offerId?: string): Promise<Result> {
   return db.$transaction(async (tx) => {
     const listing = await tx.listing.findUnique({
       where: { id: listingId },
@@ -97,18 +102,29 @@ export async function createOrder(buyerId: string, listingId: string, address: S
     if (!listing || listing.status !== "ACTIVE") throw new DomainError("itemUnavailable");
     if (listing.seller.userId === buyerId) throw new DomainError("ownListing");
 
+    let priceIdr = listing.priceIdr;
+    if (offerId) {
+      const offer = await tx.offer.findUnique({ where: { id: offerId }, select: { buyerId: true, listingId: true, amountIdr: true } });
+      if (!offer || offer.buyerId !== buyerId || offer.listingId !== listingId) throw new DomainError("offerNotFound");
+      // Only an accepted, unexpired offer can be used, and only once.
+      const used = await tx.offer.updateMany({ where: { id: offerId, status: "ACCEPTED", expiresAt: { gt: new Date() } }, data: { status: "USED" } });
+      if (used.count !== 1) throw new DomainError("offerClosed");
+      priceIdr = offer.amountIdr;
+    }
+
     // Atomically reserve: only one buyer can win the ACTIVE -> RESERVED race.
     const reserved = await tx.listing.updateMany({ where: { id: listingId, status: "ACTIVE" }, data: { status: "RESERVED" } });
     if (reserved.count !== 1) throw new DomainError("justReserved");
 
-    const fees = calculateFees(listing.priceIdr, listing.shippingIdr, PLATFORM_FEE_BPS);
+    const fees = calculateFees(priceIdr, listing.shippingIdr, PLATFORM_FEE_BPS);
     const order = await tx.order.create({
       data: {
         number: generateOrderNumber(),
         buyerId,
         sellerId: listing.sellerId,
         listingId,
-        priceIdr: listing.priceIdr,
+        offerId: offerId ?? null,
+        priceIdr,
         shippingIdr: listing.shippingIdr,
         platformFeeIdr: fees.platformFeeIdr,
         totalIdr: fees.totalIdr,
@@ -126,6 +142,8 @@ export async function createOrder(buyerId: string, listingId: string, address: S
       },
     });
     await addEvent(tx, order.id, "CREATED", { minutes: PAYMENT_HOLD_MINUTES }, buyerId);
+    // Bought, so no longer something to buy.
+    await tx.cartItem.deleteMany({ where: { userId: buyerId, listingId } });
     return { orderId: order.id, tags: tagsFor(order) };
   });
 }

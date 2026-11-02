@@ -9,6 +9,7 @@ import { purgeExpiredRateLimits } from "@/lib/security/rate-limit";
 import { deletePublicImage } from "@/lib/storage";
 import { AUDIT_RETENTION_DAYS, EMAIL_LOG_RETENTION_DAYS } from "@/lib/legal";
 import { deliverPendingEmails } from "@/lib/email/outbox";
+import { runSavedSearchAlerts } from "@/lib/saved-searches";
 
 // Periodic maintenance. Call from a scheduler (cron, systemd timer, platform
 // cron) every ~5 minutes:  curl -X POST -H "Authorization: Bearer $CRON_SECRET" .../api/cron/maintenance
@@ -42,6 +43,8 @@ export async function POST(req: Request) {
   const orphans = await db.upload.deleteMany({ where: { id: { in: orphanRows.map((o) => o.id) } } });
   // Security logs are kept as long as the Privacy Policy says, then dropped.
   const oldLogs = await db.auditLog.deleteMany({ where: { createdAt: { lt: new Date(now.getTime() - AUDIT_RETENTION_DAYS * 86_400_000) } } });
+  // New listings for saved searches, queued before the send below.
+  const searchAlerts = await runSavedSearchAlerts(now);
   // Emails: send what's due (including retries), then drop finished rows and old links.
   const emails = await deliverPendingEmails(200);
   const oldEmails = await db.emailOutbox.deleteMany({
@@ -58,6 +61,7 @@ export async function POST(req: Request) {
     purgedSessions: sessions.count,
     purgedOrphanUploads: orphans.count,
     purgedAuditLogs: oldLogs.count,
+    searchAlerts,
     emailsSent: emails.sent,
     purgedEmails: oldEmails.count,
   });

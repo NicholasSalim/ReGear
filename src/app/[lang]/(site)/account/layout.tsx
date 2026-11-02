@@ -20,7 +20,11 @@ export default async function AccountLayout({ children }: { children: React.Reac
           items={[
             { href: "/account", label: nav.overview, exact: true },
             { href: "/account/orders", label: nav.purchases },
+            { href: "/account/offers", label: nav.offers },
+            { href: "/account/messages", label: nav.messages },
             { href: "/account/favorites", label: nav.saved },
+            { href: "/account/searches", label: nav.searches },
+            { href: "/account/recent", label: nav.recent },
             { href: "/account/addresses", label: nav.addresses },
             { href: "/account/settings", label: nav.settings },
             { href: "/sell", label: nav.sellerDashboard },

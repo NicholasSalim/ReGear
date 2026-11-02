@@ -84,6 +84,7 @@ export async function saveListingAction(listingId: string | null, payload: unkno
       warrantyMonths: data.warrantyMonths,
       warrantyTerms: data.warrantyTerms,
       returnWindowDays: data.returnWindowDays,
+      acceptsOffers: data.acceptsOffers,
       location: data.location,
       searchText: buildSearchText(data),
     };

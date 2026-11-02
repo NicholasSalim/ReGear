@@ -41,7 +41,7 @@ export async function LegalPage({ document: key }: { document: LegalDocumentKey 
       </nav>
 
       {doc.sections.map((s) => (
-        <section key={s.id} id={s.id} className="mt-10 scroll-mt-28">
+        <section key={s.id} id={s.id} className="mt-10 scroll-mt-6">
           <h2 className="text-xl font-bold">{s.heading}</h2>
           <div className="mt-3 space-y-3 text-slate-700">
             {s.blocks.map((b, i) =>

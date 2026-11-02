@@ -4,8 +4,8 @@ import { useOptimistic, useTransition } from "react";
 import { Heart } from "lucide-react";
 import { toggleFavoriteAction } from "@/actions/listings";
 import { useT } from "@/i18n/client";
-import { buttonClass } from "@/components/ui";
 
+/** The buy box's watch button. */
 export function FavoriteButton({ listingId, initial }: { listingId: string; initial: boolean }) {
   const [optimistic, setOptimistic] = useOptimistic(initial);
   const [pending, start] = useTransition();
@@ -14,10 +14,10 @@ export function FavoriteButton({ listingId, initial }: { listingId: string; init
   return (
     <button
       type="button"
-      className={buttonClass("secondary", "w-full")}
+      className="press inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-surface font-semibold text-brand-700 ring-1 ring-brand-600 hover:bg-brand-50"
       aria-pressed={optimistic}
-      disabled={pending}
       onClick={() =>
+        !pending &&
         start(async () => {
           setOptimistic(!optimistic);
           await toggleFavoriteAction(listingId);

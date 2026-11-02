@@ -114,7 +114,7 @@ export function CompareTray() {
         </button>
         <Link
           href={`/compare?ids=${items.map((i) => i.id).join(",")}`}
-          className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${items.length < 2 ? "pointer-events-none bg-white/20 text-white/60" : "bg-brand-500 hover:bg-brand-600"}`}
+          className={`press rounded-lg px-3 py-1.5 text-sm font-semibold ${items.length < 2 ? "pointer-events-none bg-white/20 text-white/60" : "bg-brand-500 hover:bg-brand-600"}`}
           aria-disabled={items.length < 2}
         >
           {t.compare.compareCount(items.length)}

@@ -18,6 +18,7 @@ export type ListingFormValues = {
   warrantyMonths: string;
   warrantyTerms: string;
   returnWindowDays: string;
+  acceptsOffers: boolean;
   specs: Record<string, string | number | boolean>;
   batteryHealth: string;
   cosmeticScore: string;
@@ -46,6 +47,7 @@ export const EMPTY_LISTING: ListingFormValues = {
   warrantyMonths: "0",
   warrantyTerms: "",
   returnWindowDays: "7",
+  acceptsOffers: false,
   specs: {},
   batteryHealth: "",
   cosmeticScore: "8",

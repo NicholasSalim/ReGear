@@ -41,7 +41,7 @@ export function ThemeToggle({ className = "text-slate-600 hover:bg-slate-100 hov
   }
 
   return (
-    <button type="button" onClick={toggle} aria-pressed={dark} aria-label={t.theme.darkMode} className={`rounded-lg p-2 ${className}`}>
+    <button type="button" onClick={toggle} aria-pressed={dark} aria-label={t.theme.darkMode} className={`press rounded-lg p-2 ${className}`}>
       {/* CSS picks the icon, so the right one shows before the page hydrates. */}
       <Moon className="size-4 dark:hidden" aria-hidden />
       <Sun className="hidden size-4 dark:block" aria-hidden />

@@ -40,7 +40,10 @@ export async function checkoutAction(listingId: string, _prev: ActionState, form
     const addressId = String(formData.get("addressId") ?? "");
     const address = /^[a-z0-9]{20,32}$/i.test(addressId) ? await getAddress(user.id, addressId) : null;
     if (!address) return { error: t.actions.chooseAddress };
-    const res = await orders.createOrder(user.id, listingId, shippingSnapshot(address));
+    // Checking out an accepted offer; createOrder checks it belongs to this buyer and listing.
+    const rawOffer = formData.get("offerId");
+    const offerId = typeof rawOffer === "string" && rawOffer ? idSchema.parse(rawOffer) : undefined;
+    const res = await orders.createOrder(user.id, listingId, shippingSnapshot(address), offerId);
     invalidate(res.tags);
     orderId = res.orderId;
   });

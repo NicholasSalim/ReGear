@@ -27,7 +27,11 @@ export type EmailPayload =
   | { template: "verification-rejected"; params: { note: string } }
   | { template: "payout-account-changed"; params: { bank: string; account: string; name: string } }
   | { template: "withdrawal-completed"; params: { amountIdr: number; account: string } }
-  | { template: "withdrawal-failed"; params: { amountIdr: number; rejected: boolean; note: string } };
+  | { template: "withdrawal-failed"; params: { amountIdr: number; rejected: boolean; note: string } }
+  | { template: "offer-received"; params: { title: string; amountIdr: number; hours: number } }
+  | { template: "offer-answered"; params: { offerId: string; listingId: string; slug: string; title: string; amountIdr: number; accepted: boolean; hours: number } }
+  | { template: "message-received"; params: { conversationId: string; title: string; from: "buyer" | "seller" } }
+  | { template: "saved-search-alert"; params: { label: string; count: number; query: string } };
 
 export type EmailTemplate = EmailPayload["template"];
 
@@ -107,6 +111,47 @@ function content(payload: EmailPayload, locale: Locale): Content {
         subject: t.payout.failed.subject(amount),
         paragraphs: [t.payout.failed.body(amount, payload.params.rejected, payload.params.note)],
         button: { label: t.payout.button, url: siteUrl("/sell/payouts", locale) },
+      };
+    }
+    case "offer-received": {
+      const p = payload.params;
+      const amount = formatMoney(p.amountIdr);
+      return {
+        subject: t.offer.received.subject(amount),
+        paragraphs: [t.offer.received.body(amount, p.title, p.hours)],
+        button: { label: t.offer.received.button, url: siteUrl("/sell/offers", locale) },
+      };
+    }
+    case "offer-answered": {
+      const p = payload.params;
+      const amount = formatMoney(p.amountIdr);
+      return p.accepted
+        ? {
+            subject: t.offer.accepted.subject(amount),
+            paragraphs: [t.offer.accepted.body(amount, p.title, p.hours)],
+            button: { label: t.offer.accepted.button, url: siteUrl(`/checkout/${p.listingId}?offer=${p.offerId}`, locale) },
+          }
+        : {
+            subject: t.offer.declined.subject(amount),
+            paragraphs: [t.offer.declined.body(amount, p.title)],
+            button: { label: t.offer.declined.button, url: siteUrl(`/listings/${p.slug}`, locale) },
+          };
+    }
+    case "message-received": {
+      const p = payload.params;
+      return {
+        subject: t.message.subject(p.title),
+        paragraphs: [t.message.body(p.from === "buyer" ? t.message.fromBuyer : t.message.fromSeller, p.title)],
+        button: { label: t.message.button, url: siteUrl(`/account/messages/${p.conversationId}`, locale) },
+      };
+    }
+    case "saved-search-alert": {
+      const p = payload.params;
+      return {
+        subject: t.savedSearch.subject(p.count, p.label),
+        paragraphs: [t.savedSearch.body(p.count, p.label)],
+        button: { label: t.savedSearch.button, url: siteUrl(`/listings${p.query ? `?${p.query}&sort=newest` : "?sort=newest"}`, locale) },
+        note: t.savedSearch.note,
       };
     }
   }

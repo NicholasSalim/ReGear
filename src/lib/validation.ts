@@ -169,6 +169,7 @@ export const listingBaseSchema = z.object({
   warrantyMonths: z.coerce.number().int().min(0).max(36),
   warrantyTerms: text(0, 1000),
   returnWindowDays: z.coerce.number().int().min(0).max(30),
+  acceptsOffers: checkbox,
   specs: z.record(z.string().max(40), z.union([z.string().max(120), z.number(), z.boolean()])),
   batteryHealth: z.coerce.number().int().min(1).max(100).optional().nullable(),
   cosmeticScore: z.coerce.number().int().min(1).max(10),
@@ -317,6 +318,7 @@ export const browseSchema = z.object({
     .transform((v) => v === "1")
     .catch(false),
   sort: z.enum(SORTS).default("newest").catch("newest"),
+  view: z.enum(["list", "grid"]).default("list").catch("list"),
   page: z.coerce.number().int().min(1).max(500).default(1).catch(1),
 });
 export type BrowseParams = z.infer<typeof browseSchema>;

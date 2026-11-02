@@ -17,7 +17,7 @@ export default async function HowItWorksPage() {
       <h1 className="text-3xl font-bold tracking-tight">{t.how.heading}</h1>
       <p className="mt-3 text-lg text-slate-600">{t.how.intro}</p>
 
-      <section id="grading" className="mt-12 scroll-mt-28">
+      <section id="grading" className="mt-12 scroll-mt-6">
         <h2 className="text-xl font-bold">{t.how.gradesHeading}</h2>
         <p className="mt-2 text-slate-600">{t.how.gradesIntro}</p>
         <dl className="mt-6 divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-surface">
@@ -41,12 +41,12 @@ export default async function HowItWorksPage() {
         <p className="mt-3 text-sm text-slate-600">{t.how.scoreNote}</p>
       </section>
 
-      <section id="verification" className="mt-12 scroll-mt-28">
+      <section id="verification" className="mt-12 scroll-mt-6">
         <h2 className="text-xl font-bold">{t.how.verificationHeading}</h2>
         <p className="mt-2 text-slate-600">{t.how.verificationBody}</p>
       </section>
 
-      <section id="protection" className="mt-12 scroll-mt-28">
+      <section id="protection" className="mt-12 scroll-mt-6">
         <h2 className="text-xl font-bold">{t.how.protectionHeading}</h2>
         <ol className="mt-4 space-y-3 text-sm text-slate-700">
           {t.how.protectionSteps.map(([lead, rest]) => (

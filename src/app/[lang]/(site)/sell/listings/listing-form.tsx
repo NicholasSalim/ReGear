@@ -134,6 +134,7 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
       warrantyMonths: v.warrantyMonths || "0",
       warrantyTerms: v.warrantyTerms,
       returnWindowDays: v.returnWindowDays || "0",
+      acceptsOffers: v.acceptsOffers,
       specs: Object.fromEntries(category.specFields.map((f) => [f.key, v.specs[f.key] ?? ""])),
       batteryHealth: hasBattery && v.batteryHealth ? v.batteryHealth : null,
       cosmeticScore: v.cosmeticScore,
@@ -234,7 +235,7 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
             <li key={img.id} className="group relative aspect-square overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
               <Image src={img.url} alt={t.photoAlt(i + 1)} fill sizes="160px" className="object-cover" />
               {i === 0 && <span className="absolute top-1 left-1 rounded bg-inverse/80 px-1.5 text-[10px] font-semibold text-white">{t.cover}</span>}
-              <div className="absolute inset-x-0 bottom-0 flex justify-between bg-inverse/60 p-1 opacity-0 transition group-focus-within:opacity-100 group-hover:opacity-100">
+              <div className="absolute inset-x-0 bottom-0 flex justify-between bg-inverse/60 p-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100">
                 <button type="button" onClick={() => moveImage(i, -1)} className="rounded p-1 text-white hover:bg-white/20" aria-label={t.moveLeft}><ArrowLeft className="size-3.5" /></button>
                 <button type="button" onClick={() => set("images", v.images.filter((x) => x.id !== img.id))} className="rounded p-1 text-white hover:bg-white/20" aria-label={t.removePhoto}><X className="size-3.5" /></button>
                 <button type="button" onClick={() => moveImage(i, 1)} className="rounded p-1 text-white hover:bg-white/20" aria-label={t.moveRight}><ArrowRight className="size-3.5" /></button>
@@ -517,6 +518,13 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
           <Field label={t.returnWindow} name="returnWindowDays" error={err("returnWindowDays")} hint={t.returnWindowHint}>
             <input id="returnWindowDays" type="number" min={0} max={30} className="input" value={v.returnWindowDays} onChange={(e) => set("returnWindowDays", e.target.value)} />
           </Field>
+          <label className="flex items-start gap-3 rounded-lg border border-rule p-3 text-sm sm:col-span-3">
+            <input type="checkbox" className="mt-0.5 size-4 accent-brand-600" checked={v.acceptsOffers} onChange={(e) => set("acceptsOffers", e.target.checked)} />
+            <span>
+              <span className="block font-semibold text-ink">{t.acceptOffers}</span>
+              <span className="text-slate-600">{t.acceptOffersHint}</span>
+            </span>
+          </label>
           {v.warrantyType !== "NONE" && (
             <div className="sm:col-span-3">
               <Field label={t.warrantyTerms} name="warrantyTerms" error={err("warrantyTerms")} hint={t.warrantyTermsHint}>

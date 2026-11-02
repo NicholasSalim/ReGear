@@ -19,7 +19,7 @@ export function AddressBook({ addresses, defaultName, limit }: { addresses: Book
       {addresses.length === 0 && editing !== "new" && <EmptyState title={t.empty} />}
       {addresses.map((a) =>
         editing === a.id ? (
-          <div key={a.id} className="card p-5">
+          <div key={a.id} className="reveal card p-5">
             <AddressForm action={saveAddressAction.bind(null, a.id)} initial={a} onSaved={() => setEditing(null)} onCancel={() => setEditing(null)} />
           </div>
         ) : (
@@ -41,7 +41,8 @@ export function AddressBook({ addresses, defaultName, limit }: { addresses: Book
         ),
       )}
       {editing === "new" ? (
-        <div className="card p-5">
+        // With no addresses yet the form is the page, not something that was opened.
+        <div className={`card p-5 ${addresses.length ? "reveal" : ""}`}>
           <h2 className="mb-4 font-bold">{t.newAddress}</h2>
           <AddressForm
             action={saveAddressAction.bind(null, null)}

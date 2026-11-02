@@ -14,27 +14,32 @@ import type { ConditionCheckEntry } from "@/lib/condition";
 
 const PUBLIC_STATUSES = ["ACTIVE", "RESERVED", "SOLD"];
 
-const cardSelect = {
+/** What a listing card shows. Shared by every list of cards, so they all have the same fields. */
+export const cardSelect = {
   id: true,
   slug: true,
   title: true,
   category: true,
   brand: true,
+  model: true,
   priceIdr: true,
   originalPriceIdr: true,
+  shippingIdr: true,
   conditionGrade: true,
   warrantyType: true,
   warrantyMonths: true,
+  returnWindowDays: true,
+  acceptsOffers: true,
   location: true,
   status: true,
   images: { select: { key: true, width: true, height: true, alt: true }, orderBy: { position: "asc" }, take: 1 },
   conditionReport: { select: { batteryHealth: true, functionalScore: true, checks: true } },
-  seller: { select: { displayName: true, slug: true, verificationStatus: true } },
+  seller: { select: { displayName: true, slug: true, verificationStatus: true, ratingAvg: true, ratingCount: true } },
 } satisfies Prisma.ListingSelect;
 
 export type ListingCard = Prisma.ListingGetPayload<{ select: typeof cardSelect }>;
 
-function browseWhere(p: BrowseParams): Prisma.ListingWhereInput {
+export function browseWhere(p: BrowseParams): Prisma.ListingWhereInput {
   const where: Prisma.ListingWhereInput = { status: "ACTIVE" };
   if (p.category) where.category = p.category;
   if (p.grade.length) where.conditionGrade = { in: p.grade };
@@ -86,6 +91,33 @@ export async function searchListings(params: BrowseParams) {
   return { items, total, pages: Math.max(1, Math.ceil(total / PAGE_SIZE)) };
 }
 
+/** How many results the current search would have in each category, for the sidebar's category list. */
+export async function getCategoryFacets(params: BrowseParams) {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag(TAGS.listings);
+  const rows = await db.listing.groupBy({
+    by: ["category"],
+    where: browseWhere({ ...params, category: undefined }),
+    _count: { _all: true },
+  });
+  return Object.fromEntries(rows.map((r) => [r.category, r._count._all])) as Record<string, number>;
+}
+
+/** Brands among the current search's results (ignoring the brand filter itself), for the sidebar. */
+export async function getBrandFacets(params: BrowseParams) {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag(TAGS.listings);
+  const rows = await db.listing.groupBy({
+    by: ["brand"],
+    where: browseWhere({ ...params, brand: undefined }),
+    _count: { _all: true },
+    orderBy: { brand: "asc" },
+  });
+  return rows.map((r) => ({ brand: r.brand, count: r._count._all }));
+}
+
 export async function getBrands(category?: string) {
   "use cache";
   cacheLife("hours");
@@ -119,6 +151,53 @@ export async function getCategoryCounts() {
   return Object.fromEntries(rows.map((r) => [r.category, r._count._all])) as Record<string, number>;
 }
 
+/** Listings priced furthest below new, biggest saving first. */
+export async function getDeals(limit = 12) {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag(TAGS.listings);
+  const rows = await db.listing.findMany({
+    where: { status: "ACTIVE", originalPriceIdr: { not: null } },
+    select: cardSelect,
+    orderBy: { publishedAt: "desc" },
+    take: 200,
+  });
+  const saving = (l: (typeof rows)[number]) => 1 - l.priceIdr / (l.originalPriceIdr ?? l.priceIdr);
+  return rows
+    .filter((l) => saving(l) >= 0.05)
+    .sort((a, b) => saving(b) - saving(a))
+    .slice(0, limit);
+}
+
+/** One recent photo per category, for the home page's category tiles. */
+export async function getCategoryCovers() {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(TAGS.listings);
+  const rows = await db.listing.findMany({
+    where: { status: "ACTIVE", images: { some: {} } },
+    select: { category: true, images: { select: { key: true }, orderBy: { position: "asc" }, take: 1 } },
+    orderBy: { publishedAt: "desc" },
+    distinct: ["category"],
+  });
+  return Object.fromEntries(rows.map((r) => [r.category, r.images[0]?.key])) as Record<string, string | undefined>;
+}
+
+/** Brands with the most listings on sale. */
+export async function getTopBrands(limit = 12) {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(TAGS.listings);
+  const rows = await db.listing.groupBy({
+    by: ["brand"],
+    where: { status: "ACTIVE" },
+    _count: { _all: true },
+    orderBy: { _count: { brand: "desc" } },
+    take: limit,
+  });
+  return rows.map((r) => ({ brand: r.brand, count: r._count._all }));
+}
+
 export async function getMarketplaceStats() {
   "use cache";
   cacheLife("hours");
@@ -149,6 +228,7 @@ const detailSelect = {
   warrantyMonths: true,
   warrantyTerms: true,
   returnWindowDays: true,
+  acceptsOffers: true,
   location: true,
   status: true,
   publishedAt: true,
@@ -226,6 +306,20 @@ export async function getSimilarListings(listingId: string, category: string, li
     orderBy: { publishedAt: "desc" },
     take: limit,
   });
+}
+
+/** The seller's latest feedback, for the "About this seller" part of a listing. Buyers show by first name only. */
+export async function getRecentReviews(sellerId: string, limit = 3) {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(TAGS.seller(sellerId));
+  const rows = await db.review.findMany({
+    where: { sellerId },
+    select: { id: true, rating: true, comment: true, createdAt: true, buyer: { select: { name: true } } },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+  });
+  return rows.map((r) => ({ ...r, buyer: { name: r.buyer.name.split(" ")[0] } }));
 }
 
 export async function getCompareListings(ids: string[]): Promise<ListingDetail[]> {

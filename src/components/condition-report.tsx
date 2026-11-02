@@ -41,7 +41,7 @@ export async function ConditionReportView({ listing }: { listing: ListingDetail 
         <p className="mt-2 text-sm text-slate-600">{stripLabel(report.checks, t.condition)}</p>
       </div>
 
-      <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-4 border-y border-rule py-4 sm:grid-cols-4">
         <Metric label={t.condition.functionalScore} value={`${report.functionalScore}/100`} />
         <Metric label={t.condition.cosmeticScore} value={`${report.cosmeticScore}/10`} />
         {report.batteryHealth != null ? (
@@ -105,7 +105,7 @@ export async function ConditionReportView({ listing }: { listing: ListingDetail 
 
 function Metric({ label, value, hint }: { label: string; value: React.ReactNode; hint?: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-rule p-3">
+    <div>
       <dt className="text-xs text-slate-500">{label}</dt>
       <dd className="num wide mt-0.5 text-lg font-extrabold text-ink">{value}</dd>
       {hint && <dd className="text-xs font-medium">{hint}</dd>}

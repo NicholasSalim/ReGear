@@ -98,6 +98,14 @@ export async function deleteAccount(userId: string) {
 
     // 6. Everything else personal.
     await tx.favorite.deleteMany({ where: { userId } });
+    // Offers that became orders stay linked to them, without the buyer's message.
+    await tx.offer.deleteMany({ where: { buyerId: userId, status: { not: "USED" } } });
+    await tx.offer.updateMany({ where: { buyerId: userId }, data: { message: "" } });
+    await tx.cartItem.deleteMany({ where: { userId } });
+    await tx.savedSearch.deleteMany({ where: { userId } });
+    // Their own conversations as a buyer go; in sellers' threads with others, what they wrote is blanked.
+    await tx.conversation.deleteMany({ where: { buyerId: userId } });
+    await tx.message.updateMany({ where: { senderId: userId }, data: { body: "" } });
     await tx.address.deleteMany({ where: { userId } });
     await tx.emailToken.deleteMany({ where: { userId } });
     await tx.emailOutbox.deleteMany({ where: { userId } });

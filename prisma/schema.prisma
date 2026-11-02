@@ -49,6 +49,11 @@ model User {
   disputesOpened  Dispute[]        @relation("DisputeOpener")
   auditLogs       AuditLog[]
   emailTokens     EmailToken[]
+  offersMade      Offer[]
+  cartItems       CartItem[]
+  savedSearches   SavedSearch[]
+  conversations   Conversation[]   @relation("BuyerConversations")
+  messagesSent    Message[]
 
   // Trigram indexes (pg_trgm) serve the admin and storefront "contains" searches.
   @@index([email(ops: raw("gin_trgm_ops"))], type: Gin, map: "User_email_trgm_idx")
@@ -199,6 +204,7 @@ model SellerProfile {
   reviews        Review[]
   balanceEntries BalanceEntry[]
   withdrawals    Withdrawal[]
+  conversations  Conversation[]
 
   // Trigram indexes (pg_trgm) serve the admin and storefront "contains" searches.
   @@index([displayName(ops: raw("gin_trgm_ops"))], type: Gin, map: "SellerProfile_displayName_trgm_idx")
@@ -246,6 +252,8 @@ model Listing {
   warrantyTerms    String    @default("")
   returnWindowDays Int       @default(7)
   location         String    @default("")
+  // Buyers may offer less than the asking price; the seller accepts or declines.
+  acceptsOffers    Boolean   @default(false)
   status           String    @default("DRAFT") // DRAFT | ACTIVE | RESERVED | SOLD | REMOVED
   searchText       String    @default("") // lower-cased denormalised search column
   viewCount        Int       @default(0)
@@ -258,6 +266,9 @@ model Listing {
   conditionReport ConditionReport?
   orders          Order[]
   favorites       Favorite[]
+  offers          Offer[]
+  cartItems       CartItem[]
+  conversations   Conversation[]
 
   @@index([status, category, publishedAt])
   @@index([status, priceIdr])
@@ -328,10 +339,13 @@ model Order {
   cancelledAt      DateTime?
   refundedAt       DateTime?
   refundIdr        Int       @default(0)
+  // Set when the order was placed at an accepted offer's price instead of the listing's.
+  offerId          String?   @unique
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
   buyer          User           @relation("BuyerOrders", fields: [buyerId], references: [id])
+  offer          Offer?         @relation(fields: [offerId], references: [id], onDelete: SetNull)
   seller         SellerProfile  @relation("SellerOrders", fields: [sellerId], references: [id])
   listing        Listing        @relation(fields: [listingId], references: [id])
   events         OrderEvent[]
@@ -346,6 +360,29 @@ model Order {
   @@index([listingId])
   @@index([paymentRef])
   @@index([number(ops: raw("gin_trgm_ops"))], type: Gin, map: "Order_number_trgm_idx")
+}
+
+// A buyer's offer below a listing's asking price. PENDING until the seller
+// answers or it expires; an ACCEPTED offer can be checked out at its amount
+// until it expires, and becomes USED when an order is placed with it.
+model Offer {
+  id          String    @id @default(cuid())
+  listingId   String
+  buyerId     String
+  amountIdr   Int
+  message     String    @default("")
+  status      String    @default("PENDING") // PENDING | ACCEPTED | DECLINED | WITHDRAWN | USED | EXPIRED
+  expiresAt   DateTime
+  respondedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  buyer   User    @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  order   Order?
+
+  @@index([listingId, status])
+  @@index([buyerId, createdAt])
 }
 
 model OrderEvent {
@@ -439,6 +476,75 @@ model Favorite {
 
   @@id([userId, listingId])
   @@index([listingId])
+}
+
+// An item a buyer has put in their cart. Each listing is a single item, so
+// there's no quantity; checkout still places one order per listing.
+model CartItem {
+  userId    String
+  listingId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@id([userId, listingId])
+  @@index([listingId])
+}
+
+// A search a user saved from the results page. `params` is the search's
+// canonical query string (no page, sort or view). With alerts on, the
+// maintenance job emails when listings published after lastAlertedAt match.
+model SavedSearch {
+  id            String   @id @default(cuid())
+  userId        String
+  label         String
+  params        String
+  alerts        Boolean  @default(true)
+  lastAlertedAt DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, params])
+  @@index([alerts, lastAlertedAt])
+}
+
+// A buyer's conversation with a seller about one listing. Read markers are
+// per side; a side has unread messages when the last one came from the other
+// side after it last read the thread.
+model Conversation {
+  id            String    @id @default(cuid())
+  listingId     String
+  buyerId       String
+  sellerId      String
+  lastMessageAt DateTime  @default(now())
+  lastSenderId  String?
+  buyerReadAt   DateTime?
+  sellerReadAt  DateTime?
+  createdAt     DateTime  @default(now())
+
+  listing  Listing       @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  buyer    User          @relation("BuyerConversations", fields: [buyerId], references: [id], onDelete: Cascade)
+  seller   SellerProfile @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@unique([listingId, buyerId])
+  @@index([buyerId, lastMessageAt])
+  @@index([sellerId, lastMessageAt])
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderId       String
+  body           String
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
 }
 
 model RateLimit {

@@ -35,7 +35,11 @@ export function SubmitButton({
   const t = useT();
   return (
     <button type="submit" name={name} value={value} disabled={pending || disabled} className={buttonClass(variant, className)} aria-busy={pending}>
-      {pending ? (pendingText ?? t.forms.working) : children}
+      {/* Both labels share one grid cell, so the button keeps its width when the text changes. */}
+      <span className="inline-grid justify-items-center *:[grid-area:1/1]">
+        <span className={`inline-flex items-center gap-2 ${pending ? "invisible" : ""}`}>{children}</span>
+        <span className={pending ? "" : "invisible"}>{pendingText ?? t.forms.working}</span>
+      </span>
     </button>
   );
 }

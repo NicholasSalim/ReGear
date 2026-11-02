@@ -55,6 +55,7 @@ export default async function EditListingPage({ params }: PageProps<"/[lang]/sel
     warrantyMonths: String(listing.warrantyMonths),
     warrantyTerms: listing.warrantyTerms,
     returnWindowDays: String(listing.returnWindowDays),
+    acceptsOffers: listing.acceptsOffers,
     specs,
     batteryHealth: report?.batteryHealth != null ? String(report.batteryHealth) : "",
     cosmeticScore: String(report?.cosmeticScore ?? 8),

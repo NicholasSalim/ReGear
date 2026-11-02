@@ -61,6 +61,18 @@ export function warrantyLabel(type: string, locale: Locale) {
   return label ? pick(label, locale) : type;
 }
 
+/** An offer's status as a small coloured tag. */
+export async function OfferStatusBadge({ status }: { status: "PENDING" | "ACCEPTED" | "DECLINED" | "WITHDRAWN" | "USED" | "EXPIRED" }) {
+  const t = await getDictionary();
+  const tone =
+    status === "ACCEPTED" || status === "USED"
+      ? "bg-emerald-100 text-emerald-800"
+      : status === "PENDING"
+        ? "bg-amber-100 text-amber-800"
+        : "bg-slate-100 text-slate-700";
+  return <Badge className={cn(tone, "ring-transparent")}>{t.offers.status[status]}</Badge>;
+}
+
 export async function OrderStatusBadge({ status }: { status: string }) {
   const info = ORDER_STATUS_INFO[status as OrderStatus];
   const locale = await getLocale();

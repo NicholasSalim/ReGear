@@ -14,7 +14,7 @@ export function PhoneCategories({ label, children }: { label: string; children: 
       </summary>
       <nav
         aria-label={label}
-        className="grid grid-cols-2 gap-x-4 pb-2"
+        className="panel-enter grid origin-top grid-cols-2 gap-x-4 pb-2"
         onClick={(e) => {
           if ((e.target as HTMLElement).closest("a") && menu.current) menu.current.open = false;
         }}

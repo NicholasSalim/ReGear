@@ -22,7 +22,7 @@ export function Reveal({ label, variant = "secondary", children }: { label: stri
       </Button>
     );
   }
-  return <div className="w-full rounded-xl border border-slate-200 bg-slate-50 p-4">{children}</div>;
+  return <div className="reveal w-full rounded-xl border border-slate-200 bg-slate-50 p-4">{children}</div>;
 }
 
 export function ShipForm({ action, title, submit }: { action: FormAction; title: string; submit: string }) {

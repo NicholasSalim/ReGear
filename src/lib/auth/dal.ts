@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { forbidden, redirect, unauthorized } from "next/navigation";
+import { connection } from "next/server";
 import { localePath } from "@/i18n/locales";
 import { getRequestLocale } from "@/i18n/server";
 import { db } from "@/lib/db";
@@ -22,6 +23,8 @@ export type CurrentUser = {
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const token = await readSessionToken();
   if (!token) return null;
+  // Checking expiry reads the clock, which may only happen at request time.
+  await connection();
   const session = await validateSessionToken(token);
   if (!session) return null;
   const { id, email, name, role, emailVerifiedAt } = session.user;

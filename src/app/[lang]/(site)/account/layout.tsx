@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
 import { getDictionary } from "@/i18n/server";
 import { DashboardNav, DashboardShell } from "@/components/dashboard-nav";
-import { PageSkeleton } from "@/components/ui";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getDictionary();
@@ -32,7 +30,7 @@ export default async function AccountLayout({ children }: { children: React.Reac
         />
       }
     >
-      <Suspense fallback={<PageSkeleton />}>{children}</Suspense>
+      {children}
     </DashboardShell>
   );
 }

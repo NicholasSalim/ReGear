@@ -47,7 +47,7 @@ npm run db:deploy            # apply migrations only; never `setup` or `db:seed`
 npm run build && npm start
 ```
 
-The seed wipes the database and creates a demo admin with the public password below, so it
+The seed wipes the database and creates a demo admin and demo accounts (see below), so it
 refuses to run when `NODE_ENV=production` or when the database holds accounts it didn't
 create. `ALLOW_SEED=true` overrides that, for a deliberate wipe.
 

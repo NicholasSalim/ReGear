@@ -14,10 +14,11 @@ import { createMidtrans } from "@/lib/midtrans";
 // status API says so (see syncPayment in the order service).
 //
 // Every money movement carries an idempotency key naming the one movement it
-// is (e.g. "order:<id>:refund"). Provider calls happen before the order's
-// status change is committed, so two racing requests (a double click, buyer
-// and seller cancelling at once) both reach the provider; the key makes the
-// provider perform the movement once.
+// is (e.g. "order:<id>:refund"), so a retried call is performed once.
+// Refunds are sent only after the order has committed to them (status changed,
+// refundIdr set, refundedAt still empty): a racing ship or dispute then fails
+// before any money moves. A refund that fails to send is retried by the order
+// maintenance job, which fills refundedAt once the provider confirms it.
 
 export type IdempotencyKey = string;
 

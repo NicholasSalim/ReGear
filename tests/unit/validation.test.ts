@@ -122,6 +122,14 @@ describe("redirect safety", () => {
     expect(safeRedirectPath("/en/account/orders/abc?pay=1#top")).toBe("/en/account/orders/abc?pay=1#top");
     expect(safeRedirectPath("/%2F/evil.com")).toBe("/%2F/evil.com"); // stays a path on our site
   });
+
+  it("refuses targets that resolve to a protocol-relative path", () => {
+    // Dot segments are removed when the URL is resolved, leaving "//evil.com".
+    for (const t of ["/.//evil.com", "/..//evil.com", "/%2e//evil.com", "/././/evil.com", "/a/..//evil.com"]) {
+      expect(safeRedirectPath(t), t).toBe("/");
+    }
+    expect(safeRedirectPath("/./account")).toBe("/account");
+  });
 });
 
 describe("rupiah amounts", () => {

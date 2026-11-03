@@ -61,7 +61,7 @@ export async function deleteAccount(userId: string) {
       where: { id: userId },
       select: { role: true, deletedAt: true, sellerProfile: { select: { id: true } } },
     });
-    if (user.deletedAt) return { publicKeys: [], privateKeys: [], sellerId: undefined, listingIds: [] };
+    if (user.deletedAt) return { publicKeys: [], privateKeys: [], sellerId: undefined, listingIds: [], reviewedSellerIds: [] };
     if (user.role === "ADMIN") throw new DomainError("adminAccount");
     const sellerId = user.sellerProfile?.id;
 
@@ -139,15 +139,19 @@ export async function deleteAccount(userId: string) {
       },
     });
 
+    // Their reviews stay, now as "Deleted user", but the sellers' pages cache the old name.
+    const reviewed = await tx.review.findMany({ where: { buyerId: userId }, select: { sellerId: true }, distinct: ["sellerId"] });
+
     return {
       publicKeys: uploads.map((u) => u.key),
       privateKeys: verifications.map((v) => v.documentKey),
       sellerId,
       listingIds: listings.map((l) => l.id),
+      reviewedSellerIds: reviewed.map((r) => r.sellerId),
     };
   });
 
   // Files go only after the database commit, so a rollback never loses one.
   await Promise.all([...files.publicKeys.map(deletePublicImage), ...files.privateKeys.map(deletePrivateDocument)]);
-  return { sellerId: files.sellerId, listingIds: files.listingIds };
+  return { sellerId: files.sellerId, listingIds: files.listingIds, reviewedSellerIds: files.reviewedSellerIds };
 }

@@ -43,14 +43,16 @@ export function isSameOrigin(req: Request): boolean {
  * Allow only same-site relative redirect targets (prevents open redirects).
  * Browsers drop tabs and newlines from URLs and read "\" as "/", so "/\t/evil"
  * would become "//evil", another site. Such characters are refused, and the
- * target must still be on our origin once resolved.
+ * target must still be on our origin once resolved. The returned path is
+ * checked too: resolving removes dot segments, so "/.//evil" comes out as
+ * "//evil", which a browser would also read as another site.
  */
 export function safeRedirectPath(target: unknown, fallback = "/"): string {
   if (typeof target !== "string" || !target.startsWith("/") || /[\u0000-\u001f\u007f\\]/.test(target)) return fallback;
   try {
     const base = new URL(env.NEXT_PUBLIC_SITE_URL);
     const url = new URL(target, base);
-    if (url.origin !== base.origin) return fallback;
+    if (url.origin !== base.origin || url.pathname.startsWith("//")) return fallback;
     return `${url.pathname}${url.search}${url.hash}`;
   } catch {
     return fallback;

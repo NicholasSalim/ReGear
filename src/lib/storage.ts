@@ -13,7 +13,27 @@ const store = createFileStore({ dir: env.STORAGE_DIR, supabaseUrl: env.SUPABASE_
 
 export const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 const MAX_INPUT_PIXELS = 50_000_000;
+// Larger than any phone camera; checked from the header before decoding, since
+// a small file can declare a huge image and some formats decode it whole.
+const MAX_INPUT_SIDE = 6000;
 const MAX_DIMENSION = 1600;
+// Decodes running at once in this process. Each can take a few hundred MB.
+const MAX_CONCURRENT_DECODES = 2;
+
+let decoding = 0;
+const waiting: (() => void)[] = [];
+async function withDecodeSlot<T>(work: () => Promise<T>): Promise<T> {
+  if (decoding >= MAX_CONCURRENT_DECODES) await new Promise<void>((resolve) => waiting.push(resolve));
+  else decoding++;
+  try {
+    return await work();
+  } finally {
+    // Hand the slot straight to the next waiter, or free it.
+    const next = waiting.shift();
+    if (next) next();
+    else decoding--;
+  }
+}
 
 type ImageErrorCode = keyof typeof en.uploads.image;
 
@@ -50,12 +70,17 @@ async function processImage(input: Buffer, quality: number) {
   if ((meta.width ?? 0) < 200 || (meta.height ?? 0) < 200) {
     throw new InvalidImageError("tooSmall");
   }
+  if ((meta.width ?? 0) > MAX_INPUT_SIDE || (meta.height ?? 0) > MAX_INPUT_SIDE) {
+    throw new InvalidImageError("tooLarge");
+  }
   try {
-    return await sharp(input, { limitInputPixels: MAX_INPUT_PIXELS })
-      .rotate()
-      .resize({ width: MAX_DIMENSION, height: MAX_DIMENSION, fit: "inside", withoutEnlargement: true })
-      .webp({ quality })
-      .toBuffer({ resolveWithObject: true });
+    return await withDecodeSlot(() =>
+      sharp(input, { limitInputPixels: MAX_INPUT_PIXELS })
+        .rotate()
+        .resize({ width: MAX_DIMENSION, height: MAX_DIMENSION, fit: "inside", withoutEnlargement: true })
+        .webp({ quality })
+        .toBuffer({ resolveWithObject: true }),
+    );
   } catch {
     throw new InvalidImageError("process");
   }

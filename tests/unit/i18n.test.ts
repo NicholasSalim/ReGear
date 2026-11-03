@@ -57,6 +57,16 @@ describe("proxy", () => {
     expect(proxy(request("/en/sell/listings")).headers.get("location")).toBe("http://localhost:3000/en/login?next=%2Fen%2Fsell%2Flistings");
     expect(proxy(request("/en/account", { regear_session: "x" })).headers.get("location")).toBeNull();
   });
+
+  it("counts searches that only claim to be prefetches", () => {
+    const search = (i: number, headers: Record<string, string>) =>
+      proxy(new NextRequest(new URL(`/listings?q=probe${i}`, "http://localhost:3000"), { headers }));
+    // Anyone can send these headers; only a real static prefetch (rsc + prefetch "1") renders no search.
+    const statuses = Array.from({ length: 130 }, (_, i) => search(i, { "next-router-prefetch": "2" }).status);
+    expect(statuses).toContain(429);
+    expect(search(999, { purpose: "prefetch" }).status).toBe(429);
+    expect(search(1000, { rsc: "1", "next-router-prefetch": "1" }).status).not.toBe(429);
+  });
 });
 
 describe("server messages in the visitor's language", () => {

@@ -31,8 +31,12 @@ const searchLimit = createWindowLimiter({ limit: SEARCHES_PER_MINUTE, windowMs: 
 
 /** A storefront search the visitor asked for (not a link prefetch, not plain browsing). */
 function isSearch(request: NextRequest, path: string) {
-  if (request.method !== "GET" || !request.nextUrl.searchParams.get("q")?.trim()) return false;
-  if (request.headers.has("next-router-prefetch") || request.headers.get("purpose") === "prefetch") return false;
+  if ((request.method !== "GET" && request.method !== "HEAD") || !request.nextUrl.searchParams.get("q")?.trim()) return false;
+  // Only a static segment prefetch skips the search: Next.js treats a request
+  // as one only with both of these headers. Anyone can send these headers, so
+  // any other combination (a runtime prefetch, or a plain page request carrying
+  // one of them) still runs the search and is counted.
+  if (request.headers.get("rsc") === "1" && request.headers.get("next-router-prefetch") === "1") return false;
   return path === "/listings" || path.startsWith("/c/");
 }
 

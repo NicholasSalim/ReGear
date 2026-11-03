@@ -62,6 +62,19 @@ describe("sign-up by emailed code", () => {
     expect(await confirmSignup(token, code!)).toEqual({ ok: false, reason: "expired" }); // even the right one, now
   });
 
+  it("doesn't give back wrong guesses when a new code is sent", async () => {
+    const token = await signUp();
+    const { code } = await codeSentTo();
+    const wrong = code === "000000" ? "111111" : "000000";
+    for (let i = 0; i < MAX_CODE_ATTEMPTS - 1; i++) await confirmSignup(token, wrong);
+    expect(await resendSignupCode(token)).toBe(true);
+    const fresh = (await codeSentTo()).code!;
+    const otherWrong = fresh === "222222" ? "333333" : "222222";
+    // One guess was left before the resend, and still only one is left after it.
+    expect(await confirmSignup(token, otherWrong)).toEqual({ ok: false, reason: "expired" });
+    expect(await resendSignupCode(token)).toBe(false);
+  });
+
   it("a new code replaces the old one", async () => {
     const token = await signUp();
     const first = (await codeSentTo()).code!;

@@ -46,8 +46,14 @@ export async function registerAction(_prev: ActionState, formData: FormData): Pr
   if (!parsed.success) return { fieldErrors: fieldErrors(parsed.error, t, locale) };
   const { name, email, password } = parsed.data;
 
-  const [byIp, byEmail] = await Promise.all([rateLimit(`register:${ip}`, 10, 3600), rateLimit(`register-email:${email}`, 5, 3600)]);
-  if (!byIp.ok || !byEmail.ok) return { error: t.actions.signupLimit };
+  // Each sign-up allows 5 code guesses, so the per-address caps bound how fast
+  // anyone can guess a code for an address they can't read (50 a day at most).
+  const [byIp, byEmail, byEmailDay] = await Promise.all([
+    rateLimit(`register:${ip}`, 10, 3600),
+    rateLimit(`register-email:${email}`, 5, 3600),
+    rateLimit(`register-email-day:${email}`, 10, 86_400),
+  ]);
+  if (!byIp.ok || !byEmail.ok || !byEmailDay.ok) return { error: t.actions.signupLimit };
 
   const token = await startSignup({ name, email, passwordHash: await hashPassword(password), locale, termsVersion: LEGAL_VERSION });
   await setSignupCookie(token);
@@ -228,13 +234,15 @@ export async function deleteAccountAction(_prev: ActionState, formData: FormData
       if (!ok) return { fieldErrors: { password: t.actions.passwordWrong } };
     }
 
-    const { sellerId, listingIds } = await deleteAccount(user.id);
+    const { sellerId, listingIds, reviewedSellerIds } = await deleteAccount(user.id);
     invalidate([
       TAGS.listings,
       TAGS.stats,
       `favorites-${user.id}`,
       ...(sellerId ? [TAGS.seller(sellerId)] : []),
       ...listingIds.map((id) => TAGS.listing(id)),
+      // Their name is cached on the review lists of every seller they reviewed.
+      ...reviewedSellerIds.map((id) => TAGS.seller(id)),
     ]);
     await audit(user.id, "user.delete", "User", user.id);
     await destroyCurrentSession();

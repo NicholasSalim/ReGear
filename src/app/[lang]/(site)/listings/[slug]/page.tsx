@@ -389,7 +389,7 @@ async function AboutSeller({ seller, listingId, locale, t }: { seller: ListingDe
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                   <Stars rating={r.rating} />
                   <span className="text-slate-500">
-                    {r.buyer.name} · {formatDate(r.createdAt, locale)}
+                    {r.buyer.name || t.common.deletedUser} · {formatDate(r.createdAt, locale)}
                   </span>
                 </div>
                 {r.comment && <p className="mt-1.5 text-slate-700">{r.comment}</p>}

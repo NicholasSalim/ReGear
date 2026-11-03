@@ -66,10 +66,12 @@ export async function resendSignupCode(token: string) {
   if (!TOKEN_RE.test(token)) return false;
   return db.$transaction(async (tx) => {
     const request = await tx.signupRequest.findUnique({ where: { id: hashToken(token) } });
-    if (!request || request.expiresAt <= new Date() || request.sends >= MAX_CODE_SENDS) return false;
+    if (!request || request.expiresAt <= new Date() || request.sends >= MAX_CODE_SENDS || request.attempts >= MAX_CODE_ATTEMPTS) return false;
+    // Wrong guesses carry over to the new code: a resend must not buy five more
+    // tries, or the code could be guessed slowly by resending.
     await tx.signupRequest.update({
       where: { id: request.id },
-      data: { attempts: 0, sends: { increment: 1 }, expiresAt: new Date(Date.now() + SIGNUP_TTL_MS) },
+      data: { sends: { increment: 1 }, expiresAt: new Date(Date.now() + SIGNUP_TTL_MS) },
     });
     await sendCode(tx, request);
     return true;

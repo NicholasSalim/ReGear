@@ -11,6 +11,8 @@ import { enqueueOrderEmails } from "@/lib/email/notify";
 import type { Prisma } from "@/generated/prisma/client";
 import {
   AUTO_COMPLETE_DAYS_AFTER_DELIVERY_BUFFER,
+  MAX_ABANDONED_CHECKOUTS,
+  MAX_UNPAID_ORDERS,
   PAYMENT_HOLD_MINUTES,
   PLATFORM_FEE_BPS,
   type OrderStatus,
@@ -101,6 +103,17 @@ export async function createOrder(buyerId: string, listingId: string, address: S
     });
     if (!listing || listing.status !== "ACTIVE") throw new DomainError("itemUnavailable");
     if (listing.seller.userId === buyerId) throw new DomainError("ownListing");
+
+    // Each unpaid order takes an item off sale, so one buyer can't hold a shop's
+    // stock with checkouts they never pay for. Locking the buyer's row makes
+    // these counts hold against parallel checkouts.
+    await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${buyerId} FOR UPDATE`;
+    const unpaid = await tx.order.count({ where: { buyerId, status: "PENDING_PAYMENT" } });
+    if (unpaid >= MAX_UNPAID_ORDERS) throw new DomainError("tooManyUnpaidOrders", MAX_UNPAID_ORDERS);
+    const abandoned = await tx.order.count({
+      where: { buyerId, listingId, status: "CANCELLED", paidAt: null, cancelledAt: { gte: new Date(Date.now() - 86_400_000) } },
+    });
+    if (abandoned >= MAX_ABANDONED_CHECKOUTS) throw new DomainError("checkoutAgainLater");
 
     let priceIdr = listing.priceIdr;
     if (offerId) {
@@ -258,26 +271,39 @@ export async function cancelOrder(orderId: string, userId: string, reason: strin
     throw new DomainError("cancelBeforeShip");
   }
 
-  let refundRef: string | null = null;
-  if (order.status === "PAID" && order.paymentRef) {
-    refundRef = (await payments.refund({ idempotencyKey: paymentKey(order.id, "refund"), orderId: order.id, ref: order.paymentRef, amountIdr: order.totalIdr })).ref;
-  }
-  return db.$transaction(async (tx) => {
-    await setStatus(tx, orderId, order.status, "CANCELLED", {
-      cancelledAt: new Date(),
-      ...(refundRef ? { refundIdr: order.totalIdr, refundedAt: new Date() } : {}),
-    });
+  // Claim the cancellation before any money moves: a shipment or dispute that
+  // races this one then fails here, instead of after the buyer was refunded.
+  const refunds = order.status === "PAID" && !!order.paymentRef;
+  const result = await db.$transaction(async (tx) => {
+    await setStatus(tx, orderId, order.status, "CANCELLED", { cancelledAt: new Date(), ...(refunds ? { refundIdr: order.totalIdr } : {}) });
     await tx.listing.updateMany({ where: { id: order.listingId, status: "RESERVED" }, data: { status: "ACTIVE" } });
     const who = isBuyer ? ("buyer" as const) : ("seller" as const);
     await addEvent(
       tx,
       orderId,
       "CANCELLED",
-      { by: who, ...(reason ? { reason } : {}), refunded: !!refundRef },
+      { by: who, ...(reason ? { reason } : {}), refunded: refunds },
       userId,
     );
     return { orderId, tags: tagsFor(order) };
   });
+  if (refunds) await sendClaimedRefund(order.id, order.paymentRef, order.totalIdr);
+  return result;
+}
+
+/**
+ * Send a refund the order has already committed to (refundIdr set, refundedAt
+ * empty). refundedAt is filled once the provider confirms it; a refund that
+ * fails here is retried by runOrderMaintenance.
+ */
+async function sendClaimedRefund(orderId: string, paymentRef: string | null, amountIdr: number) {
+  try {
+    // No provider payment to refund (e.g. seeded data): nothing to send.
+    if (paymentRef) await payments.refund({ idempotencyKey: paymentKey(orderId, "refund"), orderId, ref: paymentRef, amountIdr });
+    await db.order.update({ where: { id: orderId }, data: { refundedAt: new Date() } });
+  } catch (err) {
+    console.error("[payments] refund failed; maintenance will retry", orderId, err);
+  }
 }
 
 /** Release an unpaid order's item. Returns "paid" if the buyer turned out to have paid, null if there was nothing to do. */
@@ -347,10 +373,27 @@ export async function acceptOrder(orderId: string, buyerId: string): Promise<Res
   });
 }
 
-export async function autoCompleteOrder(orderId: string) {
+/**
+ * When a delivered order completes on its own: the return window plus a buffer
+ * after delivery. A rejected return restarts the buffer from the rejection, so
+ * the buyer always has time to open the dispute they're offered. Null when
+ * there's no delivery date to count from.
+ */
+export function autoCompleteAt(order: { deliveredAt: Date | null; returnWindowDays: number; returnRequest: { status: string; updatedAt: Date } | null }): number | null {
+  if (!order.deliveredAt) return null;
+  const buffer = AUTO_COMPLETE_DAYS_AFTER_DELIVERY_BUFFER * 86_400_000;
+  const afterWindow = order.deliveredAt.getTime() + order.returnWindowDays * 86_400_000 + buffer;
+  // A rejected request is never updated again, so updatedAt is when it was rejected.
+  const afterRejection = order.returnRequest?.status === "REJECTED" ? order.returnRequest.updatedAt.getTime() + buffer : 0;
+  return Math.max(afterWindow, afterRejection);
+}
+
+export async function autoCompleteOrder(orderId: string, now = new Date()) {
   const order = await db.$transaction(async (tx) => {
-    const o = await tx.order.findUnique({ where: { id: orderId } });
+    const o = await tx.order.findUnique({ where: { id: orderId }, include: { returnRequest: { select: { status: true, updatedAt: true } } } });
     if (!o || o.status !== "DELIVERED") return null;
+    const due = autoCompleteAt(o);
+    if (due === null || due > now.getTime()) return null;
     await completeInTx(tx, o, null, "window");
     return o;
   });
@@ -412,15 +455,17 @@ export async function receiveReturn(orderId: string, sellerUserId: string): Prom
   if (order.status !== "RETURN_IN_PROGRESS" || order.returnRequest?.status !== "SHIPPED_BACK") {
     throw new DomainError("returnNotShippedBack");
   }
-  if (order.paymentRef) await payments.refund({ idempotencyKey: paymentKey(order.id, "refund"), orderId: order.id, ref: order.paymentRef, amountIdr: order.totalIdr });
-  return db.$transaction(async (tx) => {
+  // Claim the refund first, so a dispute opened meanwhile can't leave a refunded order still in play.
+  const result = await db.$transaction(async (tx) => {
+    await setStatus(tx, orderId, "RETURN_IN_PROGRESS", "REFUNDED", { refundIdr: order.totalIdr });
     await tx.returnRequest.update({ where: { orderId }, data: { status: "REFUNDED" } });
-    await setStatus(tx, orderId, "RETURN_IN_PROGRESS", "REFUNDED", { refundedAt: new Date(), refundIdr: order.totalIdr });
     // Item is back with the seller; they must review it before relisting.
     await tx.listing.update({ where: { id: order.listingId }, data: { status: "DRAFT" } });
     await addEvent(tx, orderId, "REFUNDED", {}, sellerUserId);
     return { orderId, tags: tagsFor(order) };
   });
+  await sendClaimedRefund(order.id, order.paymentRef, order.totalIdr);
+  return result;
 }
 
 // Disputes ------------------------------------------------------------------
@@ -472,9 +517,9 @@ export async function resolveDispute(
     }
     refundIdr = partialIdr;
   }
-  if (refundIdr > 0 && order.paymentRef) await payments.refund({ idempotencyKey: paymentKey(order.id, "refund"), orderId: order.id, ref: order.paymentRef, amountIdr: refundIdr });
-
-  return db.$transaction(async (tx) => {
+  // The resolution is claimed (DISPUTED -> X) before any refund is sent, so a
+  // second submission fails here instead of moving money a second time.
+  const result = await db.$transaction(async (tx) => {
     await tx.dispute.update({
       where: { id: disputeId },
       data: { status: "RESOLVED", resolution, resolutionNote: note, refundIdr, resolvedById: adminId, resolvedAt: new Date() },
@@ -483,14 +528,11 @@ export async function resolveDispute(
       data: { disputeId, authorId: adminId, authorRole: "ADMIN", body: `${en.disputes.system.resolutionPrefix}${note}` },
     });
     if (resolution === "REFUND_BUYER") {
-      await setStatus(tx, order.id, "DISPUTED", "REFUNDED", { refundedAt: new Date(), refundIdr });
+      await setStatus(tx, order.id, "DISPUTED", "REFUNDED", { refundIdr });
       await tx.listing.update({ where: { id: order.listingId }, data: { status: "DRAFT" } });
       await addEvent(tx, order.id, "DISPUTE_RESOLVED", { outcome: "buyer" }, adminId);
     } else {
-      await setStatus(tx, order.id, "DISPUTED", "COMPLETED", {
-        completedAt: new Date(),
-        ...(refundIdr ? { refundIdr, refundedAt: new Date() } : {}),
-      });
+      await setStatus(tx, order.id, "DISPUTED", "COMPLETED", { completedAt: new Date(), ...(refundIdr ? { refundIdr } : {}) });
       await tx.listing.update({ where: { id: order.listingId }, data: { status: "SOLD" } });
       await tx.sellerProfile.update({ where: { id: order.sellerId }, data: { salesCount: { increment: 1 } } });
       await creditSeller(tx, order, refundIdr);
@@ -504,6 +546,8 @@ export async function resolveDispute(
     }
     return { orderId: order.id, tags: tagsFor(order) };
   });
+  if (refundIdr > 0) await sendClaimedRefund(order.id, order.paymentRef, refundIdr);
+  return result;
 }
 
 // Reviews -------------------------------------------------------------------
@@ -578,18 +622,27 @@ export async function runOrderMaintenance(now = new Date()) {
 
   const delivered = await db.order.findMany({
     where: { status: "DELIVERED" },
-    select: { id: true, deliveredAt: true, returnWindowDays: true },
+    select: { id: true, deliveredAt: true, returnWindowDays: true, returnRequest: { select: { status: true, updatedAt: true } } },
+    orderBy: { deliveredAt: "asc" },
     take: 1000,
   });
   for (const o of delivered) {
-    const closesAt = (o.deliveredAt?.getTime() ?? 0) + (o.returnWindowDays + AUTO_COMPLETE_DAYS_AFTER_DELIVERY_BUFFER) * 86_400_000;
-    if (closesAt < now.getTime()) {
+    const due = autoCompleteAt(o);
+    if (due !== null && due <= now.getTime()) {
       try {
-        tags.push(...(await autoCompleteOrder(o.id)));
+        tags.push(...(await autoCompleteOrder(o.id, now)));
       } catch (err) {
         console.error("auto-complete failed", o.id, err);
       }
     }
   }
+
+  // Refunds are committed to before they're sent; send any that failed then.
+  const unsent = await db.order.findMany({
+    where: { refundIdr: { gt: 0 }, refundedAt: null },
+    select: { id: true, paymentRef: true, refundIdr: true },
+    take: 200,
+  });
+  for (const o of unsent) await sendClaimedRefund(o.id, o.paymentRef, o.refundIdr);
   return { expired, autoDelivered: longShipped.length, tags: [...new Set(tags)] };
 }

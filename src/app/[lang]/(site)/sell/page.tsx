@@ -47,7 +47,7 @@ export default async function SellerDashboardPage() {
             <BadgeCheck className="size-5" aria-hidden />
             {seller.verificationStatus === "PENDING" ? t.verificationPending : t.verifyPitch}
           </p>
-          {seller.verificationStatus !== "PENDING" && <ButtonLink href="/sell/verification" variant="secondary">{t.getVerified}</ButtonLink>}
+          {seller.verificationStatus !== "PENDING" && <ButtonLink href="/sell/profile#verification" variant="secondary">{t.getVerified}</ButtonLink>}
         </div>
       )}
 

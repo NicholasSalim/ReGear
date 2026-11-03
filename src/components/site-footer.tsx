@@ -39,7 +39,7 @@ export async function SiteFooter() {
         <FooterCol title={t.footer.sell}>
           <FooterLink href="/sell/listings/new">{t.footer.startSelling}</FooterLink>
           <FooterLink href="/sell">{t.footer.sellerDashboard}</FooterLink>
-          <FooterLink href="/sell/verification">{t.footer.getVerified}</FooterLink>
+          <FooterLink href="/sell/profile#verification">{t.footer.getVerified}</FooterLink>
           <FooterLink href="/sell/payouts">{t.footer.payouts}</FooterLink>
         </FooterCol>
         <FooterCol title={t.footer.help}>

@@ -87,7 +87,7 @@ function content(payload: EmailPayload, locale: Locale): Content {
       return {
         subject: t.verification.rejected.subject,
         paragraphs: [t.verification.rejected.body(payload.params.note)],
-        button: { label: t.verification.rejected.button, url: siteUrl("/sell/verification", locale) },
+        button: { label: t.verification.rejected.button, url: siteUrl("/sell/profile#verification", locale) },
       };
     case "payout-account-changed": {
       const { bank, account, name } = payload.params;

@@ -27,7 +27,7 @@ export default async function SellerPayoutsPage() {
   const blocker =
     seller.verificationStatus !== "VERIFIED" ? (
       <>
-        {t.needVerified} <Link href="/sell/verification" className="font-semibold underline">{t.getVerified}</Link>
+        {t.needVerified} <Link href="/sell/profile#verification" className="font-semibold underline">{t.getVerified}</Link>
       </>
     ) : !hasAccount ? (
       t.needAccount

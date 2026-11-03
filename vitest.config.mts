@@ -31,6 +31,8 @@ export default defineConfig({
       // ...and keep uploads on local disk, even when .env has Supabase keys.
       SUPABASE_URL: "",
       SUPABASE_SERVICE_ROLE_KEY: "",
+      // ...and never send real email: it goes to the dev inbox the email tests read.
+      SMTP_URL: "",
     },
     // Integration tests share one database.
     fileParallelism: false,

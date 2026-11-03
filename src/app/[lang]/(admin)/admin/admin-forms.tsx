@@ -75,6 +75,28 @@ export function WithdrawalReviewForm({ action, id }: { action: FormAction; id: s
   );
 }
 
+/** Record a bank-transfer refund the admin sent. */
+export function RefundSentForm({ action, id }: { action: FormAction; id: string }) {
+  const t = useT().payoutForms;
+  return (
+    <ActionForm action={action} className="space-y-3">
+      {(s) =>
+        s.ok ? (
+          <FormMessage state={s} />
+        ) : (
+          <>
+            <FormMessage state={s} />
+            <Field label={t.note} name={`note-${id}`} error={s.fieldErrors?.note} hint={t.refundNoteHint}>
+              <textarea id={`note-${id}`} name="note" rows={2} maxLength={500} required minLength={5} className="input" />
+            </Field>
+            <SubmitButton>{t.markRefunded}</SubmitButton>
+          </>
+        )
+      }
+    </ActionForm>
+  );
+}
+
 /** Record how a withdrawal waiting to be paid by hand ended. */
 export function WithdrawalPayForm({ action, id }: { action: FormAction; id: string }) {
   const t = useT().payoutForms;

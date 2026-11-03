@@ -52,6 +52,7 @@ export const clientEn = {
     forgotLink: "Forgot password?",
     code: "6-digit code",
     confirmCode: "Create account",
+    codeFormat: "Enter the 6-digit code from the email.",
     confirmingCode: "Checking…",
     resendCode: "Send a new code",
   },
@@ -125,7 +126,7 @@ export const clientEn = {
     firstAddress: "Where should we send it?",
     continue: "Continue to payment",
     reserving: "Reserving item…",
-    reservedNote: (minutes: number) => `The item is reserved for ${minutes} minutes while you complete payment.`,
+    reservedNote: (minutes: number) => `The item is held for you for ${minutes} minutes once you start paying. Until then it stays on sale.`,
     privacyNote: "After you pay, the recipient name, phone number, address, courier note and map pin are shared with the seller so they can ship. By continuing you agree to the [Terms & Conditions](/terms#buying).",
   },
   orderActions: {
@@ -288,6 +289,8 @@ export const clientEn = {
     reject: "Reject",
     markPaid: "Mark paid",
     markFailed: "Mark failed",
+    refundNoteHint: "Required: the bank transfer reference.",
+    markRefunded: "Mark refunded",
   },
   adminForms: {
     noteToSeller: "Note to seller",

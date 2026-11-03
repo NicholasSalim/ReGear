@@ -40,6 +40,9 @@ export const BANKS = [
 
 export const bankName = (code: string) => BANKS.find((b) => b.code === code)?.name ?? code.toUpperCase();
 
+/** Last four digits only, for emails and lists. */
+export const maskAccount = (account: string) => `•••• ${account.slice(-4)}`;
+
 const simulated: PayoutProvider = {
   mode: "simulated",
   async send() {

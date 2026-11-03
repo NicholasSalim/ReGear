@@ -109,7 +109,7 @@ describe("hosted payment page", () => {
 
   it("stops the payment before expiring, and keeps an order paid at the last moment", async () => {
     await orders.payOrder(f.order.id, f.buyer.id);
-    await db.order.update({ where: { id: f.order.id }, data: { createdAt: new Date(Date.now() - 86_400_000) } });
+    await db.order.update({ where: { id: f.order.id }, data: { reservedAt: new Date(Date.now() - 86_400_000) } });
 
     vi.mocked(payments.abandon).mockResolvedValue(paid());
     await orders.runOrderMaintenance();
@@ -120,7 +120,7 @@ describe("hosted payment page", () => {
 
   it("expires the order once the payment is stopped", async () => {
     await orders.payOrder(f.order.id, f.buyer.id);
-    await db.order.update({ where: { id: f.order.id }, data: { createdAt: new Date(Date.now() - 86_400_000) } });
+    await db.order.update({ where: { id: f.order.id }, data: { reservedAt: new Date(Date.now() - 86_400_000) } });
     vi.mocked(payments.abandon).mockResolvedValue({ state: "failed" });
     expect((await orders.runOrderMaintenance()).expired).toBe(1);
     expect(await statusOf()).toBe("CANCELLED");
@@ -153,5 +153,56 @@ describe("hosted payment page", () => {
     await orders.syncPayment(f.order.id); // a repeated notification refunds nothing more
     expect(refund).toHaveBeenCalledTimes(1);
     expect(await db.order.findUniqueOrThrow({ where: { id: f.order.id } })).toMatchObject({ status: "CANCELLED", refundIdr: f.order.totalIdr });
+  });
+});
+
+describe("refunding a bank transfer", () => {
+  let f: Awaited<ReturnType<typeof fixture>>;
+  const account = { bank: "bca", accountNumber: "1234567890", accountName: "Test Buyer" };
+  beforeEach(async () => {
+    f = await fixture();
+    vi.spyOn(payments, "checkout").mockResolvedValue({ redirectUrl: PAGE });
+    vi.spyOn(payments, "status").mockResolvedValue({ state: "paid", ref: "mt-va-1", amountIdr: f.order.totalIdr, method: "bank_transfer" });
+    vi.spyOn(payments, "abandon").mockResolvedValue({ state: "none" });
+    // Paying by bank transfer, then cancelling.
+    await orders.payOrder(f.order.id, f.buyer.id);
+    await orders.syncPayment(f.order.id);
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  const order = () => db.order.findUniqueOrThrow({ where: { id: f.order.id }, include: { events: true } });
+
+  it("asks the buyer for an account instead of refunding through the provider", async () => {
+    const refund = vi.spyOn(payments, "refund");
+    await orders.cancelOrder(f.order.id, f.buyer.id, "");
+    await orders.runOrderMaintenance(); // and maintenance doesn't try either
+    expect(refund).not.toHaveBeenCalled();
+    const o = await order();
+    expect(o).toMatchObject({ status: "CANCELLED", paymentMethod: "bank_transfer", refundIdr: o.totalIdr, refundedAt: null });
+    expect(o.events.map((e) => e.type)).toContain("REFUND_BY_HAND");
+    expect(await db.emailOutbox.count({ where: { userId: f.buyer.id, params: { contains: "REFUND_BY_HAND" } } })).toBe(1);
+  });
+
+  it("sends it by hand to the account only its buyer gives", async () => {
+    await orders.cancelOrder(f.order.id, f.buyer.id, "");
+    await expect(orders.markRefundSent(f.order.id, f.sellerUser.id, "BCA ref 123")).rejects.toThrow(/hasn't given a bank account/);
+    await expect(orders.setRefundAccount(f.order.id, f.sellerUser.id, account)).rejects.toThrow(/not found/i);
+    await expect(orders.setRefundAccount(f.order.id, f.buyer.id, { ...account, bank: "nope" })).rejects.toThrow(/listed banks/);
+
+    await orders.setRefundAccount(f.order.id, f.buyer.id, account);
+    expect(await order()).toMatchObject({ refundBank: "bca", refundAccountNumber: "1234567890", refundAccountName: "Test Buyer" });
+
+    await orders.markRefundSent(f.order.id, f.sellerUser.id, "BCA ref 123");
+    const o = await order();
+    expect(o.refundedAt).not.toBeNull();
+    expect(o.refundNote).toBe("BCA ref 123");
+    expect(o.events.map((e) => e.type)).toEqual(expect.arrayContaining(["REFUND_ACCOUNT_SET", "REFUND_SENT"]));
+    // Sent once: a second admin, or a late change of account, finds nothing owed.
+    await expect(orders.markRefundSent(f.order.id, f.sellerUser.id, "again")).rejects.toThrow(/no bank-transfer refund/);
+    await expect(orders.setRefundAccount(f.order.id, f.buyer.id, account)).rejects.toThrow(/no bank-transfer refund/);
+  });
+
+  it("isn't asked of an order that owes nothing", async () => {
+    await expect(orders.setRefundAccount(f.order.id, f.buyer.id, account)).rejects.toThrow(/no bank-transfer refund/);
   });
 });

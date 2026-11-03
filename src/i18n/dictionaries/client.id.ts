@@ -53,6 +53,7 @@ export const clientId: typeof clientEn = {
     forgotLink: "Lupa kata sandi?",
     code: "Kode 6 digit",
     confirmCode: "Buat akun",
+    codeFormat: "Masukkan kode 6 digit dari email.",
     confirmingCode: "Memeriksa…",
     resendCode: "Kirim kode baru",
   },
@@ -126,7 +127,7 @@ export const clientId: typeof clientEn = {
     firstAddress: "Mau dikirim ke mana?",
     continue: "Lanjut ke pembayaran",
     reserving: "Memesan barang…",
-    reservedNote: (minutes: number) => `Barang dipesan untuk Anda selama ${minutes} menit sambil Anda menyelesaikan pembayaran.`,
+    reservedNote: (minutes: number) => `Barang disimpan untuk Anda selama ${minutes} menit begitu Anda mulai membayar. Sebelum itu barang tetap dijual.`,
     privacyNote: "Setelah Anda membayar, nama penerima, nomor telepon, alamat, catatan kurir, dan pin peta ini dibagikan ke penjual untuk pengiriman. Dengan melanjutkan, Anda menyetujui [Syarat & Ketentuan](/terms#buying).",
   },
   orderActions: {
@@ -289,6 +290,8 @@ export const clientId: typeof clientEn = {
     reject: "Tolak",
     markPaid: "Tandai dibayar",
     markFailed: "Tandai gagal",
+    refundNoteHint: "Wajib: referensi transfer bank.",
+    markRefunded: "Tandai sudah dikembalikan",
   },
   adminForms: {
     noteToSeller: "Catatan untuk penjual",

@@ -1,6 +1,7 @@
 import type { Locale } from "@/i18n/locales";
 import { AUDIT_RETENTION_DAYS, EMAIL_LOG_RETENTION_DAYS } from "@/lib/legal";
-import { PAYMENT_HOLD_MINUTES, PLATFORM_FEE_BPS, AUTO_COMPLETE_DAYS_AFTER_DELIVERY_BUFFER } from "@/lib/constants";
+import { PAY_HOLD_MINUTES, PAYMENT_HOLD_MINUTES, PLATFORM_FEE_BPS, AUTO_COMPLETE_DAYS_AFTER_DELIVERY_BUFFER, QRIS_MAX_IDR, REFUND_BY_HAND_DAYS } from "@/lib/constants";
+import { formatMoney } from "@/lib/format";
 
 // The Privacy Policy and Terms, in both languages. Each statement describes
 // what the app actually does; when behaviour changes (a new cookie, a new
@@ -47,7 +48,7 @@ const privacy: Record<Locale, LegalDocument> = {
               "Data teknis dan keamanan: alamat IP dan jenis peramban untuk sesi login; catatan keamanan seperti masuk, keluar, perubahan kata sandi, keputusan verifikasi, dan setiap kali dokumen identitas dilihat petugas; serta penghitung percobaan (misalnya percobaan masuk per IP atau email) untuk mencegah penyalahgunaan.",
             ],
           },
-          "Pembayaran: kami tidak menyimpan nomor kartu atau rekening bank. Pembayaran diproses oleh mitra pembayaran kami, dan kami hanya menyimpan referensi transaksinya.",
+          "Pembayaran: kami tidak menyimpan nomor kartu. Pembayaran diproses oleh mitra pembayaran kami, dan kami hanya menyimpan referensi transaksi dan metode pembayarannya. Untuk mengirim uang kepada Anda, yaitu penarikan dana penjual atau pengembalian dana atas pembayaran via transfer bank, kami menyimpan rekening bank yang Anda berikan (bank, nomor rekening, dan nama pemilik).",
           "Yang tidak kami lakukan: kami tidak memakai alat analitik, iklan, atau pelacak pihak ketiga, tidak memuat skrip dari pihak ketiga, dan tidak menjual data pribadi. Huruf (font) situs ini disajikan dari server kami sendiri.",
         ],
       },
@@ -191,7 +192,7 @@ const privacy: Record<Locale, LegalDocument> = {
               "Technical and security data: IP address and browser type for sign-in sessions; security records such as sign-ins, sign-outs, password changes, verification decisions and every time staff view an ID document; and attempt counters (for example sign-in attempts per IP or email) that prevent abuse.",
             ],
           },
-          "Payments: we don't store card or bank account numbers. Payments are processed by our payment partner, and we only keep the transaction reference.",
+          "Payments: we don't store card numbers. Payments are processed by our payment partner, and we only keep the transaction reference and how you paid. To send you money, as a seller's withdrawal or as the refund of a bank-transfer payment, we store the bank account you give us (bank, account number and holder name).",
           "What we don't do: we use no third-party analytics, advertising or tracking tools, load no third-party scripts and never sell personal data. The site's fonts are served from our own server.",
         ],
       },
@@ -380,8 +381,9 @@ const terms: Record<Locale, LegalDocument> = {
           {
             list: [
               "Harga dan ongkos kirim ditentukan penjual dan ditampilkan sebelum Anda membayar. Pembeli tidak dikenai biaya platform.",
-              `Saat checkout, barang dipesan untuk Anda selama ${PAYMENT_HOLD_MINUTES} menit. Jika pembayaran tidak selesai, pesanan dibatalkan dan barang kembali dijual.`,
+              `Checkout tidak memesan barang: barang tetap dijual sampai Anda mulai membayar, lalu disimpan untuk Anda selama ${PAY_HOLD_MINUTES} menit. Jika pembayaran tidak selesai, pesanan dibatalkan dan barang kembali dijual. Pesanan yang belum mulai dibayar dibatalkan setelah ${PAYMENT_HOLD_MINUTES} menit.`,
               "Pembayaran Anda ditahan oleh ReGear dan belum diteruskan ke penjual sampai Anda menerima barang atau batas waktu pengembalian berakhir.",
+              `Anda bisa membayar dengan GoPay, ShopeePay, QRIS (hingga ${formatMoney(QRIS_MAX_IDR)} per pembayaran), atau transfer bank (virtual account). Pengembalian dana untuk transfer bank tidak bisa dilakukan otomatis: kami mentransfernya ke rekening yang Anda berikan di halaman pesanan, dalam ${REFUND_BY_HAND_DAYS} hari kerja setelah Anda memberikannya.`,
               "Setelah dibayar, alamat dan nomor telepon pengiriman Anda dibagikan ke penjual untuk pengiriman.",
             ],
           },
@@ -538,8 +540,9 @@ const terms: Record<Locale, LegalDocument> = {
           {
             list: [
               "The seller sets the price and shipping cost, shown before you pay. Buyers pay no platform fee.",
-              `At checkout the item is reserved for you for ${PAYMENT_HOLD_MINUTES} minutes. If payment isn't completed, the order is cancelled and the item goes back on sale.`,
+              `Checking out doesn't reserve the item: it stays on sale until you start paying, and is then held for you for ${PAY_HOLD_MINUTES} minutes. If payment isn't completed, the order is cancelled and the item goes back on sale. An order you haven't started paying for is cancelled after ${PAYMENT_HOLD_MINUTES} minutes.`,
               "Your payment is held by ReGear and not passed to the seller until you accept the item or the return window ends.",
+              `You can pay with GoPay, ShopeePay, QRIS (up to ${formatMoney(QRIS_MAX_IDR)} per payment) or bank transfer (virtual account). A bank transfer can't be refunded automatically: we transfer the refund to an account you give on the order page, within ${REFUND_BY_HAND_DAYS} business days of you giving it.`,
               "Once paid, your shipping address and phone number are shared with the seller so they can ship.",
             ],
           },

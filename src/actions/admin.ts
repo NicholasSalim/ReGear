@@ -7,7 +7,7 @@ import { invalidate, listingTags, TAGS } from "@/lib/cache";
 import { en } from "@/i18n/dictionaries/en";
 import { actionI18n, formToObject, runAction, type ActionState } from "@/lib/action";
 import { requireUserStrict } from "@/lib/auth/dal";
-import { resolveDispute } from "@/lib/orders/service";
+import { markRefundSent, resolveDispute } from "@/lib/orders/service";
 import { enqueueEmail } from "@/lib/email/outbox";
 import { enqueueDisputeMessageEmails } from "@/lib/email/notify";
 import { isLocale } from "@/i18n/locales";
@@ -82,6 +82,22 @@ export async function resolveDisputeAction(disputeId: string, _prev: ActionState
     invalidate(res.tags);
     await audit(admin.id, "dispute.resolve", "Dispute", disputeId, { resolution: data.resolution, refundIdr: data.refundIdr });
     return { ok: true, message: (await actionI18n()).t.actions.disputeResolved };
+  });
+}
+
+/** The admin transferred a bank-transfer refund; the note is the transfer reference. */
+export async function markRefundSentAction(orderId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  return runAction(async () => {
+    const admin = await requireAdminStrict();
+    const { t } = await actionI18n();
+    idSchema.parse(orderId);
+    const note = text(0, 500).parse(formData.get("note") ?? "");
+    if (note.length < 5) return { fieldErrors: { note: t.actions.noteRequired } };
+    const res = await markRefundSent(orderId, admin.id, note);
+    invalidate(res.tags);
+    await audit(admin.id, "refund.mark_sent", "Order", orderId, { note });
+    refresh();
+    return { ok: true, message: t.actions.refundMarkedSent };
   });
 }
 

@@ -103,6 +103,7 @@ export default async function AdminOrderPage({ params }: PageProps<"/[lang]/admi
             <Row label={t.created}>{at(order.createdAt)}</Row>
             <Row label={t.paidAt}>{at(order.paidAt)}</Row>
             <Row label={t.paymentRef}><span className="num text-xs">{order.paymentRef ?? t.none}</span></Row>
+            <Row label={t.paymentMethod}>{order.paymentMethod ?? t.none}</Row>
             <Row label={t.refundedAt}>{at(order.refundedAt)}</Row>
             <Row label={t.cancelledAt}>{at(order.cancelledAt)}</Row>
           </dl>

@@ -78,8 +78,9 @@ describe("cart", () => {
 
     await orders.createOrder(f.buyer.id, f.listing.id, address);
     expect(await cart.cartCount(f.buyer.id)).toBe(0);
-    // Reserved now, so nobody else can add it either.
-    await expect(cart.addToCart(f.other.id, f.listing.id)).rejects.toThrow(/no longer available/);
+    // Still on sale until the buyer starts paying, so others can still add it.
+    await cart.addToCart(f.other.id, f.listing.id);
+    expect(await cart.cartCount(f.other.id)).toBe(1);
   });
 });
 

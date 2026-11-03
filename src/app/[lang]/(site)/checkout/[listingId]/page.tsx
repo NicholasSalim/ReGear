@@ -9,7 +9,7 @@ import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth/dal";
 import { listAddresses } from "@/lib/addresses";
 import { ADDRESS_LIMIT } from "@/lib/validation";
-import { PAYMENT_HOLD_MINUTES } from "@/lib/constants";
+import { PAY_HOLD_MINUTES } from "@/lib/constants";
 import { formatMoney } from "@/lib/format";
 import { mediaUrl } from "@/lib/media";
 import { payments } from "@/lib/payments";
@@ -167,7 +167,7 @@ async function Checkout({
       action={checkoutAction.bind(null, listing.id)}
       addresses={addresses}
       defaultName={user.name}
-      holdMinutes={PAYMENT_HOLD_MINUTES}
+      holdMinutes={PAY_HOLD_MINUTES}
       limit={ADDRESS_LIMIT}
       review={review}
       pay={pay}

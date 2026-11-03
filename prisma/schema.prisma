@@ -315,34 +315,42 @@ model Upload {
 }
 
 model Order {
-  id               String    @id @default(cuid())
-  number           String    @unique
-  buyerId          String
-  sellerId         String
-  listingId        String
-  priceIdr         Int
-  shippingIdr      Int
-  platformFeeIdr   Int
-  totalIdr         Int
-  status           String    @default("PENDING_PAYMENT")
-  shippingAddress  String // JSON snapshot
-  listingSnapshot  String // JSON snapshot of title/grade/image at purchase time
-  carrier          String?
-  trackingNumber   String?
-  paymentRef       String? // provider transaction id, set once paid
-  paymentUrl       String? // provider payment page, reused until the order is paid or expires
-  returnWindowDays Int
-  paidAt           DateTime?
-  shippedAt        DateTime?
-  deliveredAt      DateTime?
-  completedAt      DateTime?
-  cancelledAt      DateTime?
-  refundedAt       DateTime?
-  refundIdr        Int       @default(0)
+  id                  String    @id @default(cuid())
+  number              String    @unique
+  buyerId             String
+  sellerId            String
+  listingId           String
+  priceIdr            Int
+  shippingIdr         Int
+  platformFeeIdr      Int
+  totalIdr            Int
+  status              String    @default("PENDING_PAYMENT")
+  shippingAddress     String // JSON snapshot
+  listingSnapshot     String // JSON snapshot of title/grade/image at purchase time
+  carrier             String?
+  trackingNumber      String?
+  paymentRef          String? // provider transaction id, set once paid
+  paymentUrl          String? // provider payment page, reused until the order is paid or expires
+  paymentMethod       String? // how the buyer paid, as the provider names it ("qris", "bank_transfer", ...)
+  returnWindowDays    Int
+  reservedAt          DateTime? // when this order took the item off sale (pressing Pay); only the holding order releases it
+  paidAt              DateTime?
+  shippedAt           DateTime?
+  deliveredAt         DateTime?
+  completedAt         DateTime?
+  cancelledAt         DateTime?
+  refundedAt          DateTime?
+  refundIdr           Int       @default(0)
+  // Bank transfers can't be refunded through the provider: the buyer gives an
+  // account and an admin sends the money by hand (see markRefundSent).
+  refundBank          String?
+  refundAccountNumber String?
+  refundAccountName   String?
+  refundNote          String? // the admin's transfer reference
   // Set when the order was placed at an accepted offer's price instead of the listing's.
-  offerId          String?   @unique
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  offerId             String?   @unique
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   buyer          User           @relation("BuyerOrders", fields: [buyerId], references: [id])
   offer          Offer?         @relation(fields: [offerId], references: [id], onDelete: SetNull)

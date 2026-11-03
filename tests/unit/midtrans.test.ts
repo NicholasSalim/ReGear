@@ -64,6 +64,12 @@ describe("Midtrans adapter", () => {
     expect(request(fetch).body).toMatchObject({ expiry: { duration: 5 }, page_expiry: { duration: 5 } });
   });
 
+  it("offers e-wallets, QRIS and bank transfer on every order", async () => {
+    const fetch = respond({ status: 201, body: { token: "t", redirect_url: "https://x/t" } });
+    await midtrans.checkout({ idempotencyKey: "k", orderId: "cm1", amountIdr: 50_000, currency: "IDR", expiresAt: new Date(Date.now() + 600_000), itemName: "x", returnUrl: "https://x" });
+    expect(request(fetch).body.enabled_payments).toEqual(expect.arrayContaining(["gopay", "shopeepay", "other_qris", "bca_va", "bni_va", "bri_va", "echannel", "permata_va", "other_va"]));
+  });
+
   it("fails loudly when Snap refuses", async () => {
     respond({ status: 400, body: { error_messages: ["transaction_details.order_id sudah digunakan"] } });
     await expect(midtrans.checkout({ idempotencyKey: "k", orderId: "cm1", amountIdr: 1, currency: "IDR", expiresAt: new Date(), itemName: "x", returnUrl: "https://x" })).rejects.toThrow(/sudah digunakan/);
@@ -73,13 +79,13 @@ describe("Midtrans adapter", () => {
     respond(
       { body: { status_code: "404", status_message: "Transaction doesn't exist." } },
       { body: { status_code: "201", transaction_status: "pending" } },
-      { body: { status_code: "200", transaction_status: "settlement", transaction_id: "tx-1", gross_amount: "10500.00" } },
+      { body: { status_code: "200", transaction_status: "settlement", transaction_id: "tx-1", gross_amount: "10500.00", payment_type: "bank_transfer" } },
       { body: { status_code: "200", transaction_status: "capture", fraud_status: "challenge", transaction_id: "tx-1", gross_amount: "10500.00" } },
       { body: { status_code: "407", transaction_status: "expire" } },
     );
     expect(await midtrans.status("cm1")).toEqual({ state: "none" });
     expect(await midtrans.status("cm1")).toEqual({ state: "pending" });
-    expect(await midtrans.status("cm1")).toEqual({ state: "paid", ref: "tx-1", amountIdr: 10_500 });
+    expect(await midtrans.status("cm1")).toEqual({ state: "paid", ref: "tx-1", amountIdr: 10_500, method: "bank_transfer" });
     expect(await midtrans.status("cm1")).toEqual({ state: "pending" }); // held for fraud review
     expect(await midtrans.status("cm1")).toEqual({ state: "failed" });
   });

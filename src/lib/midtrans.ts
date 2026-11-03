@@ -12,11 +12,13 @@ const HOSTS = {
   production: { snap: "https://app.midtrans.com", api: "https://api.midtrans.com" },
 } as const;
 
-// Only methods Midtrans can refund through its API. Escrow depends on
-// refunds (cancellations, returns, disputes); bank transfers and convenience
-// stores would need a manual refund. ShopeePay can't refund part of a payment,
-// so a partial dispute refund on a ShopeePay order needs handling by hand.
-const ENABLED_PAYMENTS = ["gopay", "shopeepay", "other_qris"];
+// Escrow depends on refunds (cancellations, returns, disputes). E-wallets and
+// QRIS are refunded through Midtrans's API; ShopeePay can't refund part of a
+// payment, so a partial dispute refund on a ShopeePay order needs handling by
+// hand. Bank transfers (virtual accounts) can't be refunded through the API at
+// all: those refunds are sent by hand (see refundsByHand). E-wallets and QRIS
+// stop at QRIS_MAX_IDR; bank transfers take larger orders.
+const ENABLED_PAYMENTS = ["gopay", "shopeepay", "other_qris", "bca_va", "bni_va", "bri_va", "echannel", "permata_va", "cimb_va", "other_va"];
 
 export class MidtransError extends Error {
   constructor(
@@ -52,7 +54,7 @@ function toState(b: Body): PaymentState {
   const fraud = String(b.fraud_status ?? "accept").toLowerCase();
   // Refunded transactions were paid first; the refund is ours and already recorded.
   if (status === "settlement" || (status === "capture" && fraud === "accept") || status === "refund" || status === "partial_refund") {
-    return { state: "paid", ref: String(b.transaction_id), amountIdr: Math.round(Number(b.gross_amount)) };
+    return { state: "paid", ref: String(b.transaction_id), amountIdr: Math.round(Number(b.gross_amount)), method: String(b.payment_type ?? "") || undefined };
   }
   if (status === "pending" || status === "authorize" || status === "capture") return { state: "pending" };
   if (status === "expire" || status === "cancel" || status === "deny" || status === "failure") return { state: "failed" };

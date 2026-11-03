@@ -18,6 +18,9 @@ const SAMPLES: { [T in EventType]?: EventParams<T>[] } = {
   REFUNDED: [{}],
   DISPUTE_OPENED: [{ by: "buyer" }, { by: "seller" }],
   DISPUTE_RESOLVED: [{ outcome: "buyer" }, { outcome: "partial" }, { outcome: "seller" }],
+  REFUND_BY_HAND: [{ amount: "Rp15.200.000", days: 3 }],
+  REFUND_ACCOUNT_SET: [{ bank: "BCA", account: "•••• 7890" }],
+  REFUND_SENT: [{ amount: "Rp15.200.000", bank: "BCA", account: "•••• 7890" }],
 };
 
 describe("order email copy", () => {

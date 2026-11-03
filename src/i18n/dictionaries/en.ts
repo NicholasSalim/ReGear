@@ -482,6 +482,9 @@ export const en = {
     itemUnavailable: "This item is no longer available.",
     ownListing: "You cannot buy your own listing.",
     justReserved: "Someone just reserved this item.",
+    beingPaid: "Someone is paying for this item right now. If they don't finish, it's back on sale within 10 minutes.",
+    noRefundByHand: "This order has no bank-transfer refund waiting to be sent.",
+    refundAccountMissing: "The buyer hasn't given a bank account for the refund yet.",
     tooManyUnpaidOrders: (n: number) => `You already have ${n} unpaid orders. Pay for or cancel one before checking out again.`,
     checkoutAgainLater: "You've left this item unpaid twice in the last day. You can check it out again tomorrow.",
     alreadyPaid: "This order has already been paid or closed.",
@@ -609,6 +612,7 @@ export const en = {
     resetLimit: "Too many requests. Try again in a few minutes.",
     resetInvalid: "This reset link is invalid or has expired. Request a new one.",
     codeWrong: (left: number) => `That code isn't right. ${left === 1 ? "1 attempt" : `${left} attempts`} left.`,
+    codeFormat: "Enter the 6-digit code from the email.",
     codeExpired: "This sign-up has expired or the code was entered wrong too many times. Sign up again to get a new code.",
     signupExists: "An account with this email already exists. Sign in instead.",
     codeResent: "We sent a new code. Only the newest one works.",
@@ -624,9 +628,11 @@ export const en = {
     withdrawalRejected: "Rejected. The money is back in the seller's balance.",
     withdrawalMarkedPaid: "Marked as paid.",
     withdrawalMarkedFailed: "Marked as failed. The money is back in the seller's balance.",
+    refundAccountSaved: (name: string) => `Saved. We'll send your refund to the account of ${name}.`,
+    refundMarkedSent: "Marked as refunded. The buyer has been emailed.",
   },
   events: {
-    CREATED: (p: { minutes: number }) => `Order placed. Item reserved for ${p.minutes} minutes pending payment.`,
+    CREATED: (p: { minutes: number }) => `Order placed. Pay within ${p.minutes} minutes; the item is held for you once you start paying.`,
     PAID: () => "Payment received. ReGear holds it until the buyer accepts the item.",
     CANCELLED: (p: { by: "buyer" | "seller"; reason?: string; refunded?: boolean }) =>
       `Order cancelled by the ${p.by}${p.reason ? `: ${p.reason}` : "."}${p.refunded ? " Full refund issued." : ""}`,
@@ -652,6 +658,10 @@ export const en = {
         : p.outcome === "partial"
           ? "Dispute resolved with a partial refund to the buyer; the remainder was released to the seller's balance."
           : "Dispute resolved in the seller's favour. Payment released to the seller's balance.",
+    REFUND_BY_HAND: (p: { amount: string; days: number }) =>
+      `The payment was a bank transfer, so the refund of ${p.amount} is sent by hand: add the bank account to send it to. It's sent within ${p.days} business days of that.`,
+    REFUND_ACCOUNT_SET: (p: { bank: string; account: string }) => `Refund account set to ${p.bank} ${p.account}.`,
+    REFUND_SENT: (p: { amount: string; bank: string; account: string }) => `Refund of ${p.amount} sent to ${p.bank} ${p.account}.`,
   },
   auth: {
     loginMetaTitle: "Sign in",
@@ -819,6 +829,16 @@ export const en = {
     fee: "ReGear fee (5%)",
     payout: "Seller payout",
     refundedLabel: "Refunded",
+    bankTransferNote: (max: string | null) =>
+      `${max ? `GoPay, ShopeePay and QRIS take up to ${max}, so pay this order by bank transfer (virtual account). ` : "Pay with GoPay, ShopeePay, QRIS or bank transfer (virtual account). "}A bank transfer is refunded by hand, to an account you give us.`,
+    refundTitle: "Your refund",
+    saveRefundAccount: "Send my refund here",
+    changeRefundAccount: "Change bank account",
+    refundNeedsAccount: (amount: string, days: number) =>
+      `You paid by bank transfer, which can't be refunded automatically. Tell us where to send your ${amount}, and we'll transfer it within ${days} business days.`,
+    refundWaiting: (amount: string, account: string, name: string, days: number) =>
+      `We'll transfer ${amount} to ${account} (${name}) within ${days} business days. You can change the account until then.`,
+    refundSentTo: (amount: string, account: string, date: string) => `${amount} was transferred to ${account} on ${date}.`,
     shipment: "Shipment",
     shipTo: "Ship to",
     addressRemoved: "Address removed",
@@ -1047,7 +1067,21 @@ export const en = {
       paymentsSimulated: "Payments: simulated",
       payoutsSimulated: "Payouts: simulated",
     },
-    nav: { overview: "Overview", orders: "Orders", users: "Users", verifications: "Verifications", disputes: "Disputes", payouts: "Payouts", listings: "Listings", audit: "Audit log" },
+    nav: { overview: "Overview", orders: "Orders", users: "Users", verifications: "Verifications", disputes: "Disputes", payouts: "Payouts", refunds: "Refunds", listings: "Listings", audit: "Audit log" },
+    refunds: {
+      title: "Refunds by hand",
+      intro: "Bank-transfer payments can't be refunded through Midtrans. Transfer each refund to the account the buyer gave, then mark it refunded with the transfer reference.",
+      toSend: "To send",
+      toSendEmpty: "No refunds waiting to be sent.",
+      waiting: "Waiting for the buyer's bank account",
+      waitingIntro: "The buyer has been emailed to add one on the order page.",
+      waitingEmpty: "Nobody owes us bank details.",
+      sent: "Recently sent",
+      sentEmpty: "No refunds sent by hand yet.",
+      account: "Send to",
+      owedSince: "Owed since",
+      reference: "Reference",
+    },
     historyTitle: "History",
     viewOrder: "View order",
     reviewedBy: (who: string, date: string) => `Reviewed by ${who}, ${date}`,
@@ -1098,6 +1132,7 @@ export const en = {
       created: "Placed",
       paidAt: "Paid",
       paymentRef: "Payment reference",
+      paymentMethod: "Paid with",
       refundedAt: "Refunded",
       cancelledAt: "Cancelled",
       delivery: "Shipping",
@@ -1258,12 +1293,31 @@ export const en = {
       note: "The link works once, for 1 hour. If you didn't ask for this, ignore this email; your password hasn't changed.",
     },
     order: {
+      REFUND_BY_HAND: {
+        buyer: {
+          subject: (n: string) => `Where should we send your refund for order ${n}?`,
+          body: (p: { amount: string; days: number }) =>
+            `You paid by bank transfer, which can't be refunded automatically. Add the bank account to send your ${p.amount} to on the order page, and we'll transfer it within ${p.days} business days.`,
+        },
+      },
+      REFUND_ACCOUNT_SET: {
+        buyer: {
+          subject: (n: string) => `Refund account set for order ${n}`,
+          body: (p: { bank: string; account: string }) => `Your refund will be sent to ${p.bank} ${p.account}. If you didn't do this, change it on the order page and reply to this email.`,
+        },
+      },
+      REFUND_SENT: {
+        buyer: {
+          subject: (n: string) => `Refund sent for order ${n}`,
+          body: (p: { amount: string; bank: string; account: string }) => `We transferred ${p.amount} to ${p.bank} ${p.account}. Depending on your bank, it can take up to a business day to show.`,
+        },
+      },
       PAID: {
         buyer: { subject: (n: string) => `Payment received for order ${n}`, body: () => "We've received your payment and are holding it until you accept the item. We'll let you know when the seller ships it." },
         seller: { subject: (n: string) => `New order ${n}: please ship it`, body: () => "The buyer has paid. Pack the item, ship it with a courier and add the tracking number on the order page. You're paid once the buyer accepts the item." },
       },
       CANCELLED: {
-        buyer: { subject: (n: string) => `Order ${n} was cancelled`, body: (p: { reason?: string; refunded?: boolean }) => `The seller cancelled this order${p.reason ? `: ${p.reason}` : "."}${p.refunded ? " Your payment has been refunded in full." : ""}` },
+        buyer: { subject: (n: string) => `Order ${n} was cancelled`, body: (p: { reason?: string; refunded?: boolean }) => `The seller cancelled this order${p.reason ? `: ${p.reason}` : "."}${p.refunded ? " Your payment is being refunded in full." : ""}` },
         seller: { subject: (n: string) => `Order ${n} was cancelled`, body: (p: { reason?: string; refunded?: boolean }) => `The buyer cancelled this order${p.reason ? `: ${p.reason}` : "."} Your listing is back on sale; don't ship the item.` },
       },
       EXPIRED: {
@@ -1304,7 +1358,7 @@ export const en = {
         seller: { subject: (n: string) => `Return on its way for order ${n}`, body: (p: { carrier: string; tracking: string }) => `The buyer shipped the item back with ${p.carrier}, tracking number ${p.tracking}. Confirm on the order page once it arrives; the buyer is then refunded.` },
       },
       REFUNDED: {
-        buyer: { subject: (n: string) => `Refund for order ${n}`, body: () => "The seller received the returned item and your payment has been refunded in full." },
+        buyer: { subject: (n: string) => `Refund for order ${n}`, body: () => "The seller received the returned item and your payment is being refunded in full." },
       },
       DISPUTE_OPENED: {
         buyer: { subject: (n: string) => `A dispute was opened for order ${n}`, body: () => "The seller opened a dispute about this order. The payment is frozen until ReGear decides. Reply and add evidence on the dispute page." },
@@ -1314,7 +1368,7 @@ export const en = {
         buyer: {
           subject: (n: string) => `Dispute decided for order ${n}`,
           body: (p: { outcome: "buyer" | "partial" | "seller" }): string =>
-            p.outcome === "buyer" ? "ReGear decided the dispute in your favour. Your payment has been refunded in full." : p.outcome === "partial" ? "ReGear decided the dispute with a partial refund to you." : "ReGear decided the dispute in the seller's favour, and the payment has been released to the seller.",
+            p.outcome === "buyer" ? "ReGear decided the dispute in your favour. Your payment is being refunded in full." : p.outcome === "partial" ? "ReGear decided the dispute with a partial refund to you." : "ReGear decided the dispute in the seller's favour, and the payment has been released to the seller.",
         },
         seller: {
           subject: (n: string) => `Dispute decided for order ${n}`,

@@ -17,6 +17,7 @@ import {
   disputeMessageSchema,
   disputeSchema,
   id as idSchema,
+  payoutAccountSchema,
   returnRequestSchema,
   reviewSchema,
   shipSchema,
@@ -83,6 +84,23 @@ export async function payOrderAction(orderId: string, _prev?: ActionState, _form
 export async function cancelOrderAction(orderId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
   const reason = text(0, 300).catch("").parse(formData.get("reason") ?? "");
   return orderStep(orderId, (uid) => orders.cancelOrder(orderId, uid, reason), "cancelled");
+}
+
+/** Where a bank-transfer refund goes; the buyer is emailed about every change. */
+export async function saveRefundAccountAction(orderId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  return runAction(async () => {
+    const user = await requireUserStrict();
+    const { t } = await actionI18n();
+    idSchema.parse(orderId);
+    const limited = await rateLimit(`refund-account:${user.id}`, 10, 86_400);
+    if (!limited.ok) return { error: t.actions.passwordLimit };
+    const input = payoutAccountSchema.parse(formToObject(formData));
+    const res = await orders.setRefundAccount(orderId, user.id, input);
+    invalidate(res.tags);
+    await audit(user.id, "refund.account_set", "Order", orderId, { bank: input.bank, last4: input.accountNumber.slice(-4) });
+    refresh();
+    return { ok: true, message: t.actions.refundAccountSaved(input.accountName) };
+  });
 }
 
 export async function shipOrderAction(orderId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {

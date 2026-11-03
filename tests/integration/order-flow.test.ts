@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // next/cache is only meaningful inside a Next.js request; the service imports
 // tag helpers from it, so provide inert stand-ins.
@@ -66,7 +66,8 @@ describe("order lifecycle", () => {
 
   it("runs checkout → payment → shipping → delivery → completion", async () => {
     const { orderId } = await orders.createOrder(f.buyer.id, f.listing.id, address);
-    expect((await db.listing.findUniqueOrThrow({ where: { id: f.listing.id } })).status).toBe("RESERVED");
+    // Checking out doesn't take the item off sale; only paying does.
+    expect((await db.listing.findUniqueOrThrow({ where: { id: f.listing.id } })).status).toBe("ACTIVE");
 
     await orders.payOrder(orderId, f.buyer.id);
     await orders.shipOrder(orderId, f.sellerUser.id, "JNE", "JNE123456");
@@ -87,10 +88,53 @@ describe("order lifecycle", () => {
   });
 
   it("prevents double-selling and self-purchase", async () => {
-    await orders.createOrder(f.buyer.id, f.listing.id, address);
+    const mine = await orders.createOrder(f.buyer.id, f.listing.id, address);
+    const theirs = await orders.createOrder(f.other.id, f.listing.id, address);
+    await orders.payOrder(mine.orderId, f.buyer.id);
+    await expect(orders.payOrder(theirs.orderId, f.other.id)).rejects.toThrow(/no longer available/);
     await expect(orders.createOrder(f.other.id, f.listing.id, address)).rejects.toThrow(/no longer available/);
     await db.listing.update({ where: { id: f.listing.id }, data: { status: "ACTIVE" } });
     await expect(orders.createOrder(f.sellerUser.id, f.listing.id, address)).rejects.toThrow(/own listing/);
+  });
+
+  describe("on a hosted payment page", () => {
+    beforeEach(() => {
+      vi.spyOn(payments, "checkout").mockResolvedValue({ redirectUrl: "https://pay.test/page" });
+      vi.spyOn(payments, "status").mockResolvedValue({ state: "none" });
+      vi.spyOn(payments, "abandon").mockResolvedValue({ state: "none" });
+    });
+    afterEach(() => vi.restoreAllMocks());
+
+    it("holds the item only while someone is paying", async () => {
+      const mine = await orders.createOrder(f.buyer.id, f.listing.id, address);
+      const theirs = await orders.createOrder(f.other.id, f.listing.id, address);
+      await orders.payOrder(mine.orderId, f.buyer.id);
+      expect((await db.listing.findUniqueOrThrow({ where: { id: f.listing.id } })).status).toBe("RESERVED");
+      await expect(orders.payOrder(theirs.orderId, f.other.id)).rejects.toThrow(/paying for this item/);
+      await expect(orders.createOrder(f.sellerUser.id, f.listing.id, address)).rejects.toThrow(/paying for this item|own listing/);
+    });
+
+    it("releases a lapsed hold as soon as someone else pays", async () => {
+      const mine = await orders.createOrder(f.buyer.id, f.listing.id, address);
+      const theirs = await orders.createOrder(f.other.id, f.listing.id, address);
+      await orders.payOrder(mine.orderId, f.buyer.id);
+      await db.order.update({ where: { id: mine.orderId }, data: { reservedAt: new Date(Date.now() - 11 * 60_000) } });
+
+      expect(await orders.payOrder(theirs.orderId, f.other.id)).toMatchObject({ redirectUrl: "https://pay.test/page" });
+      expect((await db.order.findUniqueOrThrow({ where: { id: mine.orderId } })).status).toBe("CANCELLED");
+      expect((await db.order.findUniqueOrThrow({ where: { id: theirs.orderId } })).reservedAt).not.toBeNull();
+    });
+
+    it("stops a buyer re-reserving an item they keep leaving unpaid", async () => {
+      for (let i = 0; i < 2; i++) {
+        const { orderId } = await orders.createOrder(f.buyer.id, f.listing.id, address);
+        await orders.payOrder(orderId, f.buyer.id);
+        await orders.cancelOrder(orderId, i === 0 ? f.buyer.id : f.sellerUser.id, "");
+      }
+      await expect(orders.createOrder(f.buyer.id, f.listing.id, address)).rejects.toThrow(/tomorrow/);
+      // Other buyers are unaffected.
+      await orders.createOrder(f.other.id, f.listing.id, address);
+    });
   });
 
   it("enforces ownership on every transition (no IDOR)", async () => {
@@ -285,14 +329,12 @@ describe("unpaid checkouts", () => {
     await orders.createOrder(f.buyer.id, ids[3], address);
   });
 
-  it("stops a buyer re-reserving an item they keep leaving unpaid", async () => {
-    for (let i = 0; i < 2; i++) {
+  it("doesn't count checkouts that never reached the payment page as abandoned", async () => {
+    for (let i = 0; i < 3; i++) {
       const { orderId } = await orders.createOrder(f.buyer.id, f.listing.id, address);
-      await orders.cancelOrder(orderId, i === 0 ? f.buyer.id : f.sellerUser.id, "");
+      await orders.cancelOrder(orderId, f.buyer.id, "");
     }
-    await expect(orders.createOrder(f.buyer.id, f.listing.id, address)).rejects.toThrow(/tomorrow/);
-    // Other buyers are unaffected.
-    await orders.createOrder(f.other.id, f.listing.id, address);
+    await orders.createOrder(f.buyer.id, f.listing.id, address);
   });
 });
 

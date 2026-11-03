@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Link, useT } from "@/i18n/client";
 import { confirmSignupAction, loginAction, registerAction, resendSignupCodeAction } from "@/actions/auth";
 import { ActionButton, FormMessage, PasswordInput, SubmitButton, useActionForm } from "@/components/forms";
@@ -83,6 +84,8 @@ export function RegisterForm({ next }: { next?: string }) {
 export function ConfirmSignupForm({ next }: { next?: string }) {
   const { state, pending, formProps } = useActionForm(confirmSignupAction);
   const t = useT().auth;
+  // Digits only, at most six. Pasting "123 456" or "Code: 123456" still works.
+  const [code, setCode] = useState("");
   return (
     <div className="space-y-4">
       <form {...formProps} className="space-y-4">
@@ -94,8 +97,14 @@ export function ConfirmSignupForm({ next }: { next?: string }) {
             name="code"
             inputMode="numeric"
             autoComplete="one-time-code"
-            pattern="[0-9 ]*"
-            maxLength={7}
+            value={code}
+            onChange={(e) => {
+              const digits = e.target.value.replace(/\D/g, "").slice(0, 6);
+              setCode(digits);
+              // A partial code is stopped before it's sent, in our words rather than the browser's.
+              e.target.setCustomValidity(digits.length > 0 && digits.length < 6 ? t.codeFormat : "");
+            }}
+            pattern="[0-9]{6}"
             required
             autoFocus
             className="input num text-center text-2xl tracking-[0.4em]"

@@ -26,6 +26,11 @@ export const ORDER_EMAIL_RECIPIENTS: { [T in EventType]?: (p: EventParams<T>) =>
   REFUNDED: () => ["buyer"],
   DISPUTE_OPENED: (p) => [p.by === "buyer" ? "seller" : "buyer"],
   DISPUTE_RESOLVED: () => ["buyer", "seller"],
+  REFUND_BY_HAND: () => ["buyer"],
+  // The buyer set it themselves, but it says where their money goes: an email
+  // tells them if someone else did (an account takeover).
+  REFUND_ACCOUNT_SET: () => ["buyer"],
+  REFUND_SENT: () => ["buyer"],
 };
 
 const localeOf = (value: string): Locale => (isLocale(value) ? value : "id");

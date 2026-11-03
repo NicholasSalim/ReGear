@@ -70,7 +70,10 @@ export async function confirmSignupAction(_prev: ActionState, formData: FormData
 
   const signup = await currentSignup();
   if (!signup) return { error: t.actions.codeExpired };
-  const result = await confirmSignup(signup.token, String(formData.get("code") ?? "").replace(/\s/g, ""));
+  // Not a 6-digit code can't be right: say so without using up one of the five guesses.
+  const code = String(formData.get("code") ?? "").replace(/\s/g, "");
+  if (!/^\d{6}$/.test(code)) return { fieldErrors: { code: t.actions.codeFormat } };
+  const result = await confirmSignup(signup.token, code);
   if (!result.ok) {
     if (result.reason === "wrong") return { fieldErrors: { code: t.actions.codeWrong(result.attemptsLeft) } };
     await clearSignupCookie();

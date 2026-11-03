@@ -484,6 +484,9 @@ export const id: typeof en = {
     itemUnavailable: "Barang ini sudah tidak tersedia.",
     ownListing: "Anda tidak bisa membeli iklan Anda sendiri.",
     justReserved: "Barang ini baru saja dipesan orang lain.",
+    beingPaid: "Seseorang sedang membayar barang ini. Jika tidak selesai, barang dijual kembali dalam 10 menit.",
+    noRefundByHand: "Pesanan ini tidak punya pengembalian dana via transfer bank yang menunggu dikirim.",
+    refundAccountMissing: "Pembeli belum memberikan rekening bank untuk pengembalian dana.",
     tooManyUnpaidOrders: (n: number) => `Anda sudah punya ${n} pesanan yang belum dibayar. Bayar atau batalkan salah satunya sebelum checkout lagi.`,
     checkoutAgainLater: "Anda sudah dua kali membiarkan barang ini tidak dibayar dalam sehari terakhir. Anda bisa checkout lagi besok.",
     alreadyPaid: "Pesanan ini sudah dibayar atau ditutup.",
@@ -611,6 +614,7 @@ export const id: typeof en = {
     resetLimit: "Terlalu banyak permintaan. Coba lagi dalam beberapa menit.",
     resetInvalid: "Tautan ini tidak valid atau sudah kedaluwarsa. Minta tautan baru.",
     codeWrong: (left: number) => `Kodenya salah. Sisa ${left} kali percobaan.`,
+    codeFormat: "Masukkan kode 6 digit dari email.",
     codeExpired: "Pendaftaran ini sudah kedaluwarsa atau kodenya terlalu sering salah. Daftar lagi untuk mendapat kode baru.",
     signupExists: "Akun dengan email ini sudah ada. Silakan masuk.",
     codeResent: "Kami sudah mengirim kode baru. Hanya kode terbaru yang berlaku.",
@@ -626,9 +630,11 @@ export const id: typeof en = {
     withdrawalRejected: "Ditolak. Dana kembali ke saldo penjual.",
     withdrawalMarkedPaid: "Ditandai sudah dibayar.",
     withdrawalMarkedFailed: "Ditandai gagal. Dana kembali ke saldo penjual.",
+    refundAccountSaved: (name: string) => `Tersimpan. Pengembalian dana akan kami kirim ke rekening atas nama ${name}.`,
+    refundMarkedSent: "Ditandai sudah dikembalikan. Pembeli sudah dikirimi email.",
   },
   events: {
-    CREATED: (p: { minutes: number }) => `Pesanan dibuat. Barang dipesan selama ${p.minutes} menit sambil menunggu pembayaran.`,
+    CREATED: (p: { minutes: number }) => `Pesanan dibuat. Bayar dalam ${p.minutes} menit; barang disimpan untuk Anda begitu Anda mulai membayar.`,
     PAID: () => "Pembayaran diterima. ReGear menahannya sampai pembeli menerima barang.",
     CANCELLED: (p: { by: "buyer" | "seller"; reason?: string; refunded?: boolean }) =>
       `Pesanan dibatalkan oleh ${p.by === "buyer" ? "pembeli" : "penjual"}${p.reason ? `: ${p.reason}` : "."}${p.refunded ? " Dana dikembalikan penuh." : ""}`,
@@ -655,6 +661,10 @@ export const id: typeof en = {
         : p.outcome === "partial"
           ? "Sengketa diselesaikan dengan pengembalian dana sebagian ke pembeli; sisanya diteruskan ke saldo penjual."
           : "Sengketa diselesaikan untuk penjual. Pembayaran diteruskan ke saldo penjual.",
+    REFUND_BY_HAND: (p: { amount: string; days: number }) =>
+      `Pembayaran dilakukan via transfer bank, jadi pengembalian dana ${p.amount} dikirim manual: tambahkan rekening bank tujuannya. Dana dikirim dalam ${p.days} hari kerja setelahnya.`,
+    REFUND_ACCOUNT_SET: (p: { bank: string; account: string }) => `Rekening pengembalian dana diatur ke ${p.bank} ${p.account}.`,
+    REFUND_SENT: (p: { amount: string; bank: string; account: string }) => `Pengembalian dana ${p.amount} dikirim ke ${p.bank} ${p.account}.`,
   },
   auth: {
     loginMetaTitle: "Masuk",
@@ -822,6 +832,16 @@ export const id: typeof en = {
     fee: "Biaya ReGear (5%)",
     payout: "Pembayaran ke penjual",
     refundedLabel: "Dikembalikan",
+    bankTransferNote: (max: string | null) =>
+      `${max ? `GoPay, ShopeePay, dan QRIS hanya menerima hingga ${max}, jadi bayar pesanan ini via transfer bank (virtual account). ` : "Bayar dengan GoPay, ShopeePay, QRIS, atau transfer bank (virtual account). "}Pengembalian dana untuk transfer bank dikirim manual ke rekening yang Anda berikan.`,
+    refundTitle: "Pengembalian dana Anda",
+    saveRefundAccount: "Kirim pengembalian dana ke sini",
+    changeRefundAccount: "Ubah rekening bank",
+    refundNeedsAccount: (amount: string, days: number) =>
+      `Anda membayar via transfer bank, yang tidak bisa dikembalikan otomatis. Beri tahu kami ke mana ${amount} harus dikirim, dan kami akan mentransfernya dalam ${days} hari kerja.`,
+    refundWaiting: (amount: string, account: string, name: string, days: number) =>
+      `Kami akan mentransfer ${amount} ke ${account} (${name}) dalam ${days} hari kerja. Rekening masih bisa Anda ubah sampai saat itu.`,
+    refundSentTo: (amount: string, account: string, date: string) => `${amount} sudah ditransfer ke ${account} pada ${date}.`,
     shipment: "Pengiriman",
     shipTo: "Kirim ke",
     addressRemoved: "Alamat dihapus",
@@ -1050,7 +1070,21 @@ export const id: typeof en = {
       paymentsSimulated: "Pembayaran: simulasi",
       payoutsSimulated: "Penarikan: simulasi",
     },
-    nav: { overview: "Ringkasan", orders: "Pesanan", users: "Pengguna", verifications: "Verifikasi", disputes: "Sengketa", payouts: "Penarikan", listings: "Iklan", audit: "Log audit" },
+    nav: { overview: "Ringkasan", orders: "Pesanan", users: "Pengguna", verifications: "Verifikasi", disputes: "Sengketa", payouts: "Penarikan", refunds: "Pengembalian dana", listings: "Iklan", audit: "Log audit" },
+    refunds: {
+      title: "Pengembalian dana manual",
+      intro: "Pembayaran via transfer bank tidak bisa dikembalikan lewat Midtrans. Transfer setiap pengembalian dana ke rekening yang diberikan pembeli, lalu tandai sudah dikembalikan dengan referensi transfernya.",
+      toSend: "Perlu dikirim",
+      toSendEmpty: "Tidak ada pengembalian dana yang menunggu dikirim.",
+      waiting: "Menunggu rekening bank pembeli",
+      waitingIntro: "Pembeli sudah dikirimi email untuk menambahkannya di halaman pesanan.",
+      waitingEmpty: "Tidak ada yang perlu memberikan rekening bank.",
+      sent: "Baru dikirim",
+      sentEmpty: "Belum ada pengembalian dana manual yang dikirim.",
+      account: "Kirim ke",
+      owedSince: "Terutang sejak",
+      reference: "Referensi",
+    },
     historyTitle: "Riwayat",
     viewOrder: "Lihat pesanan",
     reviewedBy: (who: string, date: string) => `Diperiksa oleh ${who}, ${date}`,
@@ -1101,6 +1135,7 @@ export const id: typeof en = {
       created: "Dibuat",
       paidAt: "Dibayar",
       paymentRef: "Referensi pembayaran",
+      paymentMethod: "Dibayar dengan",
       refundedAt: "Dikembalikan",
       cancelledAt: "Dibatalkan",
       delivery: "Pengiriman",
@@ -1261,6 +1296,25 @@ export const id: typeof en = {
       note: "Tautan hanya bisa dipakai sekali dan berlaku 1 jam. Jika Anda tidak memintanya, abaikan email ini; kata sandi Anda tidak berubah.",
     },
     order: {
+      REFUND_BY_HAND: {
+        buyer: {
+          subject: (n: string) => `Ke mana pengembalian dana pesanan ${n} dikirim?`,
+          body: (p: { amount: string; days: number }) =>
+            `Anda membayar via transfer bank, yang tidak bisa dikembalikan otomatis. Tambahkan rekening bank tujuan untuk ${p.amount} Anda di halaman pesanan, dan kami akan mentransfernya dalam ${p.days} hari kerja.`,
+        },
+      },
+      REFUND_ACCOUNT_SET: {
+        buyer: {
+          subject: (n: string) => `Rekening pengembalian dana untuk pesanan ${n} diatur`,
+          body: (p: { bank: string; account: string }) => `Pengembalian dana Anda akan dikirim ke ${p.bank} ${p.account}. Jika bukan Anda yang melakukannya, ubah di halaman pesanan dan balas email ini.`,
+        },
+      },
+      REFUND_SENT: {
+        buyer: {
+          subject: (n: string) => `Pengembalian dana pesanan ${n} sudah dikirim`,
+          body: (p: { amount: string; bank: string; account: string }) => `Kami sudah mentransfer ${p.amount} ke ${p.bank} ${p.account}. Tergantung bank Anda, dana bisa butuh hingga satu hari kerja untuk masuk.`,
+        },
+      },
       PAID: {
         buyer: { subject: (n: string) => `Pembayaran diterima untuk pesanan ${n}`, body: () => "Pembayaran Anda sudah kami terima dan ditahan sampai Anda menerima barang. Kami akan memberi tahu Anda saat penjual mengirimkannya." },
         seller: { subject: (n: string) => `Pesanan baru ${n}: segera kirim`, body: () => "Pembeli sudah membayar. Kemas barangnya, kirim dengan jasa ekspedisi, lalu masukkan nomor resi di halaman pesanan. Pembayaran diteruskan ke Anda setelah pembeli menerima barang." },

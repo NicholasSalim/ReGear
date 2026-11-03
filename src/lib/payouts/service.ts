@@ -4,7 +4,7 @@ import { isLocale } from "@/i18n/locales";
 import { enqueueEmail } from "@/lib/email/outbox";
 import { formatMoney } from "@/lib/format";
 import { DomainError } from "@/lib/orders/service";
-import { BANKS, bankName, PayoutError, payouts } from "@/lib/payouts/provider";
+import { BANKS, bankName, maskAccount, PayoutError, payouts } from "@/lib/payouts/provider";
 import type { Prisma } from "@/generated/prisma/client";
 import {
   MIN_WITHDRAWAL_IDR,
@@ -36,8 +36,7 @@ async function sellerUser(tx: Tx, sellerId: string) {
   return { userId: seller.user.id, locale: localeOf(seller.user.locale) };
 }
 
-/** Last four digits only, for emails and lists. */
-export const maskAccount = (account: string) => `•••• ${account.slice(-4)}`;
+export { maskAccount };
 
 // Payout account --------------------------------------------------------------
 

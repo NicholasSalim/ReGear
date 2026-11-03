@@ -15,15 +15,27 @@ import {
   receiveReturnAction,
   requestReturnAction,
   respondReturnAction,
+  saveRefundAccountAction,
   shipOrderAction,
   shipReturnAction,
 } from "@/actions/orders";
-import { DISPUTE_STATUS_LABELS, ORDER_STATUS_INFO, RETURN_REASON_LABELS, RETURN_STATUS_LABELS, type OrderStatus, type ReturnStatus } from "@/lib/constants";
+import {
+  DISPUTE_STATUS_LABELS,
+  ORDER_STATUS_INFO,
+  QRIS_MAX_IDR,
+  REFUND_BY_HAND_DAYS,
+  RETURN_REASON_LABELS,
+  RETURN_STATUS_LABELS,
+  type OrderStatus,
+  type ReturnStatus,
+} from "@/lib/constants";
 import { findConversation } from "@/lib/messages";
 import type { OrderForUser } from "@/lib/data/orders";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { mediaUrl } from "@/lib/media";
-import { payments } from "@/lib/payments";
+import { payments, refundsByHand } from "@/lib/payments";
+import { bankName, BANKS, maskAccount } from "@/lib/payouts/provider";
+import { BankAccountForm } from "@/components/bank-account-form";
 import { canOpenDispute, isWithinReturnWindow } from "@/lib/orders/state";
 import { GradeBadge, warrantyLabel } from "@/components/badges";
 import {
@@ -59,6 +71,9 @@ export async function OrderDetail({ order, now }: { order: OrderForUser; now: Da
   // The buyer can always reach the seller; the seller replies in a conversation the buyer started.
   const conversation = isSeller ? await findConversation(order.buyerId, order.listingId) : null;
   const tracked = !["CANCELLED", "PENDING_PAYMENT", "REFUNDED"].includes(s);
+  // A bank transfer is refunded by hand, to an account the buyer gives.
+  const refundByHand = isBuyer && order.refundIdr > 0 && refundsByHand(order.paymentMethod);
+  const refundAccount = order.refundBank && order.refundAccountNumber ? `${bankName(order.refundBank)} ${maskAccount(order.refundAccountNumber)}` : null;
 
   return (
     <div className="space-y-6">
@@ -143,6 +158,7 @@ export async function OrderDetail({ order, now }: { order: OrderForUser; now: Da
                 <>
                   <div className="w-full rounded-lg bg-indigo-50 p-3 text-sm text-indigo-900">
                     {t.payIntro}
+                    <span className="mt-1 block">{t.bankTransferNote(order.totalIdr > QRIS_MAX_IDR ? formatMoney(QRIS_MAX_IDR) : null)}</span>
                     {payments.mode !== "live" && (
                       <span className="block text-xs text-indigo-700">{payments.mode === "sandbox" ? t.sandboxNote : t.demoNote}</span>
                     )}
@@ -206,6 +222,27 @@ export async function OrderDetail({ order, now }: { order: OrderForUser; now: Da
               )}
             </div>
           </section>
+
+          {refundByHand && (
+            <section className="card space-y-3 p-5" aria-labelledby="refund-heading">
+              <h2 id="refund-heading" className="font-bold">{t.refundTitle}</h2>
+              {order.refundedAt ? (
+                <p className="text-sm text-slate-600">{t.refundSentTo(formatMoney(order.refundIdr), refundAccount ?? "", formatDate(order.refundedAt, locale))}</p>
+              ) : refundAccount ? (
+                <>
+                  <p className="text-sm text-slate-600">{t.refundWaiting(formatMoney(order.refundIdr), refundAccount, order.refundAccountName ?? "", REFUND_BY_HAND_DAYS)}</p>
+                  <Reveal label={t.changeRefundAccount} variant="ghost">
+                    <BankAccountForm action={saveRefundAccountAction.bind(null, order.id)} banks={[...BANKS]} replacing />
+                  </Reveal>
+                </>
+              ) : (
+                <>
+                  <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">{t.refundNeedsAccount(formatMoney(order.refundIdr), REFUND_BY_HAND_DAYS)}</p>
+                  <BankAccountForm action={saveRefundAccountAction.bind(null, order.id)} banks={[...BANKS]} replacing={false} submit={t.saveRefundAccount} />
+                </>
+              )}
+            </section>
+          )}
 
           {/* Return */}
           {order.returnRequest && (

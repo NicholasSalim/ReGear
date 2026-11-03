@@ -4,8 +4,8 @@ import type { Localized } from "@/i18n/locales";
 // values are placeholders: fill them in before launch. While any remains, the
 // legal pages show a "draft" notice.
 
-export const LEGAL_VERSION = "2026-10-25";
-export const LEGAL_EFFECTIVE_DATE = new Date("2026-10-25T00:00:00+07:00");
+export const LEGAL_VERSION = "2026-11-03";
+export const LEGAL_EFFECTIVE_DATE = new Date("2026-11-03T00:00:00+07:00");
 
 export const LEGAL_DETAILS: Record<"operator" | "address" | "email" | "court", Localized> = {
   operator: { en: "[Company legal name]", id: "[Nama badan hukum]" },

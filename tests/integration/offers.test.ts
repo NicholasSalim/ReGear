@@ -74,9 +74,24 @@ describe("offers", () => {
     expect(order.offerId).toBe(offerId);
     expect((await db.offer.findUniqueOrThrow({ where: { id: offerId } })).status).toBe("USED");
 
-    // Back on sale (say the order expired): the used offer can't price another order.
+    // Checking out again returns the same open order rather than a second one.
+    expect((await orders.createOrder(f.buyer.id, f.listing.id, address, offerId)).orderId).toBe(orderId);
+
+    // Paid, then back on sale (say the order was cancelled): the used offer can't price another order.
+    await orders.payOrder(orderId, f.buyer.id);
     await db.listing.update({ where: { id: f.listing.id }, data: { status: "ACTIVE" } });
     await expect(orders.createOrder(f.buyer.id, f.listing.id, address, offerId)).rejects.toThrow(/answered, used or has expired/);
+  });
+
+  it("gives the offer back when an unpaid order is cancelled", async () => {
+    const { offerId } = await offers.makeOffer(f.buyer.id, f.listing.id, 8_000, "");
+    await offers.answerOffer(f.sellerUser.id, offerId, true);
+    const first = await orders.createOrder(f.buyer.id, f.listing.id, address, offerId);
+    await orders.cancelOrder(first.orderId, f.buyer.id, "");
+    expect((await db.offer.findUniqueOrThrow({ where: { id: offerId } })).status).toBe("ACCEPTED");
+
+    const second = await orders.createOrder(f.buyer.id, f.listing.id, address, offerId);
+    expect((await db.order.findUniqueOrThrow({ where: { id: second.orderId } })).priceIdr).toBe(8_000);
   });
 
   it("only lets the offer's own buyer use it, and only once accepted and unexpired", async () => {

@@ -10,7 +10,8 @@ import { maskAccount } from "@/lib/payouts/service";
 import { requestWithdrawalAction, savePayoutAccountAction } from "@/actions/payouts";
 import { WithdrawalStatusBadge } from "@/components/badges";
 import { ButtonLink, EmptyState, PageHeader, StatCard, cn } from "@/components/ui";
-import { PayoutAccountForm, WithdrawForm } from "./payout-forms";
+import { BankAccountForm } from "@/components/bank-account-form";
+import { WithdrawForm } from "./payout-forms";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getDictionary()).payouts.sellerTitle };
@@ -75,7 +76,7 @@ export default async function SellerPayoutsPage() {
         ) : (
           <p className="text-sm text-slate-500">{t.noAccount}</p>
         )}
-        <PayoutAccountForm action={savePayoutAccountAction} banks={[...BANKS]} replacing={hasAccount} />
+        <BankAccountForm action={savePayoutAccountAction} banks={[...BANKS]} replacing={hasAccount} />
       </section>
 
       <section className="mt-8" aria-labelledby="withdrawals">

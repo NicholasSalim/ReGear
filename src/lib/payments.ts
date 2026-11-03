@@ -25,7 +25,7 @@ export type IdempotencyKey = string;
 export type PaymentState =
   | { state: "none" } // no payment started yet
   | { state: "pending" }
-  | { state: "paid"; ref: string; amountIdr: number }
+  | { state: "paid"; ref: string; amountIdr: number; method?: string } // method: how the buyer paid, as the provider names it
   | { state: "failed" }; // expired, cancelled or declined: this order can no longer be paid
 
 export interface PaymentProvider {
@@ -45,6 +45,14 @@ export interface PaymentProvider {
   abandon(orderId: string): Promise<PaymentState>;
   refund(input: { idempotencyKey: IdempotencyKey; orderId: string; ref: string; amountIdr: number }): Promise<{ ref: string }>;
 }
+
+/**
+ * Bank transfers (virtual accounts) can't be refunded through the provider:
+ * the money goes back by hand to an account the buyer gives (see the order
+ * service's setRefundAccount and markRefundSent).
+ */
+export const REFUND_BY_HAND_METHODS = ["bank_transfer", "echannel"];
+export const refundsByHand = (method: string | null | undefined) => !!method && REFUND_BY_HAND_METHODS.includes(method);
 
 /** The one key for each money movement of an order. */
 export const paymentKey = (orderId: string, movement: "charge" | "refund") => `order:${orderId}:${movement}`;

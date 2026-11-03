@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { OPEN_WITHDRAWAL_STATUSES, type WithdrawalReviewReason, type WithdrawalStatus } from "@/lib/constants";
 import { dayRange, like, type AdminSearch } from "@/lib/admin/search";
 import type { Prisma } from "@/generated/prisma/client";
+import { REFUND_BY_HAND_METHODS } from "@/lib/payments";
 import { payouts } from "@/lib/payouts/provider";
 import { sellerBalance } from "@/lib/payouts/service";
 
@@ -94,4 +95,31 @@ export async function getWithdrawalHistory(s: AdminSearch<WithdrawalStatus>) {
     db.withdrawal.count({ where }),
   ]);
   return { rows, total };
+}
+
+/** Bank-transfer refunds the admin sends by hand (see the order service's markRefundSent). */
+export async function getManualRefunds() {
+  const select = {
+    id: true,
+    number: true,
+    refundIdr: true,
+    refundBank: true,
+    refundAccountNumber: true,
+    refundAccountName: true,
+    refundedAt: true,
+    refundNote: true,
+    buyer: { select: { id: true, name: true, email: true } },
+    // When the refund became owed.
+    events: { where: { type: "REFUND_BY_HAND" }, orderBy: { createdAt: "desc" }, take: 1, select: { createdAt: true } },
+  } satisfies Prisma.OrderSelect;
+  const byHand = { refundIdr: { gt: 0 }, paymentMethod: { in: REFUND_BY_HAND_METHODS } } satisfies Prisma.OrderWhereInput;
+  const [owed, sent] = await Promise.all([
+    db.order.findMany({ where: { ...byHand, refundedAt: null }, orderBy: { updatedAt: "asc" }, take: 200, select }),
+    db.order.findMany({ where: { ...byHand, refundedAt: { not: null } }, orderBy: { refundedAt: "desc" }, take: 20, select }),
+  ]);
+  return {
+    toSend: owed.filter((o) => o.refundAccountNumber),
+    waiting: owed.filter((o) => !o.refundAccountNumber),
+    sent,
+  };
 }

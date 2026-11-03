@@ -202,6 +202,17 @@ describe("refunding a bank transfer", () => {
     await expect(orders.setRefundAccount(f.order.id, f.buyer.id, account)).rejects.toThrow(/no bank-transfer refund/);
   });
 
+  it("asks the provider how an order was paid when it wasn't recorded", async () => {
+    // Paid before the method was recorded, e.g. by an older deployment.
+    await db.order.update({ where: { id: f.order.id }, data: { paymentMethod: null } });
+    const refund = vi.spyOn(payments, "refund");
+    await orders.cancelOrder(f.order.id, f.buyer.id, "");
+    expect(refund).not.toHaveBeenCalled();
+    const o = await order();
+    expect(o).toMatchObject({ paymentMethod: "bank_transfer", refundedAt: null });
+    expect(o.events.map((e) => e.type)).toContain("REFUND_BY_HAND");
+  });
+
   it("isn't asked of an order that owes nothing", async () => {
     await expect(orders.setRefundAccount(f.order.id, f.buyer.id, account)).rejects.toThrow(/no bank-transfer refund/);
   });

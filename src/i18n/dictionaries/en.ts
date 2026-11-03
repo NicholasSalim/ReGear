@@ -731,7 +731,7 @@ export const en = {
     orderTotal: "Order total",
     reviewItem: "Review item",
     payWith: "Pay with",
-    payBody: "Bank transfer, e-wallets or card through Midtrans. You'll pick one on the next screen, and the item stays reserved while you do.",
+    payBody: "GoPay, ShopeePay, QRIS or bank transfer (virtual account) through Midtrans. You'll pick one after pressing Pay on the next screen.",
     paySimulated: "Payments on this site are simulated: no real money moves.",
     paySandbox: "Payments run in Midtrans sandbox mode: use test cards, no real money moves.",
     escrowTitle: "Your money is held by ReGear",

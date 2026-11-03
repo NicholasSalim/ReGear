@@ -734,7 +734,7 @@ export const id: typeof en = {
     orderTotal: "Total pesanan",
     reviewItem: "Periksa barang",
     payWith: "Bayar dengan",
-    payBody: "Transfer bank, dompet digital, atau kartu lewat Midtrans. Anda memilihnya di layar berikutnya, dan barang tetap dipesan selama itu.",
+    payBody: "GoPay, ShopeePay, QRIS, atau transfer bank (virtual account) lewat Midtrans. Anda memilihnya setelah menekan Bayar di layar berikutnya.",
     paySimulated: "Pembayaran di situs ini disimulasikan: tidak ada uang sungguhan yang berpindah.",
     paySandbox: "Pembayaran berjalan di mode sandbox Midtrans: gunakan kartu uji, tidak ada uang sungguhan yang berpindah.",
     escrowTitle: "Uang Anda ditahan ReGear",

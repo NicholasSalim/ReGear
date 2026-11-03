@@ -366,6 +366,7 @@ type PaidOrder = { id: string; paymentRef: string | null; paymentMethod: string 
  * an admin sends it (markRefundSent).
  */
 async function sendClaimedRefund(order: PaidOrder, amountIdr: number) {
+  if (!order.paymentMethod && order.paymentRef) order = { ...order, paymentMethod: await lookUpPaymentMethod(order.id) };
   if (refundsByHand(order.paymentMethod)) {
     await db.$transaction((tx) => addEvent(tx, order.id, "REFUND_BY_HAND", { amount: formatMoney(amountIdr), days: REFUND_BY_HAND_DAYS }));
     return;
@@ -376,6 +377,23 @@ async function sendClaimedRefund(order: PaidOrder, amountIdr: number) {
     await db.order.update({ where: { id: order.id }, data: { refundedAt: new Date() } });
   } catch (err) {
     console.error("[payments] refund failed; maintenance will retry", order.id, err);
+  }
+}
+
+/**
+ * How an order was paid, asked of the provider and saved. Orders paid before
+ * the method was recorded (or recorded by an older deployment) don't know it,
+ * and refunding a bank transfer through the provider would only fail.
+ */
+async function lookUpPaymentMethod(orderId: string) {
+  try {
+    const state = await payments.status(orderId);
+    if (state.state !== "paid" || !state.method) return null;
+    await db.order.updateMany({ where: { id: orderId, paymentMethod: null }, data: { paymentMethod: state.method } });
+    return state.method;
+  } catch (err) {
+    console.error("[payments] couldn't look up how an order was paid", orderId, err);
+    return null;
   }
 }
 

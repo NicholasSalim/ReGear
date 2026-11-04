@@ -1,8 +1,7 @@
 "use server";
 
 import { invalidate } from "@/lib/cache";
-import { actionI18n, runAction, type ActionState } from "@/lib/action";
-import { requireUserStrict } from "@/lib/auth/dal";
+import { actionI18n, runAction, type ActionState, requireTraderStrict } from "@/lib/action";
 import { rateLimit } from "@/lib/security/rate-limit";
 import * as offers from "@/lib/offers";
 import { id as idSchema } from "@/lib/validation";
@@ -17,7 +16,7 @@ function parseAmount(raw: FormDataEntryValue | null): number | null {
 
 export async function makeOfferAction(listingId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
   return runAction(async () => {
-    const user = await requireUserStrict();
+    const user = await requireTraderStrict();
     const { t } = await actionI18n();
     if (!user.emailVerified) return { error: t.domain.emailUnverified };
     idSchema.parse(listingId);
@@ -33,7 +32,7 @@ export async function makeOfferAction(listingId: string, _prev: ActionState, for
 
 export async function withdrawOfferAction(offerId: string, _prev: ActionState, _formData: FormData): Promise<ActionState> {
   return runAction(async () => {
-    const user = await requireUserStrict();
+    const user = await requireTraderStrict();
     const { t } = await actionI18n();
     idSchema.parse(offerId);
     const res = await offers.withdrawOffer(user.id, offerId);
@@ -45,7 +44,7 @@ export async function withdrawOfferAction(offerId: string, _prev: ActionState, _
 /** The seller's answer; the submit button sends decision=accept or decision=decline. */
 export async function answerOfferAction(offerId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
   return runAction(async () => {
-    const user = await requireUserStrict();
+    const user = await requireTraderStrict();
     const { t } = await actionI18n();
     idSchema.parse(offerId);
     const decision = formData.get("decision");

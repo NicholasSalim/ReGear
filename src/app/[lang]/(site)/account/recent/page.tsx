@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getDictionary } from "@/i18n/server";
-import { requireUser } from "@/lib/auth/dal";
+import { requireTrader } from "@/lib/auth/dal";
 import { RecentlyViewed } from "@/components/recently-viewed";
 import { ButtonLink, EmptyState, PageHeader } from "@/components/ui";
 
@@ -9,7 +9,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RecentPage() {
-  await requireUser("/account/recent");
+  await requireTrader("/account/recent");
   const t = (await getDictionary()).account;
   return (
     <>

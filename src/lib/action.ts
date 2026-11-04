@@ -4,6 +4,7 @@ import { z } from "zod";
 import { resolveEntry } from "@/i18n/messages";
 import { dictionaryFor, getRequestLocale, type Dictionary } from "@/i18n/server";
 import type { Locale } from "@/i18n/locales";
+import { requireUserStrict } from "@/lib/auth/dal";
 import { DomainError } from "@/lib/orders/service";
 import { InvalidTransitionError } from "@/lib/orders/state";
 import { fieldErrors } from "@/lib/validation";
@@ -48,6 +49,16 @@ export async function runAction(fn: () => Promise<ActionState | void>): Promise<
     if (err instanceof MidtransError) return { error: t.domain.paymentProviderError };
     return { error: t.domain.genericError };
   }
+}
+
+/**
+ * The signed-in user, for buying and selling. Admin accounts only do admin
+ * work: an admin who could buy or sell could also decide their own disputes.
+ */
+export async function requireTraderStrict() {
+  const user = await requireUserStrict();
+  if (user.role === "ADMIN") throw new DomainError("adminCannotTrade");
+  return user;
 }
 
 export function formToObject(formData: FormData): Record<string, string> {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { getCategory } from "@/lib/catalog";
-import { browseSchema, listingSchema, parseListing, parseRupiah, registerSchema, verificationSchema } from "@/lib/validation";
+import { en } from "@/i18n/dictionaries/en";
+import { browseSchema, fieldErrors, listingSchema, parseListing, parseRupiah, payoutAccountSchema, registerSchema, reviewSchema, verificationSchema } from "@/lib/validation";
 import { safeRedirectPath } from "@/lib/security/request";
 
 const phoneChecks = getCategory("phones")!.checks.map((c) => ({ key: c.key, status: "PASS" as const }));
@@ -155,7 +156,7 @@ describe("rupiah amounts", () => {
 describe("parseListing", () => {
   it("reports basic fields and specs in the same round", () => {
     try {
-      parseListing({ category: "phones", description: "short", specs: { storage: -5 } });
+      parseListing({ category: "phones", description: "short", specs: { storage: -5 }, publish: true });
       expect.unreachable();
     } catch (err) {
       const paths = (err as { issues: { path: string[] }[] }).issues.map((i) => i.path.join("."));
@@ -164,8 +165,49 @@ describe("parseListing", () => {
     }
   });
 
+  it("saves a draft with only a title and category, but still checks what's filled in", () => {
+    const draft = parseListing({ title: "iPhone 13", category: "phones", priceIdr: "", shippingIdr: "", specs: {}, checks: [], imageIds: [], includedAccessories: [], cosmeticScore: 8, conditionGrade: "GOOD", warrantyType: "NONE", warrantyMonths: 0, warrantyTerms: "", returnWindowDays: 7, knownIssues: "", brand: "", model: "", description: "", location: "", serialVerified: false, originalBox: false, publish: false });
+    expect(draft).toMatchObject({ priceIdr: 0, shippingIdr: 0, description: "" });
+    const paths = (fn: () => unknown) => {
+      try {
+        fn();
+        return [];
+      } catch (err) {
+        return (err as { issues: { path: string[] }[] }).issues.map((i) => i.path.join("."));
+      }
+    };
+    // A spec with the wrong type, a bad price and a missing title are still refused.
+    expect(paths(() => parseListing({ title: "iPhone 13", category: "phones", priceIdr: "abc", specs: { storage: -5 } }))).toEqual(expect.arrayContaining(["priceIdr", "specs.storage"]));
+    expect(paths(() => parseListing({ category: "phones" }))).toContain("title");
+  });
+
   it("survives a payload that isn't a listing at all", () => {
     expect(() => parseListing(null)).toThrow();
     expect(() => parseListing({ category: "nope", specs: "x" })).toThrow();
+  });
+});
+
+describe("form messages", () => {
+  const messagesFor = (schema: { safeParse: (v: unknown) => { success: boolean; error?: unknown } }, value: unknown) => {
+    const r = schema.safeParse(value);
+    return r.success ? {} : fieldErrors(r.error as never, en, "en");
+  };
+
+  it("says what's wrong instead of a generic 'check this value'", () => {
+    expect(messagesFor(payoutAccountSchema, { accountNumber: "1234567", accountName: "Budi" }).bank).toBe("This field is required");
+    expect(messagesFor(reviewSchema, { comment: "" }).rating).toBe("Choose a rating from 1 to 5 stars");
+    expect(messagesFor(reviewSchema, { rating: "9", comment: "" }).rating).toBe("Choose a rating from 1 to 5 stars");
+    const listing = messagesFor(listingSchema, { cosmeticScore: 11, returnWindowDays: 99, batteryHealth: 0 });
+    expect(listing).toMatchObject({ cosmeticScore: "Must be at most 10", returnWindowDays: "Must be at most 30", batteryHealth: "Must be at least 1" });
+  });
+
+  it("asks for a one-character field as required, not '1 characters'", () => {
+    expect(en.validation.minChars(1)).toBe("This field is required");
+    expect(en.validation.minChars(3)).toBe("Must be at least 3 characters");
+  });
+
+  it("doesn't double the full stop after someone's note", () => {
+    expect(en.events.RETURN_REJECTED({ note: "Battery was fine." })).toContain("fine. The buyer");
+    expect(en.events.RETURN_REJECTED({ note: "Battery was fine" })).toContain("fine. The buyer");
   });
 });

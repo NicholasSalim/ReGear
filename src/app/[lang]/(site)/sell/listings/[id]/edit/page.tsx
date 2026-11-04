@@ -46,7 +46,8 @@ export default async function EditListingPage({ params }: PageProps<"/[lang]/sel
     brand: listing.brand,
     model: listing.model,
     description: listing.description,
-    price: toMoney(listing.priceIdr),
+    // An unfinished draft stores 0 for a price not set yet.
+    price: listing.priceIdr ? toMoney(listing.priceIdr) : "",
     originalPrice: toMoney(listing.originalPriceIdr),
     shipping: toMoney(listing.shippingIdr),
     location: listing.location,

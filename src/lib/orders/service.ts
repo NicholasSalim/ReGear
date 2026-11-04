@@ -112,7 +112,9 @@ export async function createOrder(buyerId: string, listingId: string, address: S
     if (listing.seller.userId === buyerId) throw new DomainError("ownListing");
 
     // Locking the buyer's row makes the checks below hold against parallel checkouts.
-    await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${buyerId} FOR UPDATE`;
+    const [buyer] = await tx.$queryRaw<{ role: string }[]>`SELECT "role" FROM "User" WHERE "id" = ${buyerId} FOR UPDATE`;
+    // Admins decide disputes, so they can't be a party to an order.
+    if (buyer?.role === "ADMIN") throw new DomainError("adminCannotTrade");
     // Checking out the same item twice (a double click, a second tab) gives the same order.
     const open = await tx.order.findFirst({ where: { buyerId, listingId, status: "PENDING_PAYMENT" }, select: { id: true, listingId: true, sellerId: true, buyerId: true } });
     if (open) return { orderId: open.id, tags: tagsFor(open) };

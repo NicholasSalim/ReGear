@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getDictionary } from "@/i18n/server";
-import { requireUser } from "@/lib/auth/dal";
+import { requireTrader } from "@/lib/auth/dal";
 import { getBuyerOrders } from "@/lib/data/orders";
 import { OrderList } from "@/components/order-list";
 import { ButtonLink, EmptyState, PageHeader } from "@/components/ui";
@@ -10,7 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function PurchasesPage() {
-  const user = await requireUser("/account/orders");
+  const user = await requireTrader("/account/orders");
   const [orders, t] = await Promise.all([getBuyerOrders(user.id), getDictionary()]);
   return (
     <>

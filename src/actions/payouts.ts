@@ -4,7 +4,7 @@ import { refresh } from "next/cache";
 import { forbidden } from "next/navigation";
 import { z } from "zod";
 import { audit } from "@/lib/audit";
-import { actionI18n, formToObject, runAction, type ActionState } from "@/lib/action";
+import { actionI18n, formToObject, runAction, type ActionState, requireTraderStrict } from "@/lib/action";
 import { requireUserStrict } from "@/lib/auth/dal";
 import { rateLimit } from "@/lib/security/rate-limit";
 import * as payouts from "@/lib/payouts/service";
@@ -15,7 +15,7 @@ import { id as idSchema, payoutAccountSchema, text, withdrawalSchema } from "@/l
 
 export async function savePayoutAccountAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   return runAction(async () => {
-    const user = await requireUserStrict();
+    const user = await requireTraderStrict();
     const { t } = await actionI18n();
     const limited = await rateLimit(`payout-account:${user.id}`, 10, 86_400);
     if (!limited.ok) return { error: t.actions.passwordLimit };
@@ -29,7 +29,7 @@ export async function savePayoutAccountAction(_prev: ActionState, formData: Form
 
 export async function requestWithdrawalAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   return runAction(async () => {
-    const user = await requireUserStrict();
+    const user = await requireTraderStrict();
     const { t } = await actionI18n();
     const limited = await rateLimit(`withdraw:${user.id}`, 10, 3600);
     if (!limited.ok) return { error: t.actions.passwordLimit };

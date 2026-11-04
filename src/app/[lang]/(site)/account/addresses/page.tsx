@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getDictionary } from "@/i18n/server";
-import { requireUser } from "@/lib/auth/dal";
+import { requireTrader } from "@/lib/auth/dal";
 import { listAddresses } from "@/lib/addresses";
 import { ADDRESS_LIMIT } from "@/lib/validation";
 import { PageHeader } from "@/components/ui";
@@ -11,7 +11,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function AddressesPage() {
-  const user = await requireUser("/account/addresses");
+  const user = await requireTrader("/account/addresses");
   const [addresses, t] = await Promise.all([listAddresses(user.id), getDictionary()]);
   return (
     <>

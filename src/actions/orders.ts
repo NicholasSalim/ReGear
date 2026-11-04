@@ -7,7 +7,7 @@ import type { Dictionary } from "@/i18n/server";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { invalidate } from "@/lib/cache";
-import { actionI18n, formToObject, runAction, type ActionState } from "@/lib/action";
+import { actionI18n, formToObject, runAction, type ActionState, requireTraderStrict } from "@/lib/action";
 import { requireUserStrict } from "@/lib/auth/dal";
 import { getAddress, shippingSnapshot } from "@/lib/addresses";
 import { rateLimit } from "@/lib/security/rate-limit";
@@ -31,7 +31,7 @@ type ActionMessage = { [K in keyof Messages]: Messages[K] extends string ? K : n
 export async function checkoutAction(listingId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
   let orderId: string | undefined;
   const result = await runAction(async () => {
-    const user = await requireUserStrict();
+    const user = await requireTraderStrict();
     const { t } = await actionI18n();
     if (!user.emailVerified) return { error: t.domain.emailUnverified };
     idSchema.parse(listingId);
@@ -55,7 +55,7 @@ export async function checkoutAction(listingId: string, _prev: ActionState, form
 /** Generic wrapper for simple order transitions identified by orderId. */
 async function orderStep(orderId: string, fn: (userId: string) => Promise<{ tags: string[] }>, message: ActionMessage) {
   return runAction(async () => {
-    const user = await requireUserStrict();
+    const user = await requireTraderStrict();
     const { t } = await actionI18n();
     idSchema.parse(orderId);
     const res = await fn(user.id);
@@ -67,7 +67,7 @@ async function orderStep(orderId: string, fn: (userId: string) => Promise<{ tags
 export async function payOrderAction(orderId: string, _prev?: ActionState, _formData?: FormData): Promise<ActionState> {
   let paymentPage: string | undefined;
   const result = await runAction(async () => {
-    const user = await requireUserStrict();
+    const user = await requireTraderStrict();
     const { locale, t } = await actionI18n();
     idSchema.parse(orderId);
     const limited = await rateLimit(`pay:${user.id}`, 30, 3600);
@@ -89,7 +89,7 @@ export async function cancelOrderAction(orderId: string, _prev: ActionState, for
 /** Where a bank-transfer refund goes; the buyer is emailed about every change. */
 export async function saveRefundAccountAction(orderId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
   return runAction(async () => {
-    const user = await requireUserStrict();
+    const user = await requireTraderStrict();
     const { t } = await actionI18n();
     idSchema.parse(orderId);
     const limited = await rateLimit(`refund-account:${user.id}`, 10, 86_400);
@@ -105,7 +105,7 @@ export async function saveRefundAccountAction(orderId: string, _prev: ActionStat
 
 export async function shipOrderAction(orderId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
   return runAction(async () => {
-    const user = await requireUserStrict();
+    const user = await requireTraderStrict();
     const { t } = await actionI18n();
     idSchema.parse(orderId);
     const { carrier, trackingNumber } = shipSchema.parse(formToObject(formData));
@@ -125,7 +125,7 @@ export async function acceptOrderAction(orderId: string, _prev?: ActionState, _f
 
 export async function requestReturnAction(orderId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
   return runAction(async () => {
-    const user = await requireUserStrict();
+    const user = await requireTraderStrict();
     const { t } = await actionI18n();
     idSchema.parse(orderId);
     const { reason, details } = returnRequestSchema.parse(formToObject(formData));
@@ -137,7 +137,7 @@ export async function requestReturnAction(orderId: string, _prev: ActionState, f
 
 export async function respondReturnAction(orderId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
   return runAction(async () => {
-    const user = await requireUserStrict();
+    const user = await requireTraderStrict();
     const { t } = await actionI18n();
     idSchema.parse(orderId);
     const approve = formData.get("decision") === "approve";
@@ -150,7 +150,7 @@ export async function respondReturnAction(orderId: string, _prev: ActionState, f
 
 export async function shipReturnAction(orderId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
   return runAction(async () => {
-    const user = await requireUserStrict();
+    const user = await requireTraderStrict();
     const { t } = await actionI18n();
     idSchema.parse(orderId);
     const { carrier, trackingNumber } = shipSchema.parse(formToObject(formData));
@@ -167,7 +167,7 @@ export async function receiveReturnAction(orderId: string, _prev?: ActionState, 
 export async function openDisputeAction(orderId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
   let disputeId: string | undefined;
   const result = await runAction(async () => {
-    const user = await requireUserStrict();
+    const user = await requireTraderStrict();
     idSchema.parse(orderId);
     const { reason, description } = disputeSchema.parse(formToObject(formData));
     const res = await orders.openDispute(orderId, user.id, reason, description);
@@ -217,7 +217,7 @@ export async function postDisputeMessageAction(disputeId: string, _prev: ActionS
 
 export async function leaveReviewAction(orderId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
   return runAction(async () => {
-    const user = await requireUserStrict();
+    const user = await requireTraderStrict();
     const { t } = await actionI18n();
     idSchema.parse(orderId);
     const { rating, comment } = reviewSchema.parse(formToObject(formData));

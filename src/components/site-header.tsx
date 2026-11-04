@@ -7,7 +7,7 @@ import { getDictionary, getLocale } from "@/i18n/server";
 import { CATEGORIES } from "@/lib/catalog";
 import { AccountMenu } from "@/components/account-menu";
 import { PhoneCategories } from "@/components/phone-categories";
-import { CartLink, Greeting, MessagesLink, MyRegearMenu, UserMenu } from "@/components/user-menu";
+import { CartLink, ForTraders, Greeting, MessagesLink, MyRegearMenu, UserMenu } from "@/components/user-menu";
 import { SiteSearch } from "@/components/site-search";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Skeleton } from "@/components/ui";
@@ -49,15 +49,23 @@ export async function SiteHeader() {
             </Link>
           </nav>
           <div className="ml-auto flex items-center gap-5">
-            <Link href="/sell" className={topLink}>
-              {t.nav.sell}
-            </Link>
+            <Suspense fallback={null}>
+              <ForTraders>
+                <Link href="/sell" className={topLink}>
+                  {t.nav.sell}
+                </Link>
+              </ForTraders>
+            </Suspense>
             <Suspense fallback={null}>
               <MessagesLink />
             </Suspense>
-            <Link href="/account/favorites" className={`${topLink} inline-flex items-center gap-1`}>
-              <Heart className="size-3.5" aria-hidden /> {t.nav.watchlist}
-            </Link>
+            <Suspense fallback={null}>
+              <ForTraders>
+                <Link href="/account/favorites" className={`${topLink} inline-flex items-center gap-1`}>
+                  <Heart className="size-3.5" aria-hidden /> {t.nav.watchlist}
+                </Link>
+              </ForTraders>
+            </Suspense>
             <nav aria-label={t.nav.accountNav}>
               <Suspense fallback={<Skeleton className="h-3 w-16" />}>
                 <MyRegearMenu />
@@ -111,9 +119,13 @@ export async function SiteHeader() {
           />
         </div>
         <nav className="ml-auto flex items-center gap-1 sm:hidden" aria-label={t.nav.accountNav}>
-          <Link href="/sell" className="rounded-lg px-2 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">
-            {t.nav.sell}
-          </Link>
+          <Suspense fallback={null}>
+            <ForTraders>
+              <Link href="/sell" className="rounded-lg px-2 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">
+                {t.nav.sell}
+              </Link>
+            </ForTraders>
+          </Suspense>
           <Suspense fallback={null}>
             <CartLink />
           </Suspense>

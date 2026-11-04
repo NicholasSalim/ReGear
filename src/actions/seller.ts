@@ -6,9 +6,9 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { invalidate, TAGS } from "@/lib/cache";
-import { actionI18n, formToObject, runAction, type ActionState } from "@/lib/action";
+import { actionI18n, formToObject, runAction, type ActionState, requireTraderStrict } from "@/lib/action";
 import { localePath } from "@/i18n/locales";
-import { getSellerProfile, requireUserStrict } from "@/lib/auth/dal";
+import { getSellerProfile } from "@/lib/auth/dal";
 import { slugify } from "@/lib/format";
 import { rateLimit } from "@/lib/security/rate-limit";
 import { shopNameKey, shopNameTaken } from "@/lib/shop-name";
@@ -27,7 +27,7 @@ async function uniqueSellerSlug(name: string) {
 
 export async function createSellerProfileAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const result = await runAction(async () => {
-    const user = await requireUserStrict();
+    const user = await requireTraderStrict();
     if (await getSellerProfile(user.id)) return { ok: true };
     const { t } = await actionI18n();
     const data = sellerProfileSchema.parse(formToObject(formData));
@@ -45,7 +45,7 @@ export async function createSellerProfileAction(_prev: ActionState, formData: Fo
 
 export async function updateSellerProfileAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   return runAction(async () => {
-    const user = await requireUserStrict();
+    const user = await requireTraderStrict();
     const { t } = await actionI18n();
     const seller = await getSellerProfile(user.id);
     if (!seller) return { error: t.actions.needSellerProfile };
@@ -64,7 +64,7 @@ export async function updateSellerProfileAction(_prev: ActionState, formData: Fo
 
 export async function submitVerificationAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   return runAction(async () => {
-    const user = await requireUserStrict();
+    const user = await requireTraderStrict();
     const { t } = await actionI18n();
     const seller = await getSellerProfile(user.id);
     if (!seller) return { error: t.actions.needSellerProfile };

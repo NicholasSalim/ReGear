@@ -1,6 +1,9 @@
 // English UI text. This file defines the dictionary's shape: id.ts must provide
 // every key (checked by TypeScript). Entries that take values are functions.
 
+/** People's notes end a sentence: add a full stop unless they already did. */
+const sentence = (s: string) => (/[.!?…]$/.test(s.trim()) ? s.trim() : `${s.trim()}.`);
+
 export const en = {
   meta: {
     siteTitle: "ReGear — Pre-owned electronics with honest condition reports",
@@ -274,6 +277,10 @@ export const en = {
     listed: (date: string) => `Listed ${date}`,
     listedRecently: "Listed recently",
     editYourListing: "Edit your listing",
+    adminNoTrading: "Admin accounts can't buy or sell.",
+    yourOrder: "You've ordered this item.",
+    yourOrderUnpaid: "You're paying for this item.",
+    viewYourOrder: "View your order",
     sold: "This item has been sold",
     reserved: "Reserved by another buyer",
     buyNow: "Buy It Now",
@@ -436,7 +443,11 @@ export const en = {
     invalid: "Check this value",
     choose: "Choose an option",
     fixFields: "Please fix the highlighted fields.",
-    minChars: (n: number) => `Must be at least ${n} characters`,
+    minChars: (n: number) => (n === 1 ? "This field is required" : `Must be at least ${n} characters`),
+    required: "This field is required",
+    numberMin: (n: number) => `Must be at least ${n}`,
+    numberMax: (n: number) => `Must be at most ${n}`,
+    chooseRating: "Choose a rating from 1 to 5 stars",
     maxChars: (n: number) => `Must be at most ${n} characters`,
     invalidChars: "Contains invalid characters",
     email: "Enter a valid email address",
@@ -484,6 +495,7 @@ export const en = {
     justReserved: "Someone just reserved this item.",
     beingPaid: "Someone is paying for this item right now. If they don't finish, it's back on sale within 10 minutes.",
     noRefundByHand: "This order has no bank-transfer refund waiting to be sent.",
+    adminCannotTrade: "Admin accounts can't buy or sell. Use a separate account for that.",
     refundAccountMissing: "The buyer hasn't given a bank account for the refund yet.",
     tooManyUnpaidOrders: (n: number) => `You already have ${n} unpaid orders. Pay for or cancel one before checking out again.`,
     checkoutAgainLater: "You've left this item unpaid twice in the last day. You can check it out again tomorrow.",
@@ -630,6 +642,7 @@ export const en = {
     withdrawalMarkedFailed: "Marked as failed. The money is back in the seller's balance.",
     refundAccountSaved: (name: string) => `Saved. We'll send your refund to the account of ${name}.`,
     refundMarkedSent: "Marked as refunded. The buyer has been emailed.",
+    finishBeforePublish: "This draft isn't finished. Open it with Edit and press Publish to see what's missing.",
   },
   events: {
     CREATED: (p: { minutes: number }) => `Order placed. Pay within ${p.minutes} minutes; the item is held for you once you start paying.`,
@@ -648,7 +661,7 @@ export const en = {
         : "Return window closed. Order completed and payment released to the seller's balance.",
     RETURN_REQUESTED: () => "Buyer requested a return. Waiting for the seller to respond.",
     RETURN_APPROVED: () => "Seller approved the return. Please ship the item back and add tracking.",
-    RETURN_REJECTED: (p: { note: string }) => `Seller rejected the return: ${p.note}. The buyer can escalate by opening a dispute.`,
+    RETURN_REJECTED: (p: { note: string }) => `Seller rejected the return: ${sentence(p.note)} The buyer can escalate by opening a dispute.`,
     RETURN_SHIPPED: (p: { carrier: string; tracking: string }) => `Buyer shipped the item back with ${p.carrier}, tracking ${p.tracking}.`,
     REFUNDED: () => "Seller received the returned item. Full refund issued to the buyer.",
     DISPUTE_OPENED: (p: { by: "buyer" | "seller" }) => `${p.by === "buyer" ? "Buyer" : "Seller"} opened a dispute. Payment is frozen until ReGear resolves it.`,
@@ -714,6 +727,8 @@ export const en = {
     reservedByYou: "You've already reserved this item",
     reservedByYouHint: "Your order is waiting for payment.",
     finishPayment: "Go to your order",
+    boughtByYou: "You've already ordered this item",
+    viewYourOrder: "View your order",
     keepBrowsing: "Keep browsing",
     soldBy: (name: string) => `Sold by ${name}`,
     item: "Item",
@@ -733,7 +748,7 @@ export const en = {
     payWith: "Pay with",
     payBody: "GoPay, ShopeePay, QRIS or bank transfer (virtual account) through Midtrans. You'll pick one after pressing Pay on the next screen.",
     paySimulated: "Payments on this site are simulated: no real money moves.",
-    paySandbox: "Payments run in Midtrans sandbox mode: use test cards, no real money moves.",
+    paySandbox: "Payments run in Midtrans sandbox mode: pay with the Midtrans simulator, no real money moves.",
     escrowTitle: "Your money is held by ReGear",
     escrowBody: "The seller is paid only after you've received the item and accepted it.",
     shipsFrom: (location: string) => `Ships from ${location}`,
@@ -944,7 +959,7 @@ export const en = {
     reviewTitle: "Under review",
     reviewBody: (date: string | null) => `${date ? `Submitted ${date}. ` : ""}We usually respond within 1–2 business days.`,
     rejectedTitle: "Verification was not approved",
-    rejectedBody: (note: string) => `Reviewer note: ${note}. You can submit again below.`,
+    rejectedBody: (note: string) => `Reviewer note: ${sentence(note)} You can submit again below.`,
     salesTitle: "Sales",
     salesIntro: "Ship orders, handle returns and respond to disputes.",
     filterAria: "Filter by status",
@@ -1067,7 +1082,7 @@ export const en = {
       paymentsSimulated: "Payments: simulated",
       payoutsSimulated: "Payouts: simulated",
     },
-    nav: { overview: "Overview", orders: "Orders", users: "Users", verifications: "Verifications", disputes: "Disputes", payouts: "Payouts", refunds: "Refunds", listings: "Listings", audit: "Audit log" },
+    nav: { overview: "Overview", orders: "Orders", users: "Users", verifications: "Verifications", disputes: "Disputes", payouts: "Payouts", refunds: "Refunds", listings: "Listings", audit: "Audit log", settings: "Settings" },
     refunds: {
       title: "Refunds by hand",
       intro: "Bank-transfer payments can't be refunded through Midtrans. Transfer each refund to the account the buyer gave, then mark it refunded with the transfer reference.",
@@ -1352,7 +1367,7 @@ export const en = {
         buyer: { subject: (n: string) => `Return approved for order ${n}`, body: () => "The seller approved your return. Ship the item back to the address the seller gave, then add the tracking number on the order page." },
       },
       RETURN_REJECTED: {
-        buyer: { subject: (n: string) => `Return rejected for order ${n}`, body: (p: { note: string }) => `The seller rejected the return: ${p.note}. If the item doesn't match its condition report, you can open a dispute on the order page.` },
+        buyer: { subject: (n: string) => `Return rejected for order ${n}`, body: (p: { note: string }) => `The seller rejected the return: ${sentence(p.note)} If the item doesn't match its condition report, you can open a dispute on the order page.` },
       },
       RETURN_SHIPPED: {
         seller: { subject: (n: string) => `Return on its way for order ${n}`, body: (p: { carrier: string; tracking: string }) => `The buyer shipped the item back with ${p.carrier}, tracking number ${p.tracking}. Confirm on the order page once it arrives; the buyer is then refunded.` },
@@ -1384,7 +1399,7 @@ export const en = {
     },
     verification: {
       approved: { subject: "Your shop is verified", body: "Good news: your verification was approved. The verified badge now shows on your shop and every listing.", button: "Open Seller Hub" },
-      rejected: { subject: "Your verification wasn't approved", body: (note: string) => `Our reviewer couldn't approve your verification: ${note}. You can apply again from your seller dashboard.`, button: "Apply again" },
+      rejected: { subject: "Your verification wasn't approved", body: (note: string) => `Our reviewer couldn't approve your verification: ${sentence(note)} You can apply again from your seller dashboard.`, button: "Apply again" },
     },
     message: {
       subject: (title: string) => `New message about "${title}"`,

@@ -42,6 +42,13 @@ export async function requireUser(next?: string): Promise<CurrentUser> {
   return user;
 }
 
+/** For buyer and seller pages: admin accounts only do admin work, so they go to the admin console. */
+export async function requireTrader(next?: string): Promise<CurrentUser> {
+  const user = await requireUser(next);
+  if (user.role === "ADMIN") redirect(localePath("/admin", await getRequestLocale()));
+  return user;
+}
+
 /** For actions / route handlers: throw a 401 instead of redirecting. */
 export async function requireUserStrict(): Promise<CurrentUser> {
   const user = await getCurrentUser();
@@ -62,7 +69,7 @@ export const getSellerProfile = cache(async (userId: string) =>
 
 /** Current user plus their seller profile; redirects to onboarding when missing. */
 export async function requireSeller(next = "/sell") {
-  const user = await requireUser(next);
+  const user = await requireTrader(next);
   const seller = await getSellerProfile(user.id);
   if (!seller) redirect(localePath("/sell/onboarding", await getRequestLocale()));
   return { user, seller };

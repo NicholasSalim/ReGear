@@ -4,13 +4,13 @@ import { randomBytes } from "node:crypto";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { invalidate, listingTags } from "@/lib/cache";
-import { actionI18n, runAction, type ActionState } from "@/lib/action";
-import { getSellerProfile, requireUserStrict } from "@/lib/auth/dal";
+import { actionI18n, runAction, type ActionState, requireTraderStrict } from "@/lib/action";
+import { getSellerProfile } from "@/lib/auth/dal";
 import { categorySearchTerms } from "@/lib/catalog";
 import { functionalScore } from "@/lib/condition";
 import { gradeRank } from "@/lib/data/catalog";
 import { slugify } from "@/lib/format";
-import { parseListing, id as idSchema, type ListingInput } from "@/lib/validation";
+import { listingSchema, parseListing, id as idSchema, type ListingInput } from "@/lib/validation";
 import { updateOpenListing } from "@/lib/listings";
 import { DomainError } from "@/lib/orders/service";
 
@@ -35,13 +35,61 @@ async function assertCanPublish(seller: { id: string; verificationStatus: string
   }
 }
 
+/**
+ * Whether a saved listing passes the full publishing rules. Drafts can be
+ * saved unfinished, so publishing one from the listings page checks it the
+ * way the form's Publish button does.
+ */
+async function readyToPublish(listingId: string) {
+  const l = await db.listing.findUnique({
+    where: { id: listingId },
+    include: { conditionReport: true, images: { select: { id: true }, orderBy: { position: "asc" } } },
+  });
+  if (!l?.conditionReport) return false;
+  const r = l.conditionReport;
+  const json = (s: string, fallback: unknown) => {
+    try {
+      return JSON.parse(s);
+    } catch {
+      return fallback;
+    }
+  };
+  return listingSchema.safeParse({
+    title: l.title,
+    category: l.category,
+    brand: l.brand,
+    model: l.model,
+    description: l.description,
+    priceIdr: l.priceIdr,
+    originalPriceIdr: l.originalPriceIdr,
+    shippingIdr: l.shippingIdr,
+    location: l.location,
+    conditionGrade: l.conditionGrade,
+    warrantyType: l.warrantyType,
+    warrantyMonths: l.warrantyMonths,
+    warrantyTerms: l.warrantyTerms,
+    returnWindowDays: l.returnWindowDays,
+    acceptsOffers: l.acceptsOffers,
+    specs: json(l.specs, {}),
+    batteryHealth: r.batteryHealth,
+    cosmeticScore: r.cosmeticScore,
+    checks: json(r.checks, []),
+    includedAccessories: json(r.includedAccessories, []),
+    knownIssues: r.knownIssues,
+    serialVerified: r.serialVerified,
+    originalBox: r.originalBox,
+    imageIds: l.images.map((i) => i.id),
+    publish: true,
+  }).success;
+}
+
 export type SaveListingResult = ActionState & { listingId?: string };
 
 /** Create or update a listing including its structured condition report and photos. */
 export async function saveListingAction(listingId: string | null, payload: unknown): Promise<SaveListingResult> {
   let savedId: string | undefined;
   const result = await runAction(async () => {
-    const user = await requireUserStrict();
+    const user = await requireTraderStrict();
     const { t } = await actionI18n();
     const seller = await getSellerProfile(user.id);
     if (!seller) return { error: t.actions.needSellerProfile };
@@ -149,7 +197,7 @@ export async function saveListingAction(listingId: string | null, payload: unkno
 
 export async function setListingStatusAction(listingId: string, status: "ACTIVE" | "DRAFT" | "REMOVED"): Promise<ActionState> {
   return runAction(async () => {
-    const user = await requireUserStrict();
+    const user = await requireTraderStrict();
     const { t } = await actionI18n();
     const seller = await getSellerProfile(user.id);
     idSchema.parse(listingId);
@@ -165,6 +213,7 @@ export async function setListingStatusAction(listingId: string, status: "ACTIVE"
       if (!listing.conditionReport || listing._count.images === 0) {
         return { error: t.actions.publishNeedsPhotos };
       }
+      if (!(await readyToPublish(listing.id))) return { error: t.actions.finishBeforePublish };
       await assertCanPublish(seller, listing.id);
     }
     const updated = await updateOpenListing(db, listing.id, {
@@ -181,7 +230,7 @@ export async function setListingStatusAction(listingId: string, status: "ACTIVE"
 export async function toggleFavoriteAction(listingId: string): Promise<ActionState & { favorited?: boolean }> {
   let favorited: boolean | undefined;
   const res = await runAction(async () => {
-    const user = await requireUserStrict();
+    const user = await requireTraderStrict();
     idSchema.parse(listingId);
     const key = { userId_listingId: { userId: user.id, listingId } };
     const existing = await db.favorite.findUnique({ where: key });

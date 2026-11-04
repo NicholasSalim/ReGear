@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Bell, BellOff } from "lucide-react";
 import { Link } from "@/i18n/client";
 import { getDictionary, getLocale } from "@/i18n/server";
-import { requireUser } from "@/lib/auth/dal";
+import { requireTrader } from "@/lib/auth/dal";
 import { formatDate } from "@/lib/format";
 import { describeSearch, getSavedSearches } from "@/lib/saved-searches";
 import { deleteSavedSearchAction, setAlertsAction } from "@/actions/buying";
@@ -14,7 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function SavedSearchesPage() {
-  const user = await requireUser("/account/searches");
+  const user = await requireTrader("/account/searches");
   const [searches, dict, locale] = await Promise.all([getSavedSearches(user.id), getDictionary(), getLocale()]);
   const t = dict.searches;
 

@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, ShieldAlert } from "lucide-react";
 import { Link } from "@/i18n/client";
 import { getDictionary, getLocale } from "@/i18n/server";
-import { requireUser } from "@/lib/auth/dal";
+import { requireTrader } from "@/lib/auth/dal";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { mediaUrl } from "@/lib/media";
 import { getConversation, sideOf } from "@/lib/messages";
@@ -18,7 +18,7 @@ export async function generateMetadata(): Promise<Metadata> {
 /** One conversation: the listing it's about, the messages, and a reply box. */
 export default async function ConversationPage({ params }: PageProps<"/[lang]/account/messages/[id]">) {
   const { id } = await params;
-  const user = await requireUser(`/account/messages/${id}`);
+  const user = await requireTrader(`/account/messages/${id}`);
   if (!/^[a-z0-9]{20,32}$/i.test(id)) notFound();
   const [c, dict, locale] = await Promise.all([getConversation(user.id, id), getDictionary(), getLocale()]);
   if (!c) notFound();

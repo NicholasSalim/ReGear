@@ -42,7 +42,7 @@ export function ModerateForm({ action }: { action: FormAction }) {
           <>
             <input name="reason" required minLength={5} maxLength={500} placeholder={t.removalReason} aria-label={t.removalReason} className="input max-w-56 py-1" />
             <SubmitButton variant="danger" className="px-3 py-1.5">{t.remove}</SubmitButton>
-            {s.error && <p className="w-full text-xs text-rose-600">{s.error}</p>}
+            {(s.fieldErrors?.reason ?? s.error) && <p className="w-full text-xs text-rose-600">{s.fieldErrors?.reason ?? s.error}</p>}
           </>
         )
       }

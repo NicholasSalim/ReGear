@@ -246,6 +246,10 @@ async function BuyBox({ listing }: { listing: ListingDetail }) {
       </p>
     ) : null;
 
+  // Admin accounts only do admin work (see requireTraderStrict).
+  if (user?.role === "ADMIN") {
+    return <p className="rounded-full bg-slate-100 px-3 py-3.5 text-center text-sm font-semibold text-slate-700">{t.listing.adminNoTrading}</p>;
+  }
   if (isOwner) {
     return (
       <>
@@ -257,6 +261,24 @@ async function BuyBox({ listing }: { listing: ListingDetail }) {
     );
   }
   if (listing.status !== "ACTIVE") {
+    // Not on sale because of this buyer's own order: send them to it.
+    const own = user
+      ? await db.order.findFirst({
+          where: { listingId: listing.id, buyerId: user.id, status: { not: "CANCELLED" } },
+          orderBy: { createdAt: "desc" },
+          select: { id: true, status: true },
+        })
+      : null;
+    if (own) {
+      return (
+        <div className="space-y-2.5 rounded-2xl bg-plate p-3 text-center">
+          <p className="text-sm font-semibold text-ink">{own.status === "PENDING_PAYMENT" ? t.listing.yourOrderUnpaid : t.listing.yourOrder}</p>
+          <Link href={`/account/orders/${own.id}`} className={`${pill} bg-brand-600 text-white hover:bg-action-hover`}>
+            {t.listing.viewYourOrder}
+          </Link>
+        </div>
+      );
+    }
     return (
       <p className="rounded-full bg-slate-100 px-3 py-3.5 text-center text-sm font-semibold text-slate-700">
         {listing.status === "SOLD" ? t.listing.sold : t.listing.reserved}

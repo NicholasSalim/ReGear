@@ -2,6 +2,9 @@
 
 import type { en } from "./en";
 
+/** People's notes end a sentence: add a full stop unless they already did. */
+const sentence = (s: string) => (/[.!?…]$/.test(s.trim()) ? s.trim() : `${s.trim()}.`);
+
 export const id: typeof en = {
   meta: {
     siteTitle: "ReGear — Elektronik bekas dengan laporan kondisi yang jujur",
@@ -275,6 +278,10 @@ export const id: typeof en = {
     listed: (date: string) => `Diiklankan ${date}`,
     listedRecently: "Baru saja diiklankan",
     editYourListing: "Ubah iklan Anda",
+    adminNoTrading: "Akun admin tidak bisa membeli atau menjual.",
+    yourOrder: "Anda sudah memesan barang ini.",
+    yourOrderUnpaid: "Anda sedang membayar barang ini.",
+    viewYourOrder: "Lihat pesanan Anda",
     sold: "Barang ini sudah terjual",
     reserved: "Sedang dipesan pembeli lain",
     buyNow: "Beli sekarang",
@@ -438,7 +445,11 @@ export const id: typeof en = {
     invalid: "Periksa kembali isian ini",
     choose: "Pilih salah satu",
     fixFields: "Silakan perbaiki isian yang ditandai.",
-    minChars: (n: number) => `Minimal ${n} karakter`,
+    minChars: (n: number) => (n === 1 ? "Wajib diisi" : `Minimal ${n} karakter`),
+    required: "Wajib diisi",
+    numberMin: (n: number) => `Minimal ${n}`,
+    numberMax: (n: number) => `Maksimal ${n}`,
+    chooseRating: "Pilih rating 1 sampai 5 bintang",
     maxChars: (n: number) => `Maksimal ${n} karakter`,
     invalidChars: "Mengandung karakter yang tidak valid",
     email: "Masukkan alamat email yang valid",
@@ -486,6 +497,7 @@ export const id: typeof en = {
     justReserved: "Barang ini baru saja dipesan orang lain.",
     beingPaid: "Seseorang sedang membayar barang ini. Jika tidak selesai, barang dijual kembali dalam 10 menit.",
     noRefundByHand: "Pesanan ini tidak punya pengembalian dana via transfer bank yang menunggu dikirim.",
+    adminCannotTrade: "Akun admin tidak bisa membeli atau menjual. Gunakan akun lain untuk itu.",
     refundAccountMissing: "Pembeli belum memberikan rekening bank untuk pengembalian dana.",
     tooManyUnpaidOrders: (n: number) => `Anda sudah punya ${n} pesanan yang belum dibayar. Bayar atau batalkan salah satunya sebelum checkout lagi.`,
     checkoutAgainLater: "Anda sudah dua kali membiarkan barang ini tidak dibayar dalam sehari terakhir. Anda bisa checkout lagi besok.",
@@ -632,6 +644,7 @@ export const id: typeof en = {
     withdrawalMarkedFailed: "Ditandai gagal. Dana kembali ke saldo penjual.",
     refundAccountSaved: (name: string) => `Tersimpan. Pengembalian dana akan kami kirim ke rekening atas nama ${name}.`,
     refundMarkedSent: "Ditandai sudah dikembalikan. Pembeli sudah dikirimi email.",
+    finishBeforePublish: "Draf ini belum lengkap. Buka dengan Ubah lalu tekan Terbitkan untuk melihat yang masih kurang.",
   },
   events: {
     CREATED: (p: { minutes: number }) => `Pesanan dibuat. Bayar dalam ${p.minutes} menit; barang disimpan untuk Anda begitu Anda mulai membayar.`,
@@ -650,7 +663,7 @@ export const id: typeof en = {
         : "Batas waktu pengembalian berakhir. Pesanan selesai dan pembayaran diteruskan ke saldo penjual.",
     RETURN_REQUESTED: () => "Pembeli mengajukan pengembalian. Menunggu tanggapan penjual.",
     RETURN_APPROVED: () => "Penjual menyetujui pengembalian. Silakan kirim barang kembali dan tambahkan nomor resi.",
-    RETURN_REJECTED: (p: { note: string }) => `Penjual menolak pengembalian: ${p.note}. Pembeli bisa melanjutkan dengan membuka sengketa.`,
+    RETURN_REJECTED: (p: { note: string }) => `Penjual menolak pengembalian: ${sentence(p.note)} Pembeli bisa melanjutkan dengan membuka sengketa.`,
     RETURN_SHIPPED: (p: { carrier: string; tracking: string }) => `Pembeli mengirim barang kembali dengan ${p.carrier}, nomor resi ${p.tracking}.`,
     REFUNDED: () => "Penjual menerima barang yang dikembalikan. Dana dikembalikan penuh ke pembeli.",
     DISPUTE_OPENED: (p: { by: "buyer" | "seller" }) =>
@@ -717,6 +730,8 @@ export const id: typeof en = {
     reservedByYou: "Anda sudah memesan barang ini",
     reservedByYouHint: "Pesanan Anda sedang menunggu pembayaran.",
     finishPayment: "Buka pesanan Anda",
+    boughtByYou: "Anda sudah memesan barang ini",
+    viewYourOrder: "Lihat pesanan Anda",
     keepBrowsing: "Lanjut melihat-lihat",
     soldBy: (name: string) => `Dijual oleh ${name}`,
     item: "Barang",
@@ -736,7 +751,7 @@ export const id: typeof en = {
     payWith: "Bayar dengan",
     payBody: "GoPay, ShopeePay, QRIS, atau transfer bank (virtual account) lewat Midtrans. Anda memilihnya setelah menekan Bayar di layar berikutnya.",
     paySimulated: "Pembayaran di situs ini disimulasikan: tidak ada uang sungguhan yang berpindah.",
-    paySandbox: "Pembayaran berjalan di mode sandbox Midtrans: gunakan kartu uji, tidak ada uang sungguhan yang berpindah.",
+    paySandbox: "Pembayaran berjalan di mode sandbox Midtrans: bayar dengan simulator Midtrans, tidak ada uang sungguhan yang berpindah.",
     escrowTitle: "Uang Anda ditahan ReGear",
     escrowBody: "Penjual baru dibayar setelah Anda menerima dan menyetujui barangnya.",
     shipsFrom: (location: string) => `Dikirim dari ${location}`,
@@ -947,7 +962,7 @@ export const id: typeof en = {
     reviewTitle: "Sedang ditinjau",
     reviewBody: (date: string | null) => `${date ? `Dikirim ${date}. ` : ""}Kami biasanya merespons dalam 1–2 hari kerja.`,
     rejectedTitle: "Verifikasi tidak disetujui",
-    rejectedBody: (note: string) => `Catatan peninjau: ${note}. Anda bisa mengajukan lagi di bawah.`,
+    rejectedBody: (note: string) => `Catatan peninjau: ${sentence(note)} Anda bisa mengajukan lagi di bawah.`,
     salesTitle: "Penjualan",
     salesIntro: "Kirim pesanan, tangani pengembalian, dan tanggapi sengketa.",
     filterAria: "Saring menurut status",
@@ -1070,7 +1085,7 @@ export const id: typeof en = {
       paymentsSimulated: "Pembayaran: simulasi",
       payoutsSimulated: "Penarikan: simulasi",
     },
-    nav: { overview: "Ringkasan", orders: "Pesanan", users: "Pengguna", verifications: "Verifikasi", disputes: "Sengketa", payouts: "Penarikan", refunds: "Pengembalian dana", listings: "Iklan", audit: "Log audit" },
+    nav: { overview: "Ringkasan", orders: "Pesanan", users: "Pengguna", verifications: "Verifikasi", disputes: "Sengketa", payouts: "Penarikan", refunds: "Pengembalian dana", listings: "Iklan", audit: "Log audit", settings: "Pengaturan" },
     refunds: {
       title: "Pengembalian dana manual",
       intro: "Pembayaran via transfer bank tidak bisa dikembalikan lewat Midtrans. Transfer setiap pengembalian dana ke rekening yang diberikan pembeli, lalu tandai sudah dikembalikan dengan referensi transfernya.",
@@ -1355,7 +1370,7 @@ export const id: typeof en = {
         buyer: { subject: (n: string) => `Pengembalian disetujui untuk pesanan ${n}`, body: () => "Penjual menyetujui pengembalian Anda. Kirim barang kembali ke alamat yang diberikan penjual, lalu masukkan nomor resinya di halaman pesanan." },
       },
       RETURN_REJECTED: {
-        buyer: { subject: (n: string) => `Pengembalian ditolak untuk pesanan ${n}`, body: (p: { note: string }) => `Penjual menolak pengembalian: ${p.note}. Jika barang tidak sesuai laporan kondisinya, Anda bisa membuka sengketa di halaman pesanan.` },
+        buyer: { subject: (n: string) => `Pengembalian ditolak untuk pesanan ${n}`, body: (p: { note: string }) => `Penjual menolak pengembalian: ${sentence(p.note)} Jika barang tidak sesuai laporan kondisinya, Anda bisa membuka sengketa di halaman pesanan.` },
       },
       RETURN_SHIPPED: {
         seller: { subject: (n: string) => `Barang pengembalian dikirim untuk pesanan ${n}`, body: (p: { carrier: string; tracking: string }) => `Pembeli mengirim barang kembali dengan ${p.carrier}, nomor resi ${p.tracking}. Konfirmasikan di halaman pesanan setelah barang tiba; dana pembeli lalu dikembalikan.` },
@@ -1387,7 +1402,7 @@ export const id: typeof en = {
     },
     verification: {
       approved: { subject: "Toko Anda sudah terverifikasi", body: "Kabar baik: verifikasi Anda disetujui. Lencana terverifikasi sekarang tampil di toko dan semua iklan Anda.", button: "Buka Pusat Penjual" },
-      rejected: { subject: "Verifikasi Anda belum disetujui", body: (note: string) => `Peninjau kami belum bisa menyetujui verifikasi Anda: ${note}. Anda bisa mengajukan lagi dari dasbor penjual.`, button: "Ajukan lagi" },
+      rejected: { subject: "Verifikasi Anda belum disetujui", body: (note: string) => `Peninjau kami belum bisa menyetujui verifikasi Anda: ${sentence(note)} Anda bisa mengajukan lagi dari dasbor penjual.`, button: "Ajukan lagi" },
     },
     message: {
       subject: (title: string) => `Pesan baru tentang "${title}"`,

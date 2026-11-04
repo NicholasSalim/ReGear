@@ -2,7 +2,7 @@ import { Store } from "lucide-react";
 import { Link } from "@/i18n/client";
 import { getDictionary, getLocale } from "@/i18n/server";
 import { db } from "@/lib/db";
-import { getSellerProfile, requireUser } from "@/lib/auth/dal";
+import { getSellerProfile, requireTrader } from "@/lib/auth/dal";
 import { getBuyerOrders, getFavorites } from "@/lib/data/orders";
 import { TERMINAL_STATUSES } from "@/lib/orders/state";
 import type { OrderStatus } from "@/lib/constants";
@@ -15,7 +15,7 @@ import { ButtonLink, EmptyState, StatCard } from "@/components/ui";
 // My ReGear's summary: who you are, what's on its way, what you're watching,
 // what you looked at lately, and a way into selling.
 export default async function AccountPage() {
-  const user = await requireUser("/account");
+  const user = await requireTrader("/account");
   const [orders, favorites, seller, profile, t, locale] = await Promise.all([
     getBuyerOrders(user.id),
     getFavorites(user.id),

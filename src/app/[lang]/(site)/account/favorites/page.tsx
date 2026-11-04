@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getDictionary } from "@/i18n/server";
-import { requireUser } from "@/lib/auth/dal";
+import { requireTrader } from "@/lib/auth/dal";
 import { getFavorites } from "@/lib/data/orders";
 import { ListingGrid } from "@/components/listing-card";
 import { ButtonLink, EmptyState, PageHeader } from "@/components/ui";
@@ -10,7 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function FavoritesPage() {
-  const user = await requireUser("/account/favorites");
+  const user = await requireTrader("/account/favorites");
   const [favorites, t] = await Promise.all([getFavorites(user.id), getDictionary()]);
   return (
     <>

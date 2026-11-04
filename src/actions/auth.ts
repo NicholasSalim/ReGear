@@ -187,10 +187,11 @@ export async function changePasswordAction(_prev: ActionState, formData: FormDat
   return runAction(async () => {
     const user = await requireUserStrict();
     const { t } = await actionI18n();
+    // Checked first, so a mistyped new password doesn't use up an attempt:
+    // the limit is on guessing the current one.
+    const data = changePasswordSchema.parse(formToObject(formData));
     const limited = await rateLimit(`pwchange:${user.id}`, 5, 900);
     if (!limited.ok) return { error: t.actions.passwordLimit };
-
-    const data = changePasswordSchema.parse(formToObject(formData));
     const row = await db.user.findUniqueOrThrow({ where: { id: user.id } });
     // Accounts created with Google can add a first password without one.
     if (row.passwordHash) {

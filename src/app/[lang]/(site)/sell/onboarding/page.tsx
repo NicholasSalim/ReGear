@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getDictionary, localeRedirect } from "@/i18n/server";
-import { getSellerProfile, requireUser } from "@/lib/auth/dal";
+import { getSellerProfile, requireTrader } from "@/lib/auth/dal";
 import { PageHeader } from "@/components/ui";
 import { SellerProfileForm } from "../seller-forms";
 import { createSellerProfileAction } from "@/actions/seller";
@@ -10,7 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function OnboardingPage() {
-  const user = await requireUser("/sell/onboarding");
+  const user = await requireTrader("/sell/onboarding");
   if (await getSellerProfile(user.id)) await localeRedirect("/sell");
   const t = (await getDictionary()).sell;
   return (

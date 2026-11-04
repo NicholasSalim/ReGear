@@ -177,16 +177,17 @@ export function ReviewForm({ action }: { action: FormAction }) {
         <>
           <h3 className="font-semibold">{t.rateSeller}</h3>
           <FormMessage state={s} />
-          <fieldset>
+          <fieldset aria-describedby={s.fieldErrors?.rating ? "rating-error" : undefined}>
             <legend className="label">{t.rating}</legend>
             <div className="flex gap-3">
               {[5, 4, 3, 2, 1].map((n) => (
                 <label key={n} className="flex items-center gap-1 text-sm">
-                  <input type="radio" name="rating" value={n} defaultChecked={n === 5} className="accent-brand-600" />
+                  <input type="radio" name="rating" value={n} required className="accent-brand-600" />
                   {n}★
                 </label>
               ))}
             </div>
+            {s.fieldErrors?.rating && <p id="rating-error" className="mt-1 text-sm text-rose-600">{s.fieldErrors.rating}</p>}
           </fieldset>
           <Field label={t.commentOptional} name="comment" error={s.fieldErrors?.comment}>
             <textarea id="comment" name="comment" rows={3} maxLength={1000} className="input" />

@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { localePath } from "@/i18n/locales";
 import { refresh } from "next/cache";
-import { actionI18n, runAction, type ActionState } from "@/lib/action";
+import { actionI18n, runAction, type ActionState, requireTraderStrict } from "@/lib/action";
 import { requireUserStrict } from "@/lib/auth/dal";
 import { rateLimit } from "@/lib/security/rate-limit";
 import * as cart from "@/lib/cart";
@@ -15,7 +15,7 @@ import { id as idSchema } from "@/lib/validation";
 
 export async function addToCartAction(listingId: string, _prev: ActionState, _formData: FormData): Promise<ActionState> {
   return runAction(async () => {
-    const user = await requireUserStrict();
+    const user = await requireTraderStrict();
     const { t } = await actionI18n();
     idSchema.parse(listingId);
     await cart.addToCart(user.id, listingId);
@@ -26,7 +26,7 @@ export async function addToCartAction(listingId: string, _prev: ActionState, _fo
 
 export async function removeFromCartAction(listingId: string, _prev: ActionState, _formData: FormData): Promise<ActionState> {
   return runAction(async () => {
-    const user = await requireUserStrict();
+    const user = await requireTraderStrict();
     const { t } = await actionI18n();
     idSchema.parse(listingId);
     await cart.removeFromCart(user.id, listingId);
@@ -51,7 +51,7 @@ async function messageBody(formData: FormData): Promise<{ body: string } | { err
 export async function startConversationAction(listingId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
   let conversationId: string | undefined;
   const result = await runAction(async () => {
-    const user = await requireUserStrict();
+    const user = await requireTraderStrict();
     const { t } = await actionI18n();
     if (!user.emailVerified) return { error: t.domain.emailUnverified };
     idSchema.parse(listingId);
@@ -66,7 +66,7 @@ export async function startConversationAction(listingId: string, _prev: ActionSt
 
 export async function replyAction(conversationId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
   return runAction(async () => {
-    const user = await requireUserStrict();
+    const user = await requireTraderStrict();
     const { t } = await actionI18n();
     if (!user.emailVerified) return { error: t.domain.emailUnverified };
     idSchema.parse(conversationId);
@@ -89,7 +89,7 @@ export async function markReadAction(conversationId: string) {
 /** Save the results page's current filters. `query` is the page's own query string; it's re-parsed here. */
 export async function saveSearchAction(query: string, _prev: ActionState, _formData: FormData): Promise<ActionState> {
   return runAction(async () => {
-    const user = await requireUserStrict();
+    const user = await requireTraderStrict();
     const { t, locale } = await actionI18n();
     const params = searches.parseQuery(query);
     await searches.saveSearch(user.id, params, searches.describeSearch(params, t, locale));
@@ -100,7 +100,7 @@ export async function saveSearchAction(query: string, _prev: ActionState, _formD
 
 export async function deleteSavedSearchAction(id: string, _prev: ActionState, _formData: FormData): Promise<ActionState> {
   return runAction(async () => {
-    const user = await requireUserStrict();
+    const user = await requireTraderStrict();
     const { t } = await actionI18n();
     idSchema.parse(id);
     await searches.deleteSavedSearch(user.id, id);
@@ -111,7 +111,7 @@ export async function deleteSavedSearchAction(id: string, _prev: ActionState, _f
 
 export async function setAlertsAction(id: string, alerts: boolean, _prev: ActionState, _formData: FormData): Promise<ActionState> {
   return runAction(async () => {
-    const user = await requireUserStrict();
+    const user = await requireTraderStrict();
     const { t } = await actionI18n();
     idSchema.parse(id);
     await searches.setAlerts(user.id, id, alerts);

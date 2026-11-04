@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { Link } from "@/i18n/client";
 import { getDictionary, getLocale } from "@/i18n/server";
-import { requireUser } from "@/lib/auth/dal";
+import { requireTrader } from "@/lib/auth/dal";
 import { formatDateTime } from "@/lib/format";
 import { mediaUrl } from "@/lib/media";
 import { getInbox, isUnread, sideOf } from "@/lib/messages";
@@ -14,7 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 /** Every conversation the user is in, as buyer or seller, newest first; unread ones stand out. */
 export default async function MessagesPage() {
-  const user = await requireUser("/account/messages");
+  const user = await requireTrader("/account/messages");
   const [inbox, dict, locale] = await Promise.all([getInbox(user.id), getDictionary(), getLocale()]);
   const t = dict.messages;
 

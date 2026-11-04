@@ -6,7 +6,7 @@ import { Link } from "@/i18n/client";
 import { localePath } from "@/i18n/locales";
 import { getDictionary, getLocale } from "@/i18n/server";
 import { db } from "@/lib/db";
-import { requireUser } from "@/lib/auth/dal";
+import { requireTrader } from "@/lib/auth/dal";
 import { formatMoney } from "@/lib/format";
 import { mediaUrl } from "@/lib/media";
 import { findConversation } from "@/lib/messages";
@@ -22,7 +22,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function NewMessagePage({ searchParams }: PageProps<"/[lang]/account/messages/new">) {
   const { listing: raw } = await searchParams;
   const listingId = typeof raw === "string" && /^[a-z0-9]{20,32}$/i.test(raw) ? raw : null;
-  const user = await requireUser(listingId ? `/account/messages/new?listing=${listingId}` : "/account/messages");
+  const user = await requireTrader(listingId ? `/account/messages/new?listing=${listingId}` : "/account/messages");
   if (!listingId) notFound();
   const [dict, locale] = await Promise.all([getDictionary(), getLocale()]);
   const t = dict.messages;

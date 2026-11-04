@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { Link } from "@/i18n/client";
 import { getDictionary, getLocale } from "@/i18n/server";
-import { requireUser } from "@/lib/auth/dal";
+import { requireTrader } from "@/lib/auth/dal";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { mediaUrl } from "@/lib/media";
 import { getBuyerOffers, offerStatus } from "@/lib/offers";
@@ -15,7 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 /** The buyer's offers, newest first; an accepted one links straight to checkout at its price. */
 export default async function BuyerOffersPage() {
-  const user = await requireUser("/account/offers");
+  const user = await requireTrader("/account/offers");
   const [offers, dict, locale] = await Promise.all([getBuyerOffers(user.id), getDictionary(), getLocale()]);
   const t = dict.offers;
   const now = new Date();

@@ -183,8 +183,8 @@ export const listingBaseSchema = z.object({
   publish: checkbox,
 });
 
-/** Typed spec values for a category: unknown keys are dropped, and missing or invalid values reported. */
-function checkSpecs(category: Category, specs: Record<string, unknown>) {
+/** Typed spec values for a category: unknown keys are dropped, and missing (unless `requireAll` is off) or invalid values reported. */
+function checkSpecs(category: Category, specs: Record<string, unknown>, { requireAll = true } = {}) {
   const cleanSpecs: Record<string, string | number | boolean> = {};
   const issues: { path: string[]; message: string }[] = [];
   for (const field of category.specFields) {
@@ -192,7 +192,7 @@ function checkSpecs(category: Category, specs: Record<string, unknown>) {
     const empty = raw === undefined || raw === "" || raw === null;
     if (empty) {
       if (field.type === "boolean") cleanSpecs[field.key] = false;
-      else if (field.required) issues.push({ path: ["specs", field.key], message: vmsg("specRequired", field.label) });
+      else if (field.required && requireAll) issues.push({ path: ["specs", field.key], message: vmsg("specRequired", field.label) });
       continue;
     }
     if (field.type === "number") {
@@ -279,18 +279,48 @@ export const listingSchema = listingBaseSchema.superRefine((data, ctx) => {
 
 export type ListingInput = z.infer<typeof listingSchema>;
 
+/** Blank means not filled in yet: a draft stores 0 until the seller sets a price. */
+const draftMoney = (max: number) => z.preprocess((v) => (v === "" || v === null || v === undefined ? 0 : v), moneyIdr({ max }));
+
+/**
+ * A draft needs only a title and a category. Everything else may be
+ * unfinished; what is filled in must still be valid, and the whole listing is
+ * checked against listingSchema when it's published.
+ */
+const draftSchema = listingBaseSchema
+  .extend({
+    title: text(3, 120),
+    brand: text(0, 40),
+    model: text(0, 80),
+    description: text(0, 5000),
+    priceIdr: draftMoney(MAX_PRICE_IDR),
+    shippingIdr: draftMoney(MAX_SHIPPING_IDR),
+    location: text(0, 80),
+    imageIds: z.array(id).max(MAX_LISTING_IMAGES),
+  })
+  .superRefine((data, ctx) => {
+    const category = getCategory(data.category);
+    if (!category) return;
+    // Spec values must have the right type; missing ones can wait.
+    const { cleanSpecs, issues } = checkSpecs(category, data.specs, { requireAll: false });
+    for (const issue of issues) ctx.addIssue({ code: "custom", ...issue });
+    data.specs = cleanSpecs;
+  });
+
 /**
  * Parses a listing form. The category rules only run once the basic fields are
  * valid, so when those fail this adds the spec errors too: the seller sees both at once.
  */
 export function parseListing(payload: unknown): ListingInput {
-  const parsed = listingSchema.safeParse(payload);
-  if (parsed.success) return parsed.data;
+  const publish = !!(payload as { publish?: unknown } | null)?.publish;
+  const parsed = publish ? listingSchema.safeParse(payload) : draftSchema.safeParse(payload);
+  if (parsed.success) return parsed.data as ListingInput;
   const raw = (payload ?? {}) as { category?: unknown; specs?: unknown };
   const category = typeof raw.category === "string" ? getCategory(raw.category) : undefined;
   const specs = raw.specs && typeof raw.specs === "object" ? (raw.specs as Record<string, unknown>) : null;
   if (!category || !specs || parsed.error.issues.some((i) => i.path[0] === "specs")) throw parsed.error;
-  throw new z.ZodError([...parsed.error.issues, ...checkSpecs(category, specs).issues.map((issue) => ({ code: "custom" as const, input: payload, ...issue }))]);
+  const specIssues = checkSpecs(category, specs, { requireAll: publish }).issues;
+  throw new z.ZodError([...parsed.error.issues, ...specIssues.map((issue) => ({ code: "custom" as const, input: payload, ...issue }))]);
 }
 
 // Browse -------------------------------------------------------------------
@@ -391,7 +421,7 @@ export const disputeResolutionSchema = z.object({
 });
 
 export const reviewSchema = z.object({
-  rating: z.coerce.number().int().min(1).max(5),
+  rating: z.coerce.number({ error: vmsg("chooseRating") }).int().min(1, vmsg("chooseRating")).max(5, vmsg("chooseRating")),
   comment: text(0, 1000),
 });
 
@@ -411,7 +441,7 @@ export function fieldErrors(error: z.ZodError, t: Dictionary, locale: Locale): R
   const out: Record<string, string> = {};
   for (const issue of error.issues) {
     const key = issue.path.join(".") || "_form";
-    out[key] ??= translateValidation(issue.message, t, locale);
+    out[key] ??= translateValidation(issue.message, t, locale, issue);
   }
   return out;
 }

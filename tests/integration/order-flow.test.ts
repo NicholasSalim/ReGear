@@ -137,6 +137,12 @@ describe("order lifecycle", () => {
     });
   });
 
+  it("doesn't let an admin buy: they decide disputes", async () => {
+    await db.user.update({ where: { id: f.buyer.id }, data: { role: "ADMIN" } });
+    await expect(orders.createOrder(f.buyer.id, f.listing.id, address)).rejects.toThrow(/Admin accounts can't buy or sell/);
+    expect((await db.listing.findUniqueOrThrow({ where: { id: f.listing.id } })).status).toBe("ACTIVE");
+  });
+
   it("enforces ownership on every transition (no IDOR)", async () => {
     const { orderId } = await orders.createOrder(f.buyer.id, f.listing.id, address);
     await expect(orders.payOrder(orderId, f.other.id)).rejects.toThrow(/not found/i);

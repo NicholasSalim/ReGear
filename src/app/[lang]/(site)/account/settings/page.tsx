@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getDictionary } from "@/i18n/server";
 import { db } from "@/lib/db";
-import { requireUser } from "@/lib/auth/dal";
+import { requireTrader } from "@/lib/auth/dal";
 import { getDeletionBlockers } from "@/lib/account/delete";
 import { PageHeader } from "@/components/ui";
 import { DeleteAccountForm, SettingsForms } from "./settings-forms";
@@ -11,7 +11,8 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function SettingsPage() {
-  const user = await requireUser("/account/settings");
+  // Admins have their own settings page in the admin console.
+  const user = await requireTrader("/account/settings");
   const [row, t, blockers] = await Promise.all([
     db.user.findUniqueOrThrow({
       where: { id: user.id },

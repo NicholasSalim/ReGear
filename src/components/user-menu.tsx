@@ -78,6 +78,20 @@ export async function UserMenu() {
 }
 
 function MenuItems({ t, admin }: { t: Dictionary; admin: boolean }) {
+  // Admin accounts only do admin work: no buying or selling pages.
+  if (admin) {
+    return (
+      <>
+        <MenuLink href="/admin" icon={<Shield className="size-4" />}>
+          {t.nav.admin}
+        </MenuLink>
+        <MenuLink href="/admin/settings" icon={<Settings className="size-4" />}>
+          {t.account.nav.settings}
+        </MenuLink>
+        <SignOut t={t} />
+      </>
+    );
+  }
   return (
     <>
       <MenuLink href="/account" icon={<LayoutDashboard className="size-4" />}>
@@ -108,18 +122,25 @@ function MenuItems({ t, admin }: { t: Dictionary; admin: boolean }) {
       <MenuLink href="/sell/listings/new" icon={<PlusCircle className="size-4" />}>
         {t.nav.listAnItem}
       </MenuLink>
-      {admin && (
-        <MenuLink href="/admin" icon={<Shield className="size-4" />}>
-          {t.nav.admin}
-        </MenuLink>
-      )}
-      <form action={logoutAction} className="mt-1 border-t border-slate-100 pt-1">
-        <button type="submit" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-700 hover:bg-slate-100">
-          <LogOut className="size-4" /> {t.nav.signOut}
-        </button>
-      </form>
+      <SignOut t={t} />
     </>
   );
+}
+
+function SignOut({ t }: { t: Dictionary }) {
+  return (
+    <form action={logoutAction} className="mt-1 border-t border-slate-100 pt-1">
+      <button type="submit" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-700 hover:bg-slate-100">
+        <LogOut className="size-4" /> {t.nav.signOut}
+      </button>
+    </form>
+  );
+}
+
+/** Buying and selling links, hidden from admin accounts, which only do admin work. */
+export async function ForTraders({ children }: { children: React.ReactNode }) {
+  const user = await getCurrentUser();
+  return user?.role === "ADMIN" ? null : children;
 }
 
 function MenuLink({ href, icon, children }: { href: string; icon: React.ReactNode; children: React.ReactNode }) {
@@ -134,6 +155,7 @@ function MenuLink({ href, icon, children }: { href: string; icon: React.ReactNod
 /** The cart in the header, with how many items are in it. */
 export async function CartLink({ className = "" }: { className?: string }) {
   const [user, t] = await Promise.all([getCurrentUser(), getDictionary()]);
+  if (user?.role === "ADMIN") return null;
   const count = user ? await cartCount(user.id) : 0;
   return (
     <Link href="/cart" aria-label={t.cart.aria(count)} className={`relative inline-flex items-center rounded-lg p-1.5 text-slate-700 hover:bg-slate-100 hover:text-ink ${className}`}>
@@ -150,7 +172,7 @@ export async function CartLink({ className = "" }: { className?: string }) {
 /** "Messages" in the top bar, with the number of conversations waiting to be read. */
 export async function MessagesLink() {
   const [user, t] = await Promise.all([getCurrentUser(), getDictionary()]);
-  if (!user) return null;
+  if (!user || user.role === "ADMIN") return null;
   const unread = await unreadCount(user.id);
   return (
     <Link href="/account/messages" aria-label={t.messages.aria(unread)} className="inline-flex items-center gap-1 hover:text-brand-700 hover:underline">

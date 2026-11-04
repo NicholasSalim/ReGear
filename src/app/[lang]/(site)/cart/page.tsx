@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { ShieldCheck } from "lucide-react";
 import { Link } from "@/i18n/client";
 import { getDictionary } from "@/i18n/server";
-import { requireUser } from "@/lib/auth/dal";
+import { requireTrader } from "@/lib/auth/dal";
 import { getCart } from "@/lib/cart";
 import { formatMoney } from "@/lib/format";
 import { mediaUrl } from "@/lib/media";
@@ -32,7 +32,7 @@ export default async function CartPage() {
 
 /** The cart grouped by seller, with a summary of what can still be bought. */
 async function Cart() {
-  const user = await requireUser("/cart");
+  const user = await requireTrader("/cart");
   const [items, dict] = await Promise.all([getCart(user.id), getDictionary()]);
   const t = dict.cart;
   if (items.length === 0) {

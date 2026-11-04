@@ -6,7 +6,7 @@ import { CreditCard, ShieldCheck } from "lucide-react";
 import { Link } from "@/i18n/client";
 import { getDictionary } from "@/i18n/server";
 import { db } from "@/lib/db";
-import { requireUser } from "@/lib/auth/dal";
+import { requireTrader } from "@/lib/auth/dal";
 import { listAddresses } from "@/lib/addresses";
 import { ADDRESS_LIMIT } from "@/lib/validation";
 import { PAY_HOLD_MINUTES } from "@/lib/constants";
@@ -43,7 +43,7 @@ async function Checkout({
   searchParams: PageProps<"/[lang]/checkout/[listingId]">["searchParams"];
 }) {
   const [{ listingId }, query] = await Promise.all([params, searchParams]);
-  const user = await requireUser(`/checkout/${listingId}`);
+  const user = await requireTrader(`/checkout/${listingId}`);
   if (!/^[a-z0-9]{20,32}$/i.test(listingId)) notFound();
   const t = (await getDictionary()).checkout;
 
@@ -68,9 +68,20 @@ async function Checkout({
     return <EmptyState title={t.ownListing} action={<ButtonLink href="/sell/listings">{t.manageListings}</ButtonLink>} />;
   }
   if (listing.status !== "ACTIVE") {
-    const own = await db.order.findFirst({ where: { listingId, buyerId: user.id, status: "PENDING_PAYMENT" }, select: { id: true } });
+    const own = await db.order.findFirst({
+      where: { listingId, buyerId: user.id, status: { not: "CANCELLED" } },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, status: true },
+    });
     if (own) {
-      return <EmptyState title={t.reservedByYou} description={t.reservedByYouHint} action={<ButtonLink href={`/account/orders/${own.id}`}>{t.finishPayment}</ButtonLink>} />;
+      const unpaid = own.status === "PENDING_PAYMENT";
+      return (
+        <EmptyState
+          title={unpaid ? t.reservedByYou : t.boughtByYou}
+          description={unpaid ? t.reservedByYouHint : undefined}
+          action={<ButtonLink href={`/account/orders/${own.id}`}>{unpaid ? t.finishPayment : t.viewYourOrder}</ButtonLink>}
+        />
+      );
     }
     return <EmptyState title={t.unavailable} description={t.unavailableHint} action={<ButtonLink href="/listings">{t.keepBrowsing}</ButtonLink>} />;
   }

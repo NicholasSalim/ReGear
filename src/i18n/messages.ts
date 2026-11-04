@@ -34,9 +34,17 @@ export function vmsg<K extends ValidationKey>(key: K, ...args: Encodable<Args<Di
   return PREFIX + JSON.stringify([key, args]);
 }
 
-/** Turns a message from vmsg() into text; anything else (zod's own defaults) becomes a generic message. */
-export function translateValidation(message: string, t: Dictionary, locale: Locale): string {
-  if (!message.startsWith(PREFIX)) return t.validation.invalid;
+/** zod's own issue, for wording the rules that have no message of their own. */
+type Issue = { code: string; input?: unknown; minimum?: number | bigint; maximum?: number | bigint; origin?: string };
+
+/** Turns a message from vmsg() into text; zod's own defaults are worded from the kind of problem. */
+export function translateValidation(message: string, t: Dictionary, locale: Locale, issue?: Issue): string {
+  if (!message.startsWith(PREFIX)) {
+    if (issue?.code === "invalid_type" && (issue.input === undefined || issue.input === null || Number.isNaN(issue.input))) return t.validation.required;
+    if (issue?.code === "too_small" && issue.origin === "number") return t.validation.numberMin(Number(issue.minimum));
+    if (issue?.code === "too_big" && issue.origin === "number") return t.validation.numberMax(Number(issue.maximum));
+    return t.validation.invalid;
+  }
   try {
     const [key, args] = JSON.parse(message.slice(PREFIX.length)) as [string, unknown[]];
     const entry = (t.validation as Record<string, string | Fn>)[key];

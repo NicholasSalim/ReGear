@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { useT } from "@/i18n/client";
+import { BAN_LENGTHS } from "@/lib/constants";
 import type { ActionState } from "@/lib/action";
 import { ActionForm, FormMessage, SubmitButton } from "@/components/forms";
 import { Field } from "@/components/ui";
@@ -34,7 +36,7 @@ export function VerificationDecisionForm({ action, id }: { action: FormAction; i
 export function ModerateForm({ action }: { action: FormAction }) {
   const t = useT().adminForms;
   return (
-    <ActionForm action={action} className="flex flex-wrap items-start gap-2">
+    <ActionForm action={action} confirm={t.confirmRemove} className="flex flex-wrap items-start gap-2">
       {(s) =>
         s.ok ? (
           <FormMessage state={s} />
@@ -115,6 +117,43 @@ export function WithdrawalPayForm({ action, id }: { action: FormAction; id: stri
               <SubmitButton name="step" value="mark_paid">{t.markPaid}</SubmitButton>
               <SubmitButton name="step" value="mark_failed" variant="danger">{t.markFailed}</SubmitButton>
             </div>
+          </>
+        )
+      }
+    </ActionForm>
+  );
+}
+
+/** Ban an account, or change how long its ban lasts (`banned`). */
+export function BanForm({ action, banned }: { action: FormAction; banned: boolean }) {
+  const t = useT().adminForms;
+  const [length, setLength] = useState<string>("7");
+  return (
+    <ActionForm action={action} confirm={banned ? undefined : t.banConfirm} className="space-y-3">
+      {(s) =>
+        s.ok ? (
+          <FormMessage state={s} />
+        ) : (
+          <>
+            <FormMessage state={s} />
+            <Field label={t.banLength} name="length" error={s.fieldErrors?.length}>
+              <select id="length" name="length" value={length} onChange={(e) => setLength(e.target.value)} className="input">
+                {BAN_LENGTHS.map((l) => (
+                  <option key={l} value={l}>
+                    {t.banLengths[l]}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            {length === "custom" && (
+              <Field label={t.banUntil} name="until" error={s.fieldErrors?.until}>
+                <input id="until" name="until" type="date" required className="input" />
+              </Field>
+            )}
+            <Field label={t.banReason} name="reason" error={s.fieldErrors?.reason} hint={t.banReasonHint}>
+              <textarea id="reason" name="reason" rows={2} required minLength={5} maxLength={500} className="input" />
+            </Field>
+            <SubmitButton variant="danger">{banned ? t.banChange : t.ban}</SubmitButton>
           </>
         )
       }

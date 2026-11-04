@@ -100,6 +100,7 @@ export async function ListingStatusBadge({ status }: { status: string }) {
     RESERVED: "bg-amber-50 text-amber-800 ring-amber-600/20",
     SOLD: "bg-inverse text-white ring-inverse",
     REMOVED: "bg-rose-50 text-rose-700 ring-rose-600/20",
+    SUSPENDED: "bg-rose-50 text-rose-700 ring-rose-600/20",
   };
   const label = LISTING_STATUS_LABELS[status as ListingStatus];
   const locale = await getLocale();

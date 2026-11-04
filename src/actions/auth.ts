@@ -19,6 +19,8 @@ import { createSession, destroyAllSessions, destroyCurrentSession, readSessionTo
 import { getCurrentUser, requireUserStrict } from "@/lib/auth/dal";
 import { rateLimit } from "@/lib/security/rate-limit";
 import { getClientIp, getUserAgent, safeRedirectPath } from "@/lib/security/request";
+import { isBanned } from "@/lib/account/ban-state";
+import { formatDateTime } from "@/lib/format";
 import { changePasswordSchema, fieldErrors, forgotPasswordSchema, loginSchema, profileSchema, registerSchema, resetPasswordSchema } from "@/lib/validation";
 
 /** Email a password reset link (also how an account whose email was never confirmed gets confirmed). */
@@ -145,6 +147,8 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
     if (failures >= LOCK_AFTER_FAILURES) await audit(user.id, "user.locked", "User", user.id);
     return generic;
   }
+  // Said only after the right password, so it doesn't reveal who is banned.
+  if (isBanned(user)) return { error: t.actions.accountBanned(user.bannedUntil ? formatDateTime(user.bannedUntil, locale) : null) };
 
   await db.user.update({
     where: { id: user.id },

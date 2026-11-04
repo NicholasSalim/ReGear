@@ -498,6 +498,11 @@ export const id: typeof en = {
     beingPaid: "Seseorang sedang membayar barang ini. Jika tidak selesai, barang dijual kembali dalam 10 menit.",
     noRefundByHand: "Pesanan ini tidak punya pengembalian dana via transfer bank yang menunggu dikirim.",
     adminCannotTrade: "Akun admin tidak bisa membeli atau menjual. Gunakan akun lain untuk itu.",
+    banEndInPast: "Pilih tanggal berakhir di masa depan.",
+    banUnavailable: "Akun ini tidak bisa diblokir.",
+    banAdmin: "Akun admin tidak bisa diblokir.",
+    notBanned: "Akun ini tidak sedang diblokir.",
+    sellerBanned: "Penjual ini sedang diblokir. Pencairan dana ke penjual ini menunggu sampai blokir berakhir.",
     refundAccountMissing: "Pembeli belum memberikan rekening bank untuk pengembalian dana.",
     tooManyUnpaidOrders: (n: number) => `Anda sudah punya ${n} pesanan yang belum dibayar. Bayar atau batalkan salah satunya sebelum checkout lagi.`,
     checkoutAgainLater: "Anda sudah dua kali membiarkan barang ini tidak dibayar dalam sehari terakhir. Anda bisa checkout lagi besok.",
@@ -645,12 +650,16 @@ export const id: typeof en = {
     refundAccountSaved: (name: string) => `Tersimpan. Pengembalian dana akan kami kirim ke rekening atas nama ${name}.`,
     refundMarkedSent: "Ditandai sudah dikembalikan. Pembeli sudah dikirimi email.",
     finishBeforePublish: "Draf ini belum lengkap. Buka dengan Ubah lalu tekan Terbitkan untuk melihat yang masih kurang.",
+    accountBanned: (until: string | null) =>
+      until ? `Akun ini diblokir sampai ${until}. Rinciannya sudah kami kirim lewat email.` : "Akun ini diblokir. Rinciannya sudah kami kirim lewat email.",
+    userBanned: (cancelled: number) => `Diblokir dan dikeluarkan dari semua perangkat.${cancelled ? ` ${cancelled} pesanan yang belum dikirim dibatalkan.` : ""}`,
+    userUnbanned: "Blokir dicabut. Iklannya aktif kembali.",
   },
   events: {
     CREATED: (p: { minutes: number }) => `Pesanan dibuat. Bayar dalam ${p.minutes} menit; barang disimpan untuk Anda begitu Anda mulai membayar.`,
     PAID: () => "Pembayaran diterima. ReGear menahannya sampai pembeli menerima barang.",
-    CANCELLED: (p: { by: "buyer" | "seller"; reason?: string; refunded?: boolean }) =>
-      `Pesanan dibatalkan oleh ${p.by === "buyer" ? "pembeli" : "penjual"}${p.reason ? `: ${p.reason}` : "."}${p.refunded ? " Dana dikembalikan penuh." : ""}`,
+    CANCELLED: (p: { by: "buyer" | "seller" | "admin"; reason?: string; refunded?: boolean }) =>
+      `Pesanan dibatalkan oleh ${p.by === "buyer" ? "pembeli" : p.by === "seller" ? "penjual" : "ReGear"}${p.reason ? `: ${p.reason}` : "."}${p.refunded ? " Pembeli mendapat pengembalian dana penuh." : ""}`,
     EXPIRED: () => "Pembayaran tidak diselesaikan tepat waktu; barang dilepas kembali.",
     SHIPPED: (p: { carrier: string; tracking: string }) => `Dikirim dengan ${p.carrier}, nomor resi ${p.tracking}.`,
     DELIVERED: (p: { auto: boolean; returnDays: number }) =>
@@ -665,12 +674,12 @@ export const id: typeof en = {
     RETURN_APPROVED: () => "Penjual menyetujui pengembalian. Silakan kirim barang kembali dan tambahkan nomor resi.",
     RETURN_REJECTED: (p: { note: string }) => `Penjual menolak pengembalian: ${sentence(p.note)} Pembeli bisa melanjutkan dengan membuka sengketa.`,
     RETURN_SHIPPED: (p: { carrier: string; tracking: string }) => `Pembeli mengirim barang kembali dengan ${p.carrier}, nomor resi ${p.tracking}.`,
-    REFUNDED: () => "Penjual menerima barang yang dikembalikan. Dana dikembalikan penuh ke pembeli.",
+    REFUNDED: () => "Penjual menerima barang yang dikembalikan. Pembeli mendapat pengembalian dana penuh.",
     DISPUTE_OPENED: (p: { by: "buyer" | "seller" }) =>
       `${p.by === "buyer" ? "Pembeli" : "Penjual"} membuka sengketa. Pembayaran dibekukan sampai ReGear menyelesaikannya.`,
     DISPUTE_RESOLVED: (p: { outcome: "buyer" | "partial" | "seller" }) =>
       p.outcome === "buyer"
-        ? "Sengketa diselesaikan untuk pembeli. Dana dikembalikan penuh."
+        ? "Sengketa diselesaikan untuk pembeli. Pembeli mendapat pengembalian dana penuh."
         : p.outcome === "partial"
           ? "Sengketa diselesaikan dengan pengembalian dana sebagian ke pembeli; sisanya diteruskan ke saldo penjual."
           : "Sengketa diselesaikan untuk penjual. Pembayaran diteruskan ke saldo penjual.",
@@ -698,6 +707,7 @@ export const id: typeof en = {
       google_failed: "Tidak bisa terhubung ke Google saat ini. Coba lagi sebentar lagi.",
       signup_expired: "Pendaftaran ini sudah kedaluwarsa atau kodenya terlalu sering salah. Daftar lagi untuk mendapat kode baru.",
       signup_exists: "Akun dengan email ini sudah ada. Silakan masuk.",
+      banned: "Akun ini diblokir. Rinciannya sudah kami kirim lewat email.",
       locked: "Akun ini dikunci sementara karena terlalu sering gagal masuk. Coba lagi dalam beberapa menit.",
       rate_limited: "Terlalu banyak percobaan masuk. Tunggu beberapa menit lalu coba lagi.",
     },
@@ -1196,6 +1206,16 @@ export const id: typeof en = {
       sales: (n: number) => `Penjualan (${n})`,
       activity: "Aktivitas terbaru",
       byOther: "oleh orang lain",
+      banned: "Diblokir",
+      banTitle: "Blokir",
+      banIntro: "Akun yang diblokir dikeluarkan dan tidak bisa masuk. Iklannya disembunyikan, pesanan yang belum dikirim dibatalkan dan dananya dikembalikan, dan pencairan dana ke akun ini menunggu. Tidak ada yang dihapus, dan blokir bisa dicabut.",
+      bannedUntil: (date: string) => `Diblokir sampai ${date}`,
+      bannedForever: "Diblokir permanen",
+      bannedSince: (date: string) => `sejak ${date}`,
+      banReasonShown: (reason: string) => `Alasan: ${reason}`,
+      unban: "Cabut blokir",
+      unbanConfirm: "Cabut blokir? Pengguna bisa masuk lagi, dan iklannya aktif kembali.",
+      changeBan: "Ubah lama blokir",
     },
     overviewTitle: "Ringkasan marketplace",
     users: "Pengguna",
@@ -1249,6 +1269,9 @@ export const id: typeof en = {
       "withdrawal.request": "Penarikan diajukan",
       "withdrawal.approve": "Penarikan disetujui",
       "withdrawal.reject": "Penarikan ditolak",
+      "user.ban": "Akun diblokir",
+      "user.unban": "Blokir dicabut",
+      "user.ban_ended": "Blokir berakhir",
       "withdrawal.mark_paid": "Penarikan ditandai dibayar",
       "withdrawal.mark_failed": "Penarikan ditandai gagal",
       "seller.create": "Toko dibuat",
@@ -1290,6 +1313,15 @@ export const id: typeof en = {
     greetingNoName: "Halo,",
     buttonFallback: "Jika tombol tidak berfungsi, salin tautan ini ke peramban Anda:",
     footer: "Email ini dikirim otomatis oleh ReGear terkait akun atau pesanan Anda. Jangan bagikan tautan di dalamnya kepada siapa pun.",
+    account: {
+      banned: {
+        subject: "Akun ReGear Anda diblokir",
+        body: (until: string | null) =>
+          `Tim kami memblokir akun ReGear Anda${until ? ` sampai ${until}` : ""}. Anda tidak bisa masuk, dan iklan Anda disembunyikan. Pesanan yang belum dikirim dibatalkan, dan pembeli yang sudah membayar mendapat pengembalian dana.`,
+        reason: (reason: string) => `Alasan: ${sentence(reason)} Jika menurut Anda ini keliru, balas email ini.`,
+      },
+      unbanned: { subject: "Akun ReGear Anda aktif kembali", body: "Blokir pada akun Anda sudah berakhir. Anda bisa masuk lagi, dan iklan Anda aktif kembali.", button: "Masuk" },
+    },
     privacy: "Kebijakan Privasi",
     orderLine: (title: string, number: string) => `${title} · pesanan ${number}`,
     viewOrder: "Lihat pesanan",
@@ -1335,8 +1367,9 @@ export const id: typeof en = {
         seller: { subject: (n: string) => `Pesanan baru ${n}: segera kirim`, body: () => "Pembeli sudah membayar. Kemas barangnya, kirim dengan jasa ekspedisi, lalu masukkan nomor resi di halaman pesanan. Pembayaran diteruskan ke Anda setelah pembeli menerima barang." },
       },
       CANCELLED: {
-        buyer: { subject: (n: string) => `Pesanan ${n} dibatalkan`, body: (p: { reason?: string; refunded?: boolean }) => `Penjual membatalkan pesanan ini${p.reason ? `: ${p.reason}` : "."}${p.refunded ? " Dana Anda dikembalikan penuh." : ""}` },
-        seller: { subject: (n: string) => `Pesanan ${n} dibatalkan`, body: (p: { reason?: string; refunded?: boolean }) => `Pembeli membatalkan pesanan ini${p.reason ? `: ${p.reason}` : "."} Iklan Anda aktif kembali; jangan kirim barangnya.` },
+        buyer: { subject: (n: string) => `Pesanan ${n} dibatalkan`, body: (p: { by?: string; reason?: string; refunded?: boolean }) => `${p.by === "admin" ? "ReGear" : "Penjual"} membatalkan pesanan ini${p.reason ? `: ${p.reason}` : "."}${p.refunded ? " Dana Anda sedang dikembalikan penuh." : ""}` },
+        seller: { subject: (n: string) => `Pesanan ${n} dibatalkan`, body: (p: { by?: string; reason?: string; refunded?: boolean }) =>
+          `${p.by === "admin" ? "ReGear" : "Pembeli"} membatalkan pesanan ini${p.reason ? `: ${p.reason}` : "."} Jangan kirim barangnya.${p.by === "admin" ? "" : " Iklan Anda aktif kembali."}` },
       },
       EXPIRED: {
         buyer: { subject: (n: string) => `Pesanan ${n}: waktu pembayaran habis`, body: () => "Pembayaran tidak diselesaikan tepat waktu, jadi pesanan dibatalkan dan barang dijual kembali. Anda bisa memesannya lagi jika masih tersedia." },

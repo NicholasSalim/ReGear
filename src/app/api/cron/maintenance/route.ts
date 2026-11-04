@@ -10,6 +10,7 @@ import { deletePublicImage } from "@/lib/storage";
 import { AUDIT_RETENTION_DAYS, EMAIL_LOG_RETENTION_DAYS } from "@/lib/legal";
 import { deliverPendingEmails } from "@/lib/email/outbox";
 import { runSavedSearchAlerts } from "@/lib/saved-searches";
+import { liftExpiredBans } from "@/lib/account/ban";
 
 // Periodic maintenance. Call from a scheduler (cron, systemd timer, platform
 // cron) every ~5 minutes:  curl -X POST -H "Authorization: Bearer $CRON_SECRET" .../api/cron/maintenance
@@ -27,6 +28,9 @@ export async function POST(req: Request) {
   const result = await runOrderMaintenance();
   invalidate(result.tags, "route");
   const withdrawals = await runPayoutMaintenance();
+  // Timed bans that have run out: the account's listings go back on sale.
+  const bans = await liftExpiredBans();
+  invalidate(bans.tags, "route");
 
   const now = new Date();
   const [sessions] = await Promise.all([
@@ -57,6 +61,7 @@ export async function POST(req: Request) {
   return NextResponse.json({
     expiredOrders: result.expired,
     autoDelivered: result.autoDelivered,
+    bansLifted: bans.lifted,
     ...withdrawals,
     purgedSessions: sessions.count,
     purgedOrphanUploads: orphans.count,

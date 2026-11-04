@@ -27,6 +27,12 @@ model User {
   // Set when the owner deletes the account. Personal data is removed and the
   // row is kept, anonymised, so orders, reviews and disputes stay consistent.
   deletedAt         DateTime?
+  // Set while an admin has banned the account: it can't sign in, its listings
+  // are hidden (SUSPENDED) and its unshipped orders were cancelled.
+  // bannedUntil null means permanent; a timed ban is lifted by the maintenance job.
+  bannedAt          DateTime?
+  bannedUntil       DateTime?
+  banReason         String?
   // Which Terms / Privacy Policy version the user agreed to at sign-up, and when.
   termsVersion      String?
   termsAcceptedAt   DateTime?
@@ -58,6 +64,7 @@ model User {
   // Trigram indexes (pg_trgm) serve the admin and storefront "contains" searches.
   @@index([email(ops: raw("gin_trgm_ops"))], type: Gin, map: "User_email_trgm_idx")
   @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "User_name_trgm_idx")
+  @@index([bannedUntil])
 }
 
 // A buyer's saved delivery address. Region names are copied from the
@@ -254,7 +261,7 @@ model Listing {
   location         String    @default("")
   // Buyers may offer less than the asking price; the seller accepts or declines.
   acceptsOffers    Boolean   @default(false)
-  status           String    @default("DRAFT") // DRAFT | ACTIVE | RESERVED | SOLD | REMOVED
+  status           String    @default("DRAFT") // DRAFT | ACTIVE | RESERVED | SOLD | REMOVED | SUSPENDED (seller banned)
   searchText       String    @default("") // lower-cased denormalised search column
   viewCount        Int       @default(0)
   publishedAt      DateTime?
@@ -508,6 +515,8 @@ model SavedSearch {
   userId        String
   label         String
   params        String
+  // How the results were sorted when saved; "See results" reopens them that way.
+  sort          String   @default("newest")
   alerts        Boolean  @default(true)
   lastAlertedAt DateTime @default(now())
   createdAt     DateTime @default(now())

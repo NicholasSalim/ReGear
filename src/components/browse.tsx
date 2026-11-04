@@ -13,7 +13,7 @@ import { ListingGrid, ListingList } from "@/components/listing-card";
 import { EmptyState } from "@/components/ui";
 import { ActionButton } from "@/components/forms";
 import { getCurrentUser } from "@/lib/auth/dal";
-import { canonicalQuery, isSaved } from "@/lib/saved-searches";
+import { isSaved, savedQuery } from "@/lib/saved-searches";
 import { saveSearchAction } from "@/actions/buying";
 
 type RawParams = Record<string, string | string[] | undefined>;
@@ -132,7 +132,7 @@ async function SaveSearch({ params, here }: { params: BrowseParams; here: string
     );
   }
   return (
-    <ActionButton action={saveSearchAction.bind(null, canonicalQuery(params))} variant="ghost" className="-my-1 px-2 py-1 text-brand-700">
+    <ActionButton action={saveSearchAction.bind(null, savedQuery(params))} variant="ghost" className="-my-1 px-2 py-1 text-brand-700">
       <Heart className="size-4" aria-hidden /> {t.searches.save}
     </ActionButton>
   );

@@ -18,7 +18,7 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: PageProps<"/[lang]/c/[category]">): Promise<Metadata> {
   const { category } = await params;
   const c = getCategory(category);
-  if (!c) return {};
+  if (!c) return { title: (await getDictionary()).errors.notFoundTitle, robots: { index: false } };
   const [locale, t] = await Promise.all([getLocale(), getDictionary()]);
   const name = pick(c.name, locale);
   const description = pick(c.description, locale);

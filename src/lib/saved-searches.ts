@@ -33,6 +33,21 @@ export function canonicalQuery(p: BrowseParams) {
   return qs.toString();
 }
 
+/** The filters plus the sort order, for saving a search and reopening its results. */
+export function savedQuery(p: BrowseParams) {
+  const qs = new URLSearchParams(canonicalQuery(p));
+  if (p.sort !== "newest") qs.set("sort", p.sort);
+  return qs.toString();
+}
+
+/** The results page for a saved search, sorted as it was saved. */
+export function savedSearchHref(s: { params: string; sort: string }) {
+  const qs = new URLSearchParams(s.params);
+  if (s.sort !== "newest") qs.set("sort", s.sort);
+  const query = qs.toString();
+  return `/listings${query ? `?${query}` : ""}`;
+}
+
 export function parseQuery(query: string): BrowseParams {
   const qs = new URLSearchParams(query);
   const raw: Record<string, string | string[]> = {};
@@ -66,9 +81,13 @@ export function describeSearch(p: BrowseParams, t: Dictionary, locale: Locale) {
 export async function saveSearch(userId: string, params: BrowseParams, label: string) {
   const query = canonicalQuery(params);
   const existing = await db.savedSearch.findUnique({ where: { userId_params: { userId, params: query } }, select: { id: true } });
-  if (existing) return { id: existing.id };
+  // The same filters saved again with another sort order: keep the new order.
+  if (existing) {
+    await db.savedSearch.update({ where: { id: existing.id }, data: { sort: params.sort } });
+    return { id: existing.id };
+  }
   if ((await db.savedSearch.count({ where: { userId } })) >= SAVED_SEARCH_LIMIT) throw new DomainError("savedSearchLimit", SAVED_SEARCH_LIMIT);
-  const saved = await db.savedSearch.create({ data: { userId, params: query, label: label.slice(0, 200) } });
+  const saved = await db.savedSearch.create({ data: { userId, params: query, sort: params.sort, label: label.slice(0, 200) } });
   return { id: saved.id };
 }
 
@@ -83,8 +102,10 @@ export async function setAlerts(userId: string, id: string, alerts: boolean) {
   if (res.count !== 1) throw new DomainError("savedSearchNotFound");
 }
 
+/** Saved with these filters and this sort order (another order can be saved over it). */
 export async function isSaved(userId: string, params: BrowseParams) {
-  return !!(await db.savedSearch.findUnique({ where: { userId_params: { userId, params: canonicalQuery(params) } }, select: { id: true } }));
+  const saved = await db.savedSearch.findUnique({ where: { userId_params: { userId, params: canonicalQuery(params) } }, select: { sort: true } });
+  return saved?.sort === params.sort;
 }
 
 /** The user's saved searches with how many listings matched since the last alert. */

@@ -7,6 +7,7 @@ import { getRequestLocale } from "@/i18n/server";
 import { env } from "@/lib/env";
 import { audit } from "@/lib/audit";
 import { createSession } from "@/lib/auth/session";
+import { isBanned } from "@/lib/account/ban-state";
 import { db } from "@/lib/db";
 import {
   authReturnPage,
@@ -93,6 +94,7 @@ export async function GET(req: Request) {
     const result = await findOrCreateGoogleUser(claims);
     const { user, created, linked } = result;
     if (user.lockedUntil && user.lockedUntil > new Date()) return fail("locked", "account locked");
+    if (isBanned(user)) return fail("banned", "account banned");
 
     await createSession(user.id, { ip: await getClientIp(), userAgent: await getUserAgent() });
     await db.user.update({ where: { id: user.id }, data: { locale: await getRequestLocale() } });

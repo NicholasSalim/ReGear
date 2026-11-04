@@ -65,7 +65,7 @@ export const CHECK_STATUS_INFO: Record<CheckStatus, { label: Localized; tone: st
   NA: { label: L("Not applicable", "Tidak berlaku"), tone: "text-slate-500" },
 };
 
-export const LISTING_STATUSES = ["DRAFT", "ACTIVE", "RESERVED", "SOLD", "REMOVED"] as const;
+export const LISTING_STATUSES = ["DRAFT", "ACTIVE", "RESERVED", "SOLD", "REMOVED", "SUSPENDED"] as const;
 export type ListingStatus = (typeof LISTING_STATUSES)[number];
 
 export const LISTING_STATUS_LABELS: Record<ListingStatus, Localized> = {
@@ -74,7 +74,12 @@ export const LISTING_STATUS_LABELS: Record<ListingStatus, Localized> = {
   RESERVED: L("Reserved", "Dipesan"),
   SOLD: L("Sold", "Terjual"),
   REMOVED: L("Removed", "Dihapus"),
+  SUSPENDED: L("Hidden: seller banned", "Disembunyikan: penjual diblokir"),
 };
+
+/** How long an admin can ban an account for: days, a chosen date, or for good. */
+export const BAN_LENGTHS = ["1", "7", "30", "custom", "permanent"] as const;
+export type BanLength = (typeof BAN_LENGTHS)[number];
 
 export const WARRANTY_TYPES = ["NONE", "SELLER", "MANUFACTURER"] as const;
 export type WarrantyType = (typeof WARRANTY_TYPES)[number];

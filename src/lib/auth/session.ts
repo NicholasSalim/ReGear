@@ -3,6 +3,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { db } from "@/lib/db";
 import { isHttps } from "@/lib/env";
+import { isBanned } from "@/lib/account/ban-state";
 
 // Opaque, server-side sessions. The cookie carries a 256-bit random token;
 // the database stores only its SHA-256 so a DB leak cannot hijack sessions.
@@ -58,7 +59,7 @@ export async function validateSessionToken(token: string) {
       id: true,
       expiresAt: true,
       createdAt: true,
-      user: { select: { id: true, email: true, name: true, role: true, passwordChangedAt: true, emailVerifiedAt: true } },
+      user: { select: { id: true, email: true, name: true, role: true, passwordChangedAt: true, emailVerifiedAt: true, bannedAt: true, bannedUntil: true } },
     },
   });
   if (!session || session.expiresAt.getTime() <= Date.now()) return null;
@@ -66,6 +67,8 @@ export async function validateSessionToken(token: string) {
   if (session.createdAt < session.user.passwordChangedAt) return null;
   // Only accounts whose owner has proved the email address can be signed in.
   if (!session.user.emailVerifiedAt) return null;
+  // Banning deletes the sessions too; this also covers one made in the same moment.
+  if (isBanned(session.user)) return null;
   return session;
 }
 

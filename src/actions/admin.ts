@@ -11,8 +11,9 @@ import { markRefundSent, resolveDispute } from "@/lib/orders/service";
 import { enqueueEmail } from "@/lib/email/outbox";
 import { enqueueDisputeMessageEmails } from "@/lib/email/notify";
 import { isLocale } from "@/i18n/locales";
-import { disputeResolutionSchema, id as idSchema, text } from "@/lib/validation";
+import { banSchema, disputeResolutionSchema, id as idSchema, text } from "@/lib/validation";
 import { forbidden } from "next/navigation";
+import { banEnd, banUser, unbanUser } from "@/lib/account/ban";
 
 // Every admin action re-checks the role server-side; UI gating is not trusted.
 async function requireAdminStrict() {
@@ -115,5 +116,38 @@ export async function moderateListingAction(listingId: string, _prev: ActionStat
     invalidate(listingTags(listing));
     await audit(admin.id, "listing.moderate_remove", "Listing", listingId, { reason });
     return { ok: true, message: t.actions.listingRemoved };
+  });
+}
+
+/** Ban an account for a chosen time or permanently, or change how long its ban lasts. */
+export async function banUserAction(userId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  return runAction(async () => {
+    const admin = await requireAdminStrict();
+    const { t } = await actionI18n();
+    idSchema.parse(userId);
+    if (userId === admin.id) return { error: t.domain.banAdmin };
+    const { length, reason, until: untilDate } = banSchema.parse(formToObject(formData));
+    let until: Date | null;
+    try {
+      until = banEnd(length, untilDate);
+    } catch {
+      return { fieldErrors: { until: t.domain.banEndInPast } };
+    }
+    if (until && until <= new Date()) return { fieldErrors: { until: t.domain.banEndInPast } };
+    const { tags, cancelled } = await banUser(admin.id, userId, { until, reason });
+    invalidate(tags);
+    refresh();
+    return { ok: true, message: t.actions.userBanned(cancelled) };
+  });
+}
+
+export async function unbanUserAction(userId: string, _prev?: ActionState, _formData?: FormData): Promise<ActionState> {
+  return runAction(async () => {
+    const admin = await requireAdminStrict();
+    const { t } = await actionI18n();
+    idSchema.parse(userId);
+    invalidate((await unbanUser(admin.id, userId)).tags);
+    refresh();
+    return { ok: true, message: t.actions.userUnbanned };
   });
 }

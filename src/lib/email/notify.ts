@@ -14,7 +14,8 @@ type Tx = Prisma.TransactionClient;
 export const ORDER_EMAIL_RECIPIENTS: { [T in EventType]?: (p: EventParams<T>) => OrderRole[] } = {
   PAID: () => ["buyer", "seller"],
   // An unpaid order the buyer drops never reached the seller, so only paid ones are worth an email.
-  CANCELLED: (p) => (p.by === "seller" ? ["buyer"] : p.refunded ? ["seller"] : []),
+  // ReGear cancelling (a ban) tells both sides.
+  CANCELLED: (p) => (p.by === "admin" ? ["buyer", "seller"] : p.by === "seller" ? ["buyer"] : p.refunded ? ["seller"] : []),
   EXPIRED: () => ["buyer"],
   SHIPPED: () => ["buyer"],
   DELIVERED: (p) => (p.auto ? ["buyer", "seller"] : ["seller"]),

@@ -120,7 +120,7 @@ describe("server messages in the visitor's language", () => {
     expect(eventText(shipped, en)).toBe(shipped.message);
     expect(eventText({ type: "SHIPPED", message: "Shipped with JNE.", params: null }, id)).toBe("Shipped with JNE.");
     expect(eventText({ type: "CANCELLED", message: "", params: JSON.stringify({ by: "seller", refunded: true }) }, id)).toBe(
-      "Pesanan dibatalkan oleh penjual. Dana dikembalikan penuh.",
+      "Pesanan dibatalkan oleh penjual. Pembeli mendapat pengembalian dana penuh.",
     );
   });
 

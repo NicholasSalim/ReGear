@@ -4,7 +4,7 @@ import { id } from "@/i18n/dictionaries/id";
 import { localePath, type Locale } from "@/i18n/locales";
 import type { EventType } from "@/i18n/messages";
 import { env } from "@/lib/env";
-import { formatMoney } from "@/lib/format";
+import { formatDateTime, formatMoney } from "@/lib/format";
 import type { OutgoingEmail } from "@/lib/email/transport";
 
 // Every email ReGear sends, worded from the dictionaries in the recipient's
@@ -23,6 +23,8 @@ export type EmailPayload =
   | { template: "reset-password"; params: { url: string; name: string } }
   | { template: "order-event"; params: { orderId: string; number: string; title: string; type: EventType; role: OrderRole; event: Record<string, unknown> } }
   | { template: "dispute-message"; params: { disputeId: string; number: string; from: "BUYER" | "SELLER" | "ADMIN" } }
+  | { template: "account-banned"; params: { until: string | null; reason: string } }
+  | { template: "account-unbanned"; params: Record<string, never> }
   | { template: "verification-approved"; params: Record<string, never> }
   | { template: "verification-rejected"; params: { note: string } }
   | { template: "payout-account-changed"; params: { bank: string; account: string; name: string } }
@@ -81,6 +83,12 @@ function content(payload: EmailPayload, locale: Locale): Content {
         paragraphs: [t.disputeMessage.body(payload.params.from)],
         button: { label: t.disputeMessage.button, url: siteUrl(`/disputes/${payload.params.disputeId}`, locale) },
       };
+    case "account-banned": {
+      const { until, reason } = payload.params;
+      return { subject: t.account.banned.subject, paragraphs: [t.account.banned.body(until ? formatDateTime(until, locale) : null), t.account.banned.reason(reason)] };
+    }
+    case "account-unbanned":
+      return { subject: t.account.unbanned.subject, paragraphs: [t.account.unbanned.body], button: { label: t.account.unbanned.button, url: siteUrl("/login", locale) } };
     case "verification-approved":
       return { subject: t.verification.approved.subject, paragraphs: [t.verification.approved.body], button: { label: t.verification.approved.button, url: siteUrl("/sell", locale) } };
     case "verification-rejected":

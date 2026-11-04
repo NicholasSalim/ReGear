@@ -4,7 +4,7 @@ import { Link } from "@/i18n/client";
 import { getDictionary, getLocale } from "@/i18n/server";
 import { requireTrader } from "@/lib/auth/dal";
 import { formatDate } from "@/lib/format";
-import { describeSearch, getSavedSearches } from "@/lib/saved-searches";
+import { describeSearch, getSavedSearches, savedSearchHref } from "@/lib/saved-searches";
 import { deleteSavedSearchAction, setAlertsAction } from "@/actions/buying";
 import { ActionButton } from "@/components/forms";
 import { EmptyState, PageHeader } from "@/components/ui";
@@ -38,7 +38,7 @@ export default async function SavedSearchesPage() {
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Link
-                  href={`/listings${s.params ? `?${s.params}` : ""}`}
+                  href={savedSearchHref(s)}
                   className="press inline-flex items-center rounded-full bg-brand-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-action-hover"
                 >
                   {t.run}

@@ -4,6 +4,7 @@ import { isLocale } from "@/i18n/locales";
 import { enqueueEmail } from "@/lib/email/outbox";
 import { formatMoney } from "@/lib/format";
 import { DomainError } from "@/lib/orders/service";
+import { isBanned } from "@/lib/account/ban-state";
 import { BANKS, bankName, maskAccount, PayoutError, payouts } from "@/lib/payouts/provider";
 import type { Prisma } from "@/generated/prisma/client";
 import {
@@ -208,6 +209,9 @@ export async function syncWithdrawal(id: string) {
 // Admin decisions ------------------------------------------------------------------
 
 export async function approveWithdrawal(id: string, adminId: string) {
+  // Payouts to a banned seller wait until the ban ends.
+  const owner = await db.withdrawal.findUnique({ where: { id }, select: { seller: { select: { user: { select: { bannedAt: true, bannedUntil: true } } } } } });
+  if (owner && isBanned(owner.seller.user)) throw new DomainError("sellerBanned");
   await db.$transaction((tx) => move(tx, id, "PENDING_REVIEW", "SENDING", { reviewedById: adminId }));
   await sendWithdrawal(id);
 }

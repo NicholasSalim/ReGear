@@ -496,6 +496,11 @@ export const en = {
     beingPaid: "Someone is paying for this item right now. If they don't finish, it's back on sale within 10 minutes.",
     noRefundByHand: "This order has no bank-transfer refund waiting to be sent.",
     adminCannotTrade: "Admin accounts can't buy or sell. Use a separate account for that.",
+    banEndInPast: "Choose an end date in the future.",
+    banUnavailable: "This account can't be banned.",
+    banAdmin: "Admin accounts can't be banned.",
+    notBanned: "This account isn't banned.",
+    sellerBanned: "This seller is banned. Payouts to them wait until the ban ends.",
     refundAccountMissing: "The buyer hasn't given a bank account for the refund yet.",
     tooManyUnpaidOrders: (n: number) => `You already have ${n} unpaid orders. Pay for or cancel one before checking out again.`,
     checkoutAgainLater: "You've left this item unpaid twice in the last day. You can check it out again tomorrow.",
@@ -643,12 +648,17 @@ export const en = {
     refundAccountSaved: (name: string) => `Saved. We'll send your refund to the account of ${name}.`,
     refundMarkedSent: "Marked as refunded. The buyer has been emailed.",
     finishBeforePublish: "This draft isn't finished. Open it with Edit and press Publish to see what's missing.",
+    accountBanned: (until: string | null) =>
+      until ? `This account is banned until ${until}. We've emailed you the details.` : "This account is banned. We've emailed you the details.",
+    userBanned: (cancelled: number) =>
+      `Banned and signed out everywhere.${cancelled ? ` ${cancelled} unshipped ${cancelled === 1 ? "order was" : "orders were"} cancelled.` : ""}`,
+    userUnbanned: "Ban lifted. Their listings are back on sale.",
   },
   events: {
     CREATED: (p: { minutes: number }) => `Order placed. Pay within ${p.minutes} minutes; the item is held for you once you start paying.`,
     PAID: () => "Payment received. ReGear holds it until the buyer accepts the item.",
-    CANCELLED: (p: { by: "buyer" | "seller"; reason?: string; refunded?: boolean }) =>
-      `Order cancelled by the ${p.by}${p.reason ? `: ${p.reason}` : "."}${p.refunded ? " Full refund issued." : ""}`,
+    CANCELLED: (p: { by: "buyer" | "seller" | "admin"; reason?: string; refunded?: boolean }) =>
+      `Order cancelled by ${p.by === "admin" ? "ReGear" : `the ${p.by}`}${p.reason ? `: ${p.reason}` : "."}${p.refunded ? " The buyer gets a full refund." : ""}`,
     EXPIRED: () => "Payment was not completed in time; the item was released.",
     SHIPPED: (p: { carrier: string; tracking: string }) => `Shipped with ${p.carrier}, tracking number ${p.tracking}.`,
     DELIVERED: (p: { auto: boolean; returnDays: number }) =>
@@ -663,11 +673,11 @@ export const en = {
     RETURN_APPROVED: () => "Seller approved the return. Please ship the item back and add tracking.",
     RETURN_REJECTED: (p: { note: string }) => `Seller rejected the return: ${sentence(p.note)} The buyer can escalate by opening a dispute.`,
     RETURN_SHIPPED: (p: { carrier: string; tracking: string }) => `Buyer shipped the item back with ${p.carrier}, tracking ${p.tracking}.`,
-    REFUNDED: () => "Seller received the returned item. Full refund issued to the buyer.",
+    REFUNDED: () => "Seller received the returned item. The buyer gets a full refund.",
     DISPUTE_OPENED: (p: { by: "buyer" | "seller" }) => `${p.by === "buyer" ? "Buyer" : "Seller"} opened a dispute. Payment is frozen until ReGear resolves it.`,
     DISPUTE_RESOLVED: (p: { outcome: "buyer" | "partial" | "seller" }): string =>
       p.outcome === "buyer"
-        ? "Dispute resolved in the buyer's favour. Full refund issued."
+        ? "Dispute resolved in the buyer's favour. The buyer gets a full refund."
         : p.outcome === "partial"
           ? "Dispute resolved with a partial refund to the buyer; the remainder was released to the seller's balance."
           : "Dispute resolved in the seller's favour. Payment released to the seller's balance.",
@@ -697,6 +707,7 @@ export const en = {
       rate_limited: "Too many sign-in attempts. Wait a few minutes and try again.",
       signup_expired: "This sign-up has expired or the code was entered wrong too many times. Sign up again to get a new code.",
       signup_exists: "An account with this email already exists. Sign in instead.",
+      banned: "This account is banned. We've emailed you the details.",
     } as Record<string, string>,
     googleNotice: "By continuing with Google, you agree to the [Terms & Conditions](/terms) and [Privacy Policy](/privacy).",
     forgotLink: "Forgot password?",
@@ -1193,6 +1204,16 @@ export const en = {
       sales: (n: number) => `Sales (${n})`,
       activity: "Recent activity",
       byOther: "by someone else",
+      banned: "Banned",
+      banTitle: "Ban",
+      banIntro: "A banned account is signed out and can't sign in. Its listings are hidden, its orders that haven't shipped are cancelled and refunded, and payouts to it wait. Nothing is deleted, and a ban can be lifted.",
+      bannedUntil: (date: string) => `Banned until ${date}`,
+      bannedForever: "Banned permanently",
+      bannedSince: (date: string) => `since ${date}`,
+      banReasonShown: (reason: string) => `Reason: ${reason}`,
+      unban: "Lift ban",
+      unbanConfirm: "Lift the ban? They can sign in again, and their listings go back on sale.",
+      changeBan: "Change how long the ban lasts",
     },
     overviewTitle: "Marketplace overview",
     users: "Users",
@@ -1246,6 +1267,9 @@ export const en = {
       "withdrawal.request": "Withdrawal requested",
       "withdrawal.approve": "Withdrawal approved",
       "withdrawal.reject": "Withdrawal rejected",
+      "user.ban": "Account banned",
+      "user.unban": "Ban lifted",
+      "user.ban_ended": "Ban ended",
       "withdrawal.mark_paid": "Withdrawal marked paid",
       "withdrawal.mark_failed": "Withdrawal marked failed",
       "seller.create": "Shop created",
@@ -1287,6 +1311,15 @@ export const en = {
     greetingNoName: "Hi,",
     buttonFallback: "If the button doesn't work, copy this link into your browser:",
     footer: "This email was sent automatically by ReGear about your account or orders. Never share the links in it with anyone.",
+    account: {
+      banned: {
+        subject: "Your ReGear account is banned",
+        body: (until: string | null) =>
+          `Our team has banned your ReGear account${until ? ` until ${until}` : ""}. You can't sign in, and your listings are hidden. Orders that hadn't shipped were cancelled, and buyers who had paid are refunded.`,
+        reason: (reason: string) => `Reason: ${sentence(reason)} If you think this is a mistake, reply to this email.`,
+      },
+      unbanned: { subject: "Your ReGear account is open again", body: "The ban on your account has ended. You can sign in again, and your listings are back on sale.", button: "Sign in" },
+    },
     privacy: "Privacy Policy",
     orderLine: (title: string, number: string) => `${title} · order ${number}`,
     viewOrder: "View order",
@@ -1332,8 +1365,9 @@ export const en = {
         seller: { subject: (n: string) => `New order ${n}: please ship it`, body: () => "The buyer has paid. Pack the item, ship it with a courier and add the tracking number on the order page. You're paid once the buyer accepts the item." },
       },
       CANCELLED: {
-        buyer: { subject: (n: string) => `Order ${n} was cancelled`, body: (p: { reason?: string; refunded?: boolean }) => `The seller cancelled this order${p.reason ? `: ${p.reason}` : "."}${p.refunded ? " Your payment is being refunded in full." : ""}` },
-        seller: { subject: (n: string) => `Order ${n} was cancelled`, body: (p: { reason?: string; refunded?: boolean }) => `The buyer cancelled this order${p.reason ? `: ${p.reason}` : "."} Your listing is back on sale; don't ship the item.` },
+        buyer: { subject: (n: string) => `Order ${n} was cancelled`, body: (p: { by?: string; reason?: string; refunded?: boolean }) => `${p.by === "admin" ? "ReGear" : "The seller"} cancelled this order${p.reason ? `: ${p.reason}` : "."}${p.refunded ? " Your payment is being refunded in full." : ""}` },
+        seller: { subject: (n: string) => `Order ${n} was cancelled`, body: (p: { by?: string; reason?: string; refunded?: boolean }) =>
+          `${p.by === "admin" ? "ReGear" : "The buyer"} cancelled this order${p.reason ? `: ${p.reason}` : "."} Don't ship the item.${p.by === "admin" ? "" : " Your listing is back on sale."}` },
       },
       EXPIRED: {
         buyer: { subject: (n: string) => `Order ${n}: time to pay ran out`, body: () => "The payment wasn't completed in time, so the order was cancelled and the item went back on sale. You can order it again if it's still available." },

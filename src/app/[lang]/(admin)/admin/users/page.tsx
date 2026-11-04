@@ -7,6 +7,7 @@ import { dayRange, like, readSearch } from "@/lib/admin/search";
 import { formatDate } from "@/lib/format";
 import type { Prisma } from "@/generated/prisma/client";
 import { Badge, EmptyState, PageHeader } from "@/components/ui";
+import { isBanned } from "@/lib/account/ban-state";
 import { Pager, SearchBar } from "../search-controls";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -41,6 +42,8 @@ export default async function AdminUsersPage({ searchParams }: PageProps<"/[lang
         createdAt: true,
         deletedAt: true,
         lockedUntil: true,
+        bannedAt: true,
+        bannedUntil: true,
         sellerProfile: { select: { displayName: true } },
       },
     }),
@@ -76,6 +79,7 @@ export default async function AdminUsersPage({ searchParams }: PageProps<"/[lang
                   {u.role === "ADMIN" && <Badge className="bg-inverse text-white ring-inverse">{t.role.ADMIN}</Badge>}
                   {u.deletedAt && <Badge className="bg-slate-100 text-slate-600 ring-slate-500/20">{t.deleted}</Badge>}
                   {u.lockedUntil && u.lockedUntil > now && <Badge className="bg-rose-50 text-rose-700 ring-rose-600/20">{t.locked}</Badge>}
+                  {isBanned(u, now) && <Badge className="bg-rose-600 text-white ring-rose-600">{t.banned}</Badge>}
                 </div>
               </Link>
             </li>

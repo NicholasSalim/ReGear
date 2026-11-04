@@ -336,23 +336,33 @@ export async function cancelOrder(orderId: string, userId: string, reason: strin
   if (isSeller && order.status !== "PENDING_PAYMENT" && order.status !== "PAID") {
     throw new DomainError("cancelBeforeShip");
   }
+  return finishCancel(order, isBuyer ? "buyer" : "seller", userId, reason);
+}
 
+/**
+ * ReGear cancels an order that hasn't shipped, refunding a paid one: used when
+ * the buyer or the seller is banned. Returns null if it had already moved on.
+ */
+export async function cancelOrderByAdmin(orderId: string, adminId: string | null): Promise<Result | null> {
+  let order = await db.$transaction((tx) => loadOrder(tx, orderId));
+  if (order.status === "PENDING_PAYMENT") {
+    const state = await payments.abandon(orderId);
+    if (state.state === "paid" && (await confirmPaid(order, state)).length) order = await db.$transaction((tx) => loadOrder(tx, orderId));
+  }
+  if (order.status !== "PENDING_PAYMENT" && order.status !== "PAID") return null;
+  return finishCancel(order, "admin", adminId, "");
+}
+
+async function finishCancel(order: Awaited<ReturnType<typeof loadOrder>>, by: "buyer" | "seller" | "admin", actorId: string | null, reason: string): Promise<Result> {
   // Claim the cancellation before any money moves: a shipment or dispute that
   // races this one then fails here, instead of after the buyer was refunded.
   const refunds = order.status === "PAID" && !!order.paymentRef;
   const result = await db.$transaction(async (tx) => {
-    await setStatus(tx, orderId, order.status, "CANCELLED", { cancelledAt: new Date(), ...(refunds ? { refundIdr: order.totalIdr } : {}) });
+    await setStatus(tx, order.id, order.status, "CANCELLED", { cancelledAt: new Date(), ...(refunds ? { refundIdr: order.totalIdr } : {}) });
     if (order.status === "PAID") await tx.listing.updateMany({ where: { id: order.listingId, status: "RESERVED" }, data: { status: "ACTIVE" } });
     else await closeUnpaid(tx, order);
-    const who = isBuyer ? ("buyer" as const) : ("seller" as const);
-    await addEvent(
-      tx,
-      orderId,
-      "CANCELLED",
-      { by: who, ...(reason ? { reason } : {}), refunded: refunds },
-      userId,
-    );
-    return { orderId, tags: tagsFor(order) };
+    await addEvent(tx, order.id, "CANCELLED", { by, ...(reason ? { reason } : {}), refunded: refunds }, actorId);
+    return { orderId: order.id, tags: tagsFor(order) };
   });
   if (refunds) await sendClaimedRefund(order, order.totalIdr);
   return result;

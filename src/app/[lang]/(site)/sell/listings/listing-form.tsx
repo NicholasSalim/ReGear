@@ -95,7 +95,11 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
         const json = await res.json().catch(() => ({}));
         if (res.status === 413) setUploadError(t.tooLarge(original.name));
         else if (!res.ok) setUploadError(json.error ?? t.uploadFailed);
-        else setV((prev) => ({ ...prev, images: [...prev.images, { id: json.id, url: json.url }].slice(0, MAX_LISTING_IMAGES) }));
+        else {
+          setV((prev) => ({ ...prev, images: [...prev.images, { id: json.id, url: json.url }].slice(0, MAX_LISTING_IMAGES) }));
+          // A photo is there now, so "add at least one photo" no longer applies.
+          setErrors(({ imageIds: _, ...rest }) => rest);
+        }
       } catch {
         setUploadError(t.offline);
       } finally {

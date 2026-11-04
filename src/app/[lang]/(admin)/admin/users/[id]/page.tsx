@@ -10,6 +10,10 @@ import { bankName } from "@/lib/payouts/provider";
 import { maskAccount, sellerBalance } from "@/lib/payouts/service";
 import { OrderStatusBadge, WithdrawalStatusBadge } from "@/components/badges";
 import { Badge, PageHeader } from "@/components/ui";
+import { ActionButton } from "@/components/forms";
+import { isBanned } from "@/lib/account/ban-state";
+import { banUserAction, unbanUserAction } from "@/actions/admin";
+import { BanForm } from "../../admin-forms";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getDictionary()).admin.usersPage.title };
@@ -52,6 +56,7 @@ export default async function AdminUserPage({ params }: PageProps<"/[lang]/admin
     db.auditLog.findMany({ where: { OR: [{ actorId: user.id }, { entityId: user.id }] }, orderBy: { createdAt: "desc" }, take: 15 }),
   ]);
   const now = new Date();
+  const banned = isBanned(user, now);
 
   const orderList = (rows: typeof purchases) =>
     rows.length === 0 ? (
@@ -90,6 +95,7 @@ export default async function AdminUserPage({ params }: PageProps<"/[lang]/admin
             {user.role === "ADMIN" && <Badge className="bg-inverse text-white ring-inverse">{t.role.ADMIN}</Badge>}
             {user.deletedAt && <Badge className="bg-slate-100 text-slate-600 ring-slate-500/20">{t.deleted}</Badge>}
             {user.lockedUntil && user.lockedUntil > now && <Badge className="bg-rose-50 text-rose-700 ring-rose-600/20">{t.locked}</Badge>}
+            {banned && <Badge className="bg-rose-600 text-white ring-rose-600">{t.banned}</Badge>}
           </div>
         }
       />
@@ -133,6 +139,39 @@ export default async function AdminUserPage({ params }: PageProps<"/[lang]/admin
           )}
         </section>
       </div>
+
+      {user.role !== "ADMIN" && !user.deletedAt && (
+        <section className="card mt-4 p-5" aria-labelledby="ban">
+          <h2 id="ban" className="mb-2 font-bold">{t.banTitle}</h2>
+          {banned ? (
+            <>
+              <p className="text-sm font-semibold text-rose-700">
+                {user.bannedUntil ? t.bannedUntil(formatDateTime(user.bannedUntil, locale)) : t.bannedForever}{" "}
+                <span className="font-normal text-slate-500">{t.bannedSince(formatDateTime(user.bannedAt!, locale))}</span>
+              </p>
+              {user.banReason && <p className="mt-1 text-sm text-slate-600 [overflow-wrap:anywhere]">{t.banReasonShown(user.banReason)}</p>}
+              <div className="mt-3">
+                <ActionButton action={unbanUserAction.bind(null, user.id)} variant="secondary" confirm={t.unbanConfirm}>
+                  {t.unban}
+                </ActionButton>
+              </div>
+              <details className="mt-4">
+                <summary className="cursor-pointer text-sm font-medium text-brand-700">{t.changeBan}</summary>
+                <div className="mt-3 max-w-md">
+                  <BanForm action={banUserAction.bind(null, user.id)} banned />
+                </div>
+              </details>
+            </>
+          ) : (
+            <>
+              <p className="mb-3 max-w-2xl text-sm text-slate-600">{t.banIntro}</p>
+              <div className="max-w-md">
+                <BanForm action={banUserAction.bind(null, user.id)} banned={false} />
+              </div>
+            </>
+          )}
+        </section>
+      )}
 
       {seller && (
         <section className="card mt-4 p-5" aria-labelledby="withdrawals">

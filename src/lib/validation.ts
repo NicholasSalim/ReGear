@@ -7,6 +7,7 @@ import { isCustomCheck, MAX_CUSTOM_CHECKS } from "@/lib/condition";
 import { formatMoney } from "@/lib/format";
 import {
   CARRIERS,
+  BAN_LENGTHS,
   CHECK_STATUSES,
   CONDITION_GRADES,
   DISPUTE_REASONS,
@@ -130,6 +131,12 @@ export const sellerProfileSchema = z.object({
   displayName: text(2, 50),
   bio: text(0, 600),
   location: text(2, 80),
+});
+
+export const banSchema = z.object({
+  length: choice(BAN_LENGTHS),
+  reason: text(5, 500),
+  until: z.string().trim().max(10).default(""),
 });
 
 export const verificationSchema = z.object({

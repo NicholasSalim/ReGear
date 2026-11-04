@@ -13,7 +13,7 @@ import { slugify } from "@/lib/format";
 import { rateLimit } from "@/lib/security/rate-limit";
 import { shopNameKey, shopNameTaken } from "@/lib/shop-name";
 import { InvalidImageError, MAX_UPLOAD_BYTES, savePrivateDocument } from "@/lib/storage";
-import { sellerProfileSchema, verificationSchema } from "@/lib/validation";
+import { fieldErrors, sellerProfileSchema, verificationSchema } from "@/lib/validation";
 
 async function uniqueSellerSlug(name: string) {
   const base = slugify(name) || "seller";
@@ -65,19 +65,28 @@ export async function updateSellerProfileAction(_prev: ActionState, formData: Fo
 export async function submitVerificationAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   return runAction(async () => {
     const user = await requireTraderStrict();
-    const { t } = await actionI18n();
+    const { locale, t } = await actionI18n();
     const seller = await getSellerProfile(user.id);
     if (!seller) return { error: t.actions.needSellerProfile };
     if (seller.verificationStatus === "VERIFIED") return { error: t.actions.alreadyVerified };
     if (seller.verificationStatus === "PENDING") return { error: t.actions.verificationPending };
 
+    // Check the photo together with the other fields, so every problem shows at once.
+    const parsed = verificationSchema.safeParse(formToObject(formData));
+    const file = formData.get("document");
+    const documentError =
+      !(file instanceof File) || file.size === 0 ? t.actions.documentRequired : file.size > MAX_UPLOAD_BYTES ? t.actions.documentTooLarge : null;
+    if (!parsed.success || documentError || !(file instanceof File)) {
+      return {
+        error: t.validation.fixFields,
+        fieldErrors: { ...(parsed.success ? {} : fieldErrors(parsed.error, t, locale)), ...(documentError ? { document: documentError } : {}) },
+      };
+    }
+    const data = parsed.data;
+
+    // Counted after the form checks out, so typos don't use up the day's attempts.
     const limited = await rateLimit(`verify:${user.id}`, 5, 86_400);
     if (!limited.ok) return { error: t.actions.verificationLimit };
-
-    const data = verificationSchema.parse(formToObject(formData));
-    const file = formData.get("document");
-    if (!(file instanceof File) || file.size === 0) return { fieldErrors: { document: t.actions.documentRequired } };
-    if (file.size > MAX_UPLOAD_BYTES) return { fieldErrors: { document: t.actions.documentTooLarge } };
 
     let documentKey: string;
     try {

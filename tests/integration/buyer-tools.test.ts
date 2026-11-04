@@ -129,6 +129,20 @@ describe("saved searches", () => {
     await expect(searches.deleteSavedSearch(f.other.id, a.id)).rejects.toThrow(/not found/);
   });
 
+  it("reopens a saved search sorted the way it was saved", async () => {
+    const byPrice = searches.parseQuery("q=sony&sort=price_asc");
+    expect(searches.savedQuery(byPrice)).toBe("q=sony&sort=price_asc");
+    const { id } = await searches.saveSearch(f.buyer.id, byPrice, "sony");
+    expect(await searches.isSaved(f.buyer.id, byPrice)).toBe(true);
+    expect(searches.savedSearchHref(await db.savedSearch.findUniqueOrThrow({ where: { id } }))).toBe("/listings?q=sony&sort=price_asc");
+
+    // Another sort order isn't the saved one; saving it replaces the order.
+    const newest = searches.parseQuery("q=sony");
+    expect(await searches.isSaved(f.buyer.id, newest)).toBe(false);
+    await searches.saveSearch(f.buyer.id, newest, "sony");
+    expect(searches.savedSearchHref(await db.savedSearch.findUniqueOrThrow({ where: { id } }))).toBe("/listings?q=sony");
+  });
+
   it("alerts about listings published since the last alert, then moves on", async () => {
     const { id } = await searches.saveSearch(f.buyer.id, searches.parseQuery("q=sony"), "sony");
     const twoHoursAgo = new Date(Date.now() - 2 * 3_600_000);

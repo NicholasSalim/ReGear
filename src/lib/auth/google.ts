@@ -1,6 +1,7 @@
 import "server-only";
 import { Google } from "arctic";
 import { db } from "@/lib/db";
+import { mailboxBanned, mailboxKey } from "@/lib/account/mailbox";
 import { env } from "@/lib/env";
 import { LEGAL_VERSION } from "@/lib/legal";
 
@@ -29,6 +30,8 @@ export type GoogleClaims = {
 };
 
 export class GoogleSignInError extends Error {}
+/** The address belongs to the inbox of a banned account, so no new account is made for it. */
+export class MailboxBannedError extends Error {}
 
 /** Validate the ID token claims we rely on. */
 export function parseGoogleClaims(raw: unknown, clientId: string): GoogleClaims {
@@ -83,10 +86,12 @@ export async function findOrCreateGoogleUser(claims: GoogleClaims) {
     return { user, created: false, linked: true, passwordCleared: !existing.emailVerifiedAt };
   }
 
+  if (await mailboxBanned(db, claims.email)) throw new MailboxBannedError("mailbox of a banned account");
   const name = claims.name?.trim() || claims.email.split("@")[0];
   const user = await db.user.create({
     data: {
       email: claims.email,
+      mailbox: mailboxKey(claims.email),
       name: name.length >= 2 ? name : `${name} user`,
       passwordHash: null,
       // The Google button states that continuing accepts the Terms and Privacy Policy.

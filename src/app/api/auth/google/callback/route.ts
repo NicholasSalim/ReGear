@@ -14,6 +14,7 @@ import {
   findOrCreateGoogleUser,
   googleClient,
   GoogleSignInError,
+  MailboxBannedError,
   isGoogleConfigured,
   parseGoogleClaims,
 } from "@/lib/auth/google";
@@ -110,6 +111,7 @@ export async function GET(req: Request) {
     return NextResponse.redirect(new URL(next || localePath(user.role === "ADMIN" ? "/admin" : "/account", await getRequestLocale()), env.NEXT_PUBLIC_SITE_URL));
   } catch (err) {
     if (err instanceof GoogleSignInError) return fail("google_rejected", err.message);
+    if (err instanceof MailboxBannedError) return fail("mailbox_banned", err.message);
     console.error("[google] account setup failed", err);
     return fail("google_failed", "could not create or link the account");
   }

@@ -708,6 +708,7 @@ export const id: typeof en = {
       signup_expired: "Pendaftaran ini sudah kedaluwarsa atau kodenya terlalu sering salah. Daftar lagi untuk mendapat kode baru.",
       signup_exists: "Akun dengan email ini sudah ada. Silakan masuk.",
       banned: "Akun ini diblokir. Rinciannya sudah kami kirim lewat email.",
+      mailbox_banned: "Alamat email ini tidak bisa dipakai untuk mendaftar, karena akun dengan kotak masuk yang sama sedang diblokir.",
       locked: "Akun ini dikunci sementara karena terlalu sering gagal masuk. Coba lagi dalam beberapa menit.",
       rate_limited: "Terlalu banyak percobaan masuk. Tunggu beberapa menit lalu coba lagi.",
     },
@@ -1213,6 +1214,7 @@ export const id: typeof en = {
       banIntro: "Akun yang diblokir dikeluarkan dan tidak bisa masuk. Iklannya disembunyikan, pesanan yang belum dikirim dibatalkan dan dananya dikembalikan, dan pencairan dana ke akun ini menunggu. Tidak ada yang dihapus, dan blokir bisa dicabut.",
       bannedUntil: (date: string) => `Diblokir sampai ${date}`,
       bannedForever: "Diblokir permanen",
+      sameInbox: "Kotak masuk sama",
       bannedSince: (date: string) => `sejak ${date}`,
       banReasonShown: (reason: string) => `Alasan: ${reason}`,
       unban: "Cabut blokir",
@@ -1331,6 +1333,11 @@ export const id: typeof en = {
       subject: (code: string) => `${code} adalah kode ReGear Anda`,
       body: "Masukkan kode ini di halaman pendaftaran untuk mengonfirmasi alamat email Anda dan membuat akun ReGear:",
       note: "Kode berlaku 15 menit, hanya di browser tempat Anda mendaftar. Jika Anda tidak mendaftar di ReGear, abaikan email ini: tidak ada akun yang dibuat tanpa kode ini.",
+    },
+    signupBlocked: {
+      subject: "Akun ReGear tidak bisa dibuat dengan alamat ini",
+      body: "Seseorang baru saja mencoba membuat akun ReGear dengan alamat email ini. Akun yang memakai kotak masuk yang sama sedang diblokir, jadi akun baru tidak bisa dibuat dengannya.",
+      note: "Jika bukan Anda, abaikan email ini.",
     },
     signupExisting: {
       subject: "Anda sudah punya akun ReGear",

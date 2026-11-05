@@ -708,6 +708,7 @@ export const en = {
       signup_expired: "This sign-up has expired or the code was entered wrong too many times. Sign up again to get a new code.",
       signup_exists: "An account with this email already exists. Sign in instead.",
       banned: "This account is banned. We've emailed you the details.",
+      mailbox_banned: "This email address can't be used to sign up, because an account on the same inbox is banned.",
     } as Record<string, string>,
     googleNotice: "By continuing with Google, you agree to the [Terms & Conditions](/terms) and [Privacy Policy](/privacy).",
     forgotLink: "Forgot password?",
@@ -1211,6 +1212,7 @@ export const en = {
       banIntro: "A banned account is signed out and can't sign in. Its listings are hidden, its orders that haven't shipped are cancelled and refunded, and payouts to it wait. Nothing is deleted, and a ban can be lifted.",
       bannedUntil: (date: string) => `Banned until ${date}`,
       bannedForever: "Banned permanently",
+      sameInbox: "Same inbox",
       bannedSince: (date: string) => `since ${date}`,
       banReasonShown: (reason: string) => `Reason: ${reason}`,
       unban: "Lift ban",
@@ -1329,6 +1331,11 @@ export const en = {
       subject: (code: string) => `${code} is your ReGear code`,
       body: "Enter this code on the sign-up page to confirm your email address and create your ReGear account:",
       note: "The code works for 15 minutes, only in the browser where you signed up. If you didn't sign up for ReGear, ignore this email: no account is created without the code.",
+    },
+    signupBlocked: {
+      subject: "You can't create a ReGear account with this address",
+      body: "Someone just tried to create a ReGear account with this email address. An account that uses the same inbox is banned, so no new account can be made with it.",
+      note: "If it wasn't you, you can ignore this email.",
     },
     signupExisting: {
       subject: "You already have a ReGear account",

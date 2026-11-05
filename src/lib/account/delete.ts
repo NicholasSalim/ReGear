@@ -131,6 +131,7 @@ export async function deleteAccount(userId: string) {
       where: { id: userId },
       data: {
         email: `deleted-${userId}@deleted.invalid`,
+        mailbox: null,
         name: "",
         passwordHash: null,
         failedLoginCount: 0,

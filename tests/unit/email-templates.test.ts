@@ -54,6 +54,8 @@ describe("order email copy", () => {
       expect(mail.html).toContain(">042917</p>");
       const existing = renderEmail({ template: "signup-existing", params: {} }, locale, "x@test.dev", "Pat");
       expect(existing.text).not.toMatch(/\d{6}|undefined/);
+      const blocked = renderEmail({ template: "signup-blocked", params: {} }, locale, "x@test.dev", null);
+      expect(blocked.text).not.toMatch(/\d{6}|undefined/);
     }
   });
 

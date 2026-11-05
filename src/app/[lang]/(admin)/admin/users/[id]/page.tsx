@@ -47,13 +47,22 @@ export default async function AdminUserPage({ params }: PageProps<"/[lang]/admin
   if (!user) notFound();
   const seller = user.sellerProfile;
 
-  const [purchases, sales, salesCount, withdrawals, balance, activity] = await Promise.all([
+  const [purchases, sales, salesCount, withdrawals, balance, activity, sameInbox] = await Promise.all([
     db.order.findMany({ where: { buyerId: user.id }, orderBy: { createdAt: "desc" }, take: 10, select: orderSelect }),
     seller ? db.order.findMany({ where: { sellerId: seller.id }, orderBy: { createdAt: "desc" }, take: 10, select: orderSelect }) : [],
     seller ? db.order.count({ where: { sellerId: seller.id } }) : 0,
     seller ? db.withdrawal.findMany({ where: { sellerId: seller.id }, orderBy: { createdAt: "desc" }, take: 10 }) : [],
     seller ? sellerBalance(seller.id) : 0,
     db.auditLog.findMany({ where: { OR: [{ actorId: user.id }, { entityId: user.id }] }, orderBy: { createdAt: "desc" }, take: 15 }),
+    // Other accounts on this person's inbox (you+1@..., y.o.u@gmail.com).
+    user.mailbox
+      ? db.user.findMany({
+          where: { mailbox: user.mailbox, id: { not: user.id }, deletedAt: null },
+          orderBy: { createdAt: "asc" },
+          take: 10,
+          select: { id: true, email: true, bannedAt: true, bannedUntil: true },
+        })
+      : [],
   ]);
   const now = new Date();
   const banned = isBanned(user, now);
@@ -109,6 +118,20 @@ export default async function AdminUserPage({ params }: PageProps<"/[lang]/admin
               {[user.passwordHash && t.password, ...user.oauthAccounts.map((a) => (a.provider === "google" ? "Google" : a.provider))].filter(Boolean).join(", ") || t.none}
             </Row>
             <Row label={t.sessions}>{user._count.sessions}</Row>
+            {sameInbox.length > 0 && (
+              <Row label={t.sameInbox}>
+                <ul className="space-y-1">
+                  {sameInbox.map((u) => (
+                    <li key={u.id} className="flex flex-wrap items-center gap-2">
+                      <Link href={`/admin/users/${u.id}`} className="text-brand-700 hover:underline [overflow-wrap:anywhere]">
+                        {u.email}
+                      </Link>
+                      {isBanned(u, now) && <Badge className="bg-rose-600 text-white ring-rose-600">{t.banned}</Badge>}
+                    </li>
+                  ))}
+                </ul>
+              </Row>
+            )}
             <Row label={t.language}>{user.locale.toUpperCase()}</Row>
             {user.deletedAt && <Row label={t.deleted}>{formatDateTime(user.deletedAt, locale)}</Row>}
           </dl>

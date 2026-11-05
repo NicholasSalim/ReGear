@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { isHttps } from "@/lib/env";
 import { enqueueEmail } from "@/lib/email/outbox";
 import { hashToken } from "@/lib/auth/session";
+import { mailboxBanned, mailboxKey } from "@/lib/account/mailbox";
 import type { Locale } from "@/i18n/locales";
 import type { Prisma } from "@/generated/prisma/client";
 
@@ -43,6 +44,12 @@ async function sendCode(tx: Prisma.TransactionClient, request: { id: string; ema
   if (existing && !existing.deletedAt) {
     await tx.signupRequest.update({ where: { id: request.id }, data: { codeHash: null } });
     await enqueueEmail(tx, { userId: existing.id, to: request.email, locale }, { template: "signup-existing", params: {} });
+    return;
+  }
+  // Another address of a banned person's inbox (you+1@..., y.o.u@gmail.com): no new account.
+  if (await mailboxBanned(tx, request.email)) {
+    await tx.signupRequest.update({ where: { id: request.id }, data: { codeHash: null } });
+    await enqueueEmail(tx, { to: request.email, locale }, { template: "signup-blocked", params: {} });
     return;
   }
   const code = newCode();
@@ -90,7 +97,7 @@ export async function currentSignup() {
 export type ConfirmResult =
   | { ok: true; userId: string }
   | { ok: false; reason: "wrong"; attemptsLeft: number }
-  | { ok: false; reason: "expired" | "exists" };
+  | { ok: false; reason: "expired" | "exists" | "blocked" };
 
 /**
  * Check the code. The right one creates the account (confirmed) and closes
@@ -116,10 +123,16 @@ export async function confirmSignup(token: string, code: string): Promise<Confir
       await tx.signupRequest.deleteMany({ where: { email: row.email } });
       return { ok: false, reason: "exists" };
     }
+    // Banned since the code was sent.
+    if (await mailboxBanned(tx, row.email)) {
+      await tx.signupRequest.deleteMany({ where: { email: row.email } });
+      return { ok: false, reason: "blocked" };
+    }
     const now = new Date();
     const user = await tx.user.create({
       data: {
         email: row.email,
+        mailbox: mailboxKey(row.email),
         name: row.name,
         passwordHash: row.passwordHash,
         locale: row.locale,

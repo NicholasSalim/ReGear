@@ -20,6 +20,7 @@ type OrderCopy = Partial<Record<OrderRole, { subject: (number: string) => string
 export type EmailPayload =
   | { template: "signup-code"; params: { code: string; name: string } }
   | { template: "signup-existing"; params: Record<string, never> }
+  | { template: "signup-blocked"; params: Record<string, never> }
   | { template: "reset-password"; params: { url: string; name: string } }
   | { template: "order-event"; params: { orderId: string; number: string; title: string; type: EventType; role: OrderRole; event: Record<string, unknown> } }
   | { template: "dispute-message"; params: { disputeId: string; number: string; from: "BUYER" | "SELLER" | "ADMIN" } }
@@ -57,6 +58,8 @@ function content(payload: EmailPayload, locale: Locale): Content {
   switch (payload.template) {
     case "signup-code":
       return { subject: t.signupCode.subject(payload.params.code), paragraphs: [t.signupCode.body], code: payload.params.code, note: t.signupCode.note };
+    case "signup-blocked":
+      return { subject: t.signupBlocked.subject, paragraphs: [t.signupBlocked.body], note: t.signupBlocked.note };
     case "signup-existing":
       return {
         subject: t.signupExisting.subject,

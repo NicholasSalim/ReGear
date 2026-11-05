@@ -18,6 +18,9 @@ datasource db {
 model User {
   id                String    @id @default(cuid())
   email             String    @unique
+  // The inbox the address delivers to (see mailboxKey): aliases of one inbox
+  // share it, so a banned person can't sign up again with you+1@... Null once deleted.
+  mailbox           String?
   name              String
   passwordHash      String? // null for accounts that only sign in with Google
   role              String    @default("USER") // USER | ADMIN
@@ -65,6 +68,7 @@ model User {
   @@index([email(ops: raw("gin_trgm_ops"))], type: Gin, map: "User_email_trgm_idx")
   @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "User_name_trgm_idx")
   @@index([bannedUntil])
+  @@index([mailbox])
 }
 
 // A buyer's saved delivery address. Region names are copied from the

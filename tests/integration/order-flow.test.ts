@@ -74,7 +74,8 @@ describe("order lifecycle", () => {
     await orders.confirmDelivery(orderId, f.buyer.id);
     await orders.acceptOrder(orderId, f.buyer.id);
 
-    const order = await db.order.findUniqueOrThrow({ where: { id: orderId }, include: { events: true } });
+    // Rows come back in no set order unless asked; earlier tests' deletes can reshuffle them.
+    const order = await db.order.findUniqueOrThrow({ where: { id: orderId }, include: { events: { orderBy: { createdAt: "asc" } } } });
     expect(order.status).toBe("COMPLETED");
     expect(order.totalIdr).toBe(10_500);
     expect(order.platformFeeIdr).toBe(500);

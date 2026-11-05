@@ -36,7 +36,7 @@ import { mediaUrl } from "@/lib/media";
 import { payments, refundsByHand } from "@/lib/payments";
 import { bankName, BANKS, maskAccount } from "@/lib/payouts/provider";
 import { BankAccountForm } from "@/components/bank-account-form";
-import { canOpenDispute, isWithinReturnWindow } from "@/lib/orders/state";
+import { orderCapabilities, type Step } from "@/lib/orders/state";
 import { GradeBadge, warrantyLabel } from "@/components/badges";
 import {
   ActionButton,
@@ -59,9 +59,9 @@ export async function OrderDetail({ order, now }: { order: OrderForUser; now: Da
   const s = order.status;
   const reachedIndex = STEPS.findIndex((step) => step === s);
   const stepTimes = [order.paidAt, order.shippedAt, order.deliveredAt, order.completedAt];
-  const returnDaysLeft = order.deliveredAt
-    ? Math.max(0, Math.ceil((order.deliveredAt.getTime() + order.returnWindowDays * 86_400_000 - now.getTime()) / 86_400_000))
-    : 0;
+  // Which steps to offer comes from the same rules the order service enforces.
+  const caps = orderCapabilities(order, order.role, now);
+  const can = (step: Step) => caps.steps[step].allowed;
   const disputeStatus = order.dispute ? DISPUTE_STATUS_LABELS[order.dispute.status as keyof typeof DISPUTE_STATUS_LABELS] : undefined;
 
   const statusInfo = ORDER_STATUS_INFO[s as OrderStatus];
@@ -154,7 +154,7 @@ export async function OrderDetail({ order, now }: { order: OrderForUser; now: Da
           <section className="card space-y-4 p-5" aria-labelledby="next-steps">
             <h2 id="next-steps" className="font-bold">{t.nextSteps}</h2>
             <div className="flex flex-wrap gap-3">
-              {isBuyer && s === "PENDING_PAYMENT" && (
+              {can("pay") && (
                 <>
                   <div className="w-full rounded-lg bg-indigo-50 p-3 text-sm text-indigo-900">
                     {t.payIntro}
@@ -167,33 +167,33 @@ export async function OrderDetail({ order, now }: { order: OrderForUser; now: Da
                 </>
               )}
               {isBuyer && s === "PAID" && <p className="w-full text-sm text-slate-600">{t.waitingForShipment}</p>}
-              {isSeller && s === "PAID" && (
+              {can("ship") && (
                 <div className="w-full">
                   <ShipForm action={shipOrderAction.bind(null, order.id)} title={t.shipTitle} submit={t.markShipped} />
                 </div>
               )}
-              {(isBuyer || isSeller) && (s === "PENDING_PAYMENT" || s === "PAID") && (
+              {can("cancel") && (
                 <Reveal label={t.cancelOrder} variant="ghost">
                   <CancelForm action={cancelOrderAction.bind(null, order.id)} />
                 </Reveal>
               )}
-              {isBuyer && s === "SHIPPED" && <ActionButton action={confirmDeliveryAction.bind(null, order.id)}>{t.receivedItem}</ActionButton>}
+              {can("confirmDelivery") && <ActionButton action={confirmDeliveryAction.bind(null, order.id)}>{t.receivedItem}</ActionButton>}
               {isSeller && s === "SHIPPED" && <p className="w-full text-sm text-slate-600">{t.inTransit}</p>}
-              {isBuyer && s === "DELIVERED" && (
+              {can("accept") && (
                 <>
                   <p className="w-full text-sm text-slate-600">{t.inspectIntro}</p>
                   <ActionButton action={acceptOrderAction.bind(null, order.id)} confirm={t.acceptConfirm}>
                     {t.acceptItem}
                   </ActionButton>
-                  {isWithinReturnWindow(order, now) && !order.returnRequest && (
+                  {can("requestReturn") && (
                     <Reveal label={t.requestReturn}>
-                      <ReturnRequestForm action={requestReturnAction.bind(null, order.id)} daysLeft={returnDaysLeft} />
+                      <ReturnRequestForm action={requestReturnAction.bind(null, order.id)} daysLeft={caps.returnDaysLeft} />
                     </Reveal>
                   )}
                 </>
               )}
               {isSeller && s === "DELIVERED" && <p className="w-full text-sm text-slate-600">{t.sellerDelivered}</p>}
-              {s === "COMPLETED" && isBuyer && !order.review && (
+              {can("review") && (
                 <div className="w-full">
                   <ReviewForm action={leaveReviewAction.bind(null, order.id)} />
                 </div>
@@ -216,9 +216,9 @@ export async function OrderDetail({ order, now }: { order: OrderForUser; now: Da
                   <ShieldAlert className="size-4" aria-hidden /> {t.viewDispute(disputeStatus ? pick(disputeStatus, locale) : order.dispute.status)}
                 </Link>
               )}
-              {(isBuyer || isSeller) && !order.dispute && canOpenDispute(order) && (
+              {can("reportProblem") && (
                 <Reveal label={t.reportProblem} variant="ghost">
-                  <DisputeForm action={openDisputeAction.bind(null, order.id)} allowNotReceived={s === "PAID" || s === "SHIPPED"} />
+                  <DisputeForm action={openDisputeAction.bind(null, order.id)} allowNotReceived={caps.notReceivedAllowed} />
                 </Reveal>
               )}
             </div>
@@ -270,13 +270,13 @@ export async function OrderDetail({ order, now }: { order: OrderForUser; now: Da
                   {t.returnShipment} {order.returnRequest.returnCarrier} <span className="num font-semibold">{order.returnRequest.returnTracking}</span>
                 </p>
               )}
-              {isSeller && order.returnRequest.status === "REQUESTED" && s === "RETURN_IN_PROGRESS" && (
+              {can("respondToReturn") && (
                 <ReturnResponseForm action={respondReturnAction.bind(null, order.id)} />
               )}
-              {isBuyer && order.returnRequest.status === "APPROVED" && s === "RETURN_IN_PROGRESS" && (
+              {can("shipReturn") && (
                 <ShipForm action={shipReturnAction.bind(null, order.id)} title={t.shipBack} submit={t.submitReturnTracking} />
               )}
-              {isSeller && order.returnRequest.status === "SHIPPED_BACK" && s === "RETURN_IN_PROGRESS" && (
+              {can("receiveReturn") && (
                 <ActionButton action={receiveReturnAction.bind(null, order.id)} confirm={t.receivedConfirm}>
                   {t.receivedButton}
                 </ActionButton>
@@ -342,7 +342,7 @@ export async function OrderDetail({ order, now }: { order: OrderForUser; now: Da
               {!isBuyer && (
                 <>
                   <Row label={t.fee} value={`−${formatMoney(order.platformFeeIdr)}`} />
-                  <Row label={t.payout} value={formatMoney(order.totalIdr - order.platformFeeIdr - order.refundIdr)} strong />
+                  <Row label={t.payout} value={formatMoney(caps.sellerPayoutIdr)} strong />
                 </>
               )}
               {order.refundIdr > 0 && <Row label={order.refundedAt ? t.refundedLabel : t.refundPendingLabel} value={formatMoney(order.refundIdr)} />}

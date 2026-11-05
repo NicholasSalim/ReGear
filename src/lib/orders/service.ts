@@ -9,7 +9,7 @@ import { currencyCode, formatMoney } from "@/lib/format";
 import { paymentKey, payments, REFUND_BY_HAND_METHODS, refundsByHand } from "@/lib/payments";
 import { bankName, BANKS, maskAccount } from "@/lib/payouts/provider";
 import { enqueueOrderEmails } from "@/lib/email/notify";
-import type { Prisma } from "@/generated/prisma/client";
+import type { Order, Prisma } from "@/generated/prisma/client";
 import {
   AUTO_COMPLETE_DAYS_AFTER_DELIVERY_BUFFER,
   MAX_ABANDONED_CHECKOUTS,
@@ -23,10 +23,12 @@ import {
 import {
   assertTransition,
   calculateFees,
-  canOpenDispute,
   generateOrderNumber,
   InvalidTransitionError,
-  isWithinReturnWindow,
+  orderCapabilities,
+  sellerPayoutIdr,
+  type OrderFacts,
+  type Step,
 } from "@/lib/orders/state";
 import type { ShippingAddress } from "@/lib/addresses";
 
@@ -75,10 +77,18 @@ function tagsFor(order: { listingId: string; sellerId: string; buyerId: string }
 async function loadOrder(tx: Tx, orderId: string) {
   const order = await tx.order.findUnique({
     where: { id: orderId },
-    include: { seller: { select: { userId: true } }, returnRequest: true, dispute: true },
+    include: { seller: { select: { userId: true } }, returnRequest: true, dispute: true, review: { select: { id: true } } },
   });
   if (!order) throw new DomainError("orderNotFound");
   return order;
+}
+
+/** Refuse a buyer's or seller's step that Order capabilities doesn't allow, with its reason. */
+function requireStep(order: OrderFacts, viewer: "BUYER" | "SELLER", step: Step) {
+  const check = orderCapabilities(order, viewer).steps[step];
+  if (check.allowed) return;
+  if (check.reason === "invalidTransition") throw new InvalidTransitionError(order.status, check.to);
+  throw new DomainError(check.reason);
 }
 
 function assertBuyer(order: { buyerId: string }, userId: string) {
@@ -278,10 +288,10 @@ async function closeUnpaid(tx: Tx, order: { id: string; listingId: string; reser
 }
 
 export async function payOrder(orderId: string, buyerId: string, locale: Locale = DEFAULT_LOCALE): Promise<PayResult> {
-  let order = await db.order.findUnique({ where: { id: orderId } });
-  if (!order) throw new DomainError("orderNotFound");
-  assertBuyer(order, buyerId);
-  if (order.status !== "PENDING_PAYMENT") throw new DomainError("alreadyPaid");
+  const found = await db.$transaction((tx) => loadOrder(tx, orderId));
+  assertBuyer(found, buyerId);
+  requireStep(found, "BUYER", "pay");
+  let order: Order = found;
 
   // A payment page already exists: the buyer may have paid there already.
   if (order.paymentUrl) {
@@ -328,14 +338,8 @@ export async function cancelOrder(orderId: string, userId: string, reason: strin
     if (state.state === "paid" && (await confirmPaid(order, state)).length) order = await db.$transaction((tx) => loadOrder(tx, orderId));
   }
   const isBuyer = order.buyerId === userId;
-  const isSeller = order.seller.userId === userId;
-  if (!isBuyer && !isSeller) throw new DomainError("orderNotFound");
-  if (isBuyer && order.status !== "PENDING_PAYMENT" && order.status !== "PAID") {
-    throw new DomainError("cancelBeforeShip");
-  }
-  if (isSeller && order.status !== "PENDING_PAYMENT" && order.status !== "PAID") {
-    throw new DomainError("cancelBeforeShip");
-  }
+  if (!isBuyer && order.seller.userId !== userId) throw new DomainError("orderNotFound");
+  requireStep(order, isBuyer ? "BUYER" : "SELLER", "cancel");
   return finishCancel(order, isBuyer ? "buyer" : "seller", userId, reason);
 }
 
@@ -471,7 +475,8 @@ export async function shipOrder(orderId: string, sellerUserId: string, carrier: 
   return db.$transaction(async (tx) => {
     const order = await loadOrder(tx, orderId);
     assertSeller(order, sellerUserId);
-    await setStatus(tx, orderId, order.status, "SHIPPED", { shippedAt: new Date(), carrier, trackingNumber });
+    requireStep(order, "SELLER", "ship");
+    await setStatus(tx, orderId, "PAID", "SHIPPED", { shippedAt: new Date(), carrier, trackingNumber });
     await addEvent(tx, orderId, "SHIPPED", { carrier, tracking: trackingNumber }, sellerUserId);
     return { orderId, tags: tagsFor(order) };
   });
@@ -480,10 +485,13 @@ export async function shipOrder(orderId: string, sellerUserId: string, carrier: 
 export async function confirmDelivery(orderId: string, buyerId: string | null): Promise<Result> {
   return db.$transaction(async (tx) => {
     const order = await loadOrder(tx, orderId);
-    if (buyerId) assertBuyer(order, buyerId);
-    // Only a shipment can be delivered. (RETURN_IN_PROGRESS -> DELIVERED is the
-    // seller rejecting a return, not something a buyer may trigger.)
-    if (order.status !== "SHIPPED") throw new InvalidTransitionError(order.status, "DELIVERED");
+    if (buyerId) {
+      assertBuyer(order, buyerId);
+      requireStep(order, "BUYER", "confirmDelivery");
+    } else if (order.status !== "SHIPPED") {
+      // Only a shipment can be delivered.
+      throw new InvalidTransitionError(order.status, "DELIVERED");
+    }
     await setStatus(tx, orderId, "SHIPPED", "DELIVERED", { deliveredAt: new Date() });
     await addEvent(tx, orderId, "DELIVERED", { auto: !buyerId, returnDays: order.returnWindowDays }, buyerId);
     return { orderId, tags: tagsFor(order) };
@@ -492,7 +500,7 @@ export async function confirmDelivery(orderId: string, buyerId: string | null): 
 
 /** The seller's share of a completed order goes into their balance, once per order (unique per order). */
 async function creditSeller(tx: Tx, order: { id: string; sellerId: string; totalIdr: number; platformFeeIdr: number }, refundIdr: number) {
-  await tx.balanceEntry.create({ data: { sellerId: order.sellerId, type: "SALE", orderId: order.id, amountIdr: order.totalIdr - order.platformFeeIdr - refundIdr } });
+  await tx.balanceEntry.create({ data: { sellerId: order.sellerId, type: "SALE", orderId: order.id, amountIdr: sellerPayoutIdr({ ...order, refundIdr }) } });
 }
 
 async function completeInTx(tx: Tx, order: { id: string; status: string; listingId: string; sellerId: string; totalIdr: number; platformFeeIdr: number; refundIdr: number }, actorId: string | null, by: "buyer" | "window") {
@@ -507,8 +515,7 @@ export async function acceptOrder(orderId: string, buyerId: string): Promise<Res
   return db.$transaction(async (tx) => {
     const order = await loadOrder(tx, orderId);
     assertBuyer(order, buyerId);
-    // A disputed order is settled by an admin, not by the buyer accepting it.
-    if (order.status !== "DELIVERED") throw new InvalidTransitionError(order.status, "COMPLETED");
+    requireStep(order, "BUYER", "accept");
     await completeInTx(tx, order, buyerId, "buyer");
     return { orderId, tags: [...tagsFor(order), TAGS.seller(order.sellerId)] };
   });
@@ -547,8 +554,7 @@ export async function requestReturn(orderId: string, buyerId: string, reason: st
   return db.$transaction(async (tx) => {
     const order = await loadOrder(tx, orderId);
     assertBuyer(order, buyerId);
-    if (!isWithinReturnWindow(order)) throw new DomainError("returnWindowClosed");
-    if (order.returnRequest) throw new DomainError("returnAlreadyRequested");
+    requireStep(order, "BUYER", "requestReturn");
     await setStatus(tx, orderId, "DELIVERED", "RETURN_IN_PROGRESS");
     await tx.returnRequest.create({ data: { orderId, reason, details } });
     await addEvent(tx, orderId, "RETURN_REQUESTED", {}, buyerId);
@@ -560,7 +566,7 @@ export async function respondToReturn(orderId: string, sellerUserId: string, app
   return db.$transaction(async (tx) => {
     const order = await loadOrder(tx, orderId);
     assertSeller(order, sellerUserId);
-    if (order.returnRequest?.status !== "REQUESTED") throw new DomainError("noPendingReturn");
+    requireStep(order, "SELLER", "respondToReturn");
     if (approve) {
       await tx.returnRequest.update({ where: { orderId }, data: { status: "APPROVED", sellerNote: note || null } });
       await addEvent(tx, orderId, "RETURN_APPROVED", {}, sellerUserId);
@@ -578,9 +584,7 @@ export async function shipReturn(orderId: string, buyerId: string, carrier: stri
   return db.$transaction(async (tx) => {
     const order = await loadOrder(tx, orderId);
     assertBuyer(order, buyerId);
-    if (order.status !== "RETURN_IN_PROGRESS" || order.returnRequest?.status !== "APPROVED") {
-      throw new DomainError("returnNotAwaitingShipment");
-    }
+    requireStep(order, "BUYER", "shipReturn");
     await tx.returnRequest.update({
       where: { orderId },
       data: { status: "SHIPPED_BACK", returnCarrier: carrier, returnTracking: tracking },
@@ -593,9 +597,7 @@ export async function shipReturn(orderId: string, buyerId: string, carrier: stri
 export async function receiveReturn(orderId: string, sellerUserId: string): Promise<Result> {
   const order = await db.$transaction((tx) => loadOrder(tx, orderId));
   assertSeller(order, sellerUserId);
-  if (order.status !== "RETURN_IN_PROGRESS" || order.returnRequest?.status !== "SHIPPED_BACK") {
-    throw new DomainError("returnNotShippedBack");
-  }
+  requireStep(order, "SELLER", "receiveReturn");
   // Claim the refund first, so a dispute opened meanwhile can't leave a refunded order still in play.
   const result = await db.$transaction(async (tx) => {
     await setStatus(tx, orderId, "RETURN_IN_PROGRESS", "REFUNDED", { refundIdr: order.totalIdr });
@@ -616,11 +618,8 @@ export async function openDispute(orderId: string, userId: string, reason: strin
     const order = await loadOrder(tx, orderId);
     const role = order.buyerId === userId ? "BUYER" : order.seller.userId === userId ? "SELLER" : null;
     if (!role) throw new DomainError("orderNotFound");
-    if (order.dispute) throw new DomainError("disputeAlreadyOpen");
-    if (!canOpenDispute(order)) throw new DomainError("disputeNotAllowed");
-    if (reason === "NOT_RECEIVED" && order.status !== "SHIPPED" && order.status !== "PAID") {
-      throw new DomainError("notReceivedBeforeDelivery");
-    }
+    requireStep(order, role, "reportProblem");
+    if (reason === "NOT_RECEIVED" && !orderCapabilities(order, role).notReceivedAllowed) throw new DomainError("notReceivedBeforeDelivery");
     await setStatus(tx, orderId, order.status, "DISPUTED");
     const dispute = await tx.dispute.create({
       data: {
@@ -697,9 +696,7 @@ export async function leaveReview(orderId: string, buyerId: string, rating: numb
   return db.$transaction(async (tx) => {
     const order = await loadOrder(tx, orderId);
     assertBuyer(order, buyerId);
-    if (order.status !== "COMPLETED") throw new DomainError("reviewAfterCompletion");
-    const existing = await tx.review.findUnique({ where: { orderId } });
-    if (existing) throw new DomainError("alreadyReviewed");
+    requireStep(order, "BUYER", "review");
     await tx.review.create({ data: { orderId, sellerId: order.sellerId, buyerId, rating, comment } });
     const agg = await tx.review.aggregate({ where: { sellerId: order.sellerId }, _avg: { rating: true }, _count: true });
     await tx.sellerProfile.update({

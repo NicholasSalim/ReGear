@@ -4,7 +4,8 @@ import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { catalogueChanged } from "@/lib/cache";
 import { enqueueEmail } from "@/lib/email/outbox";
-import { cancelOrderByAdmin, DomainError } from "@/lib/orders/service";
+import { DomainError } from "@/lib/errors";
+import { cancelOrderByAdmin } from "@/lib/orders/service";
 import { isBanned } from "@/lib/account/ban-state";
 import type { BanLength } from "@/lib/constants";
 

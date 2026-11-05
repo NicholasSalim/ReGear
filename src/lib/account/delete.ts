@@ -1,7 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import { catalogueChanged } from "@/lib/cache";
-import { DomainError } from "@/lib/orders/service";
+import { DomainError } from "@/lib/errors";
 import { deletePrivateDocument, deletePublicImage } from "@/lib/storage";
 import { OPEN_WITHDRAWAL_STATUSES, type OrderStatus } from "@/lib/constants";
 

@@ -5,6 +5,7 @@ vi.mock("next/headers", () => ({ headers: async () => new Headers(), cookies: as
 
 const { db } = await import("@/lib/db");
 const orders = await import("@/lib/orders/service");
+const refunds = await import("@/lib/orders/refunds");
 const { payments } = await import("@/lib/payments");
 
 // The simulated provider pays instantly. These tests make it behave like a
@@ -185,21 +186,21 @@ describe("refunding a bank transfer", () => {
 
   it("sends it by hand to the account only its buyer gives", async () => {
     await orders.cancelOrder(f.order.id, f.buyer.id, "");
-    await expect(orders.markRefundSent(f.order.id, f.sellerUser.id, "BCA ref 123")).rejects.toThrow(/hasn't given a bank account/);
-    await expect(orders.setRefundAccount(f.order.id, f.sellerUser.id, account)).rejects.toThrow(/not found/i);
-    await expect(orders.setRefundAccount(f.order.id, f.buyer.id, { ...account, bank: "nope" })).rejects.toThrow(/listed banks/);
+    await expect(refunds.markRefundSent(f.order.id, f.sellerUser.id, "BCA ref 123")).rejects.toThrow(/hasn't given a bank account/);
+    await expect(refunds.setRefundAccount(f.order.id, f.sellerUser.id, account)).rejects.toThrow(/not found/i);
+    await expect(refunds.setRefundAccount(f.order.id, f.buyer.id, { ...account, bank: "nope" })).rejects.toThrow(/listed banks/);
 
-    await orders.setRefundAccount(f.order.id, f.buyer.id, account);
+    await refunds.setRefundAccount(f.order.id, f.buyer.id, account);
     expect(await order()).toMatchObject({ refundBank: "bca", refundAccountNumber: "1234567890", refundAccountName: "Test Buyer" });
 
-    await orders.markRefundSent(f.order.id, f.sellerUser.id, "BCA ref 123");
+    await refunds.markRefundSent(f.order.id, f.sellerUser.id, "BCA ref 123");
     const o = await order();
     expect(o.refundedAt).not.toBeNull();
     expect(o.refundNote).toBe("BCA ref 123");
     expect(o.events.map((e) => e.type)).toEqual(expect.arrayContaining(["REFUND_ACCOUNT_SET", "REFUND_SENT"]));
     // Sent once: a second admin, or a late change of account, finds nothing owed.
-    await expect(orders.markRefundSent(f.order.id, f.sellerUser.id, "again")).rejects.toThrow(/no bank-transfer refund/);
-    await expect(orders.setRefundAccount(f.order.id, f.buyer.id, account)).rejects.toThrow(/no bank-transfer refund/);
+    await expect(refunds.markRefundSent(f.order.id, f.sellerUser.id, "again")).rejects.toThrow(/no bank-transfer refund/);
+    await expect(refunds.setRefundAccount(f.order.id, f.buyer.id, account)).rejects.toThrow(/no bank-transfer refund/);
   });
 
   it("asks the provider how an order was paid when it wasn't recorded", async () => {
@@ -214,6 +215,6 @@ describe("refunding a bank transfer", () => {
   });
 
   it("isn't asked of an order that owes nothing", async () => {
-    await expect(orders.setRefundAccount(f.order.id, f.buyer.id, account)).rejects.toThrow(/no bank-transfer refund/);
+    await expect(refunds.setRefundAccount(f.order.id, f.buyer.id, account)).rejects.toThrow(/no bank-transfer refund/);
   });
 });

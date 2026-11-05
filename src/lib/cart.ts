@@ -1,6 +1,6 @@
 import "server-only";
 import { db } from "@/lib/db";
-import { DomainError } from "@/lib/orders/service";
+import { DomainError } from "@/lib/errors";
 
 // The cart: listings a buyer means to buy. Every listing is a single used
 // item, so there are no quantities, and each one is still checked out as its

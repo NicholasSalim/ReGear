@@ -1,14 +1,14 @@
 import "server-only";
 import { en } from "@/i18n/dictionaries/en";
-import { resolveEntry, type EventParams, type EventType } from "@/i18n/messages";
 import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { catalogueChanged } from "@/lib/cache";
-import { currencyCode, formatMoney } from "@/lib/format";
-import { paymentKey, payments, REFUND_BY_HAND_METHODS, refundsByHand } from "@/lib/payments";
-import { bankName, BANKS, maskAccount } from "@/lib/payouts/provider";
-import { enqueueOrderEmails } from "@/lib/email/notify";
+import { currencyCode } from "@/lib/format";
+import { paymentKey, payments } from "@/lib/payments";
+import { DomainError } from "@/lib/errors";
+import { addEvent, type Tx } from "@/lib/orders/events";
+import { retryUnsentRefunds, sendRefund } from "@/lib/orders/refunds";
 import type { Order, Prisma } from "@/generated/prisma/client";
 import {
   AUTO_COMPLETE_DAYS_AFTER_DELIVERY_BUFFER,
@@ -17,7 +17,6 @@ import {
   PAY_HOLD_MINUTES,
   PAYMENT_HOLD_MINUTES,
   PLATFORM_FEE_BPS,
-  REFUND_BY_HAND_DAYS,
   type OrderStatus,
 } from "@/lib/constants";
 import {
@@ -36,32 +35,7 @@ import type { ShippingAddress } from "@/lib/addresses";
 // state transitions, listing inventory and the event log stay consistent no
 // matter which entry point (Server Action, cron) triggers them.
 
-type DomainMessages = typeof en.domain;
-export type DomainCode = keyof DomainMessages;
-type DomainArgs<K extends DomainCode> = DomainMessages[K] extends (...args: infer A) => string ? A : [];
-
-/** An expected business-rule failure. The message is English (logs, tests); actions show `code` in the visitor's language. */
-export class DomainError<K extends DomainCode = DomainCode> extends Error {
-  readonly code: K;
-  readonly args: DomainArgs<K>;
-  constructor(code: K, ...args: DomainArgs<K>) {
-    super(resolveEntry(en.domain[code], args));
-    this.name = "DomainError";
-    this.code = code;
-    this.args = args;
-  }
-}
-
-type Tx = Prisma.TransactionClient;
 type Result = { orderId: string };
-
-// Events keep their details as params so the timeline can word them in the
-// viewer's language; the English text is stored too, for logs and admins.
-async function addEvent<T extends EventType>(tx: Tx, orderId: string, type: T, params: EventParams<T>, actorId?: string | null) {
-  const message = resolveEntry(en.events[type], [params]);
-  await tx.orderEvent.create({ data: { orderId, type, message, params: JSON.stringify(params), actorId: actorId ?? null } });
-  await enqueueOrderEmails(tx, orderId, type, params);
-}
 
 async function setStatus(tx: Tx, orderId: string, from: string, to: OrderStatus, data: Prisma.OrderUpdateInput = {}) {
   assertTransition(from, to);
@@ -230,7 +204,7 @@ export async function syncPayment(orderId: string): Promise<void> {
         where: { id: orderId, paymentRef: null },
         data: { paymentRef: state.ref, paymentMethod: state.method ?? null, refundIdr: state.amountIdr },
       });
-      if (claimed.count === 1) await sendClaimedRefund({ id: orderId, paymentRef: state.ref, paymentMethod: state.method ?? null }, state.amountIdr);
+      if (claimed.count === 1) await sendRefund({ id: orderId, paymentRef: state.ref, paymentMethod: state.method ?? null }, state.amountIdr);
     }
   }
 }
@@ -376,87 +350,8 @@ async function finishCancel(order: Awaited<ReturnType<typeof loadOrder>>, by: "b
   });
   // A paid or held item went back on sale; an unpaid order nobody was paying for changed nothing shoppers see.
   if (order.status === "PAID" || order.reservedAt) listingShown(order);
-  if (refunds) await sendClaimedRefund(order, order.totalIdr);
+  if (refunds) await sendRefund(order, order.totalIdr);
   return result;
-}
-
-type PaidOrder = { id: string; paymentRef: string | null; paymentMethod: string | null };
-
-/**
- * Send a refund the order has already committed to (refundIdr set, refundedAt
- * empty). refundedAt is filled once the provider confirms it; a refund that
- * fails here is retried by runOrderMaintenance. A bank transfer can't be sent
- * back through the provider: the buyer is asked for an account instead, and
- * an admin sends it (markRefundSent).
- */
-async function sendClaimedRefund(order: PaidOrder, amountIdr: number) {
-  if (!order.paymentMethod && order.paymentRef) order = { ...order, paymentMethod: await lookUpPaymentMethod(order.id) };
-  if (refundsByHand(order.paymentMethod)) {
-    await db.$transaction((tx) => addEvent(tx, order.id, "REFUND_BY_HAND", { amount: formatMoney(amountIdr), days: REFUND_BY_HAND_DAYS }));
-    return;
-  }
-  try {
-    // No provider payment to refund (e.g. seeded data): nothing to send.
-    if (order.paymentRef) await payments.refund({ idempotencyKey: paymentKey(order.id, "refund"), orderId: order.id, ref: order.paymentRef, amountIdr });
-    await db.order.update({ where: { id: order.id }, data: { refundedAt: new Date() } });
-  } catch (err) {
-    console.error("[payments] refund failed; maintenance will retry", order.id, err);
-  }
-}
-
-/**
- * How an order was paid, asked of the provider and saved. Orders paid before
- * the method was recorded (or recorded by an older deployment) don't know it,
- * and refunding a bank transfer through the provider would only fail.
- */
-async function lookUpPaymentMethod(orderId: string) {
-  try {
-    const state = await payments.status(orderId);
-    if (state.state !== "paid" || !state.method) return null;
-    await db.order.updateMany({ where: { id: orderId, paymentMethod: null }, data: { paymentMethod: state.method } });
-    return state.method;
-  } catch (err) {
-    console.error("[payments] couldn't look up how an order was paid", orderId, err);
-    return null;
-  }
-}
-
-/** The order, if it owes its buyer a bank-transfer refund that hasn't been sent. */
-async function refundOwedByHand(tx: Tx, orderId: string) {
-  const order = await tx.order.findUnique({ where: { id: orderId } });
-  if (!order || order.refundIdr <= 0 || order.refundedAt || !refundsByHand(order.paymentMethod)) throw new DomainError("noRefundByHand");
-  return order;
-}
-
-/** Where the buyer wants a bank-transfer refund sent. They can change it until it's sent, and are emailed each time. */
-export async function setRefundAccount(orderId: string, buyerId: string, input: { bank: string; accountNumber: string; accountName: string }): Promise<Result> {
-  if (!BANKS.some((b) => b.code === input.bank)) throw new DomainError("bankNotSupported");
-  return db.$transaction(async (tx) => {
-    const order = await refundOwedByHand(tx, orderId);
-    assertBuyer(order, buyerId);
-    await tx.order.update({ where: { id: orderId }, data: { refundBank: input.bank, refundAccountNumber: input.accountNumber, refundAccountName: input.accountName } });
-    await addEvent(tx, orderId, "REFUND_ACCOUNT_SET", { bank: bankName(input.bank), account: maskAccount(input.accountNumber) }, buyerId);
-    return { orderId };
-  });
-}
-
-/** An admin sent a bank-transfer refund to the account the buyer gave. */
-export async function markRefundSent(orderId: string, adminId: string, note: string): Promise<Result> {
-  return db.$transaction(async (tx) => {
-    const order = await refundOwedByHand(tx, orderId);
-    if (!order.refundBank || !order.refundAccountNumber) throw new DomainError("refundAccountMissing");
-    // Compare-and-swap: two admins marking it at once record it once.
-    const sent = await tx.order.updateMany({ where: { id: orderId, refundedAt: null }, data: { refundedAt: new Date(), refundNote: note } });
-    if (sent.count !== 1) throw new DomainError("concurrentUpdate");
-    await addEvent(
-      tx,
-      orderId,
-      "REFUND_SENT",
-      { amount: formatMoney(order.refundIdr), bank: bankName(order.refundBank), account: maskAccount(order.refundAccountNumber) },
-      adminId,
-    );
-    return { orderId };
-  });
 }
 
 /** Release an unpaid order's item. Returns "paid" if the buyer turned out to have paid, null if there was nothing to do. */
@@ -622,7 +517,7 @@ export async function receiveReturn(orderId: string, sellerUserId: string): Prom
     return { orderId };
   });
   listingShown(order);
-  await sendClaimedRefund(order, order.totalIdr);
+  await sendRefund(order, order.totalIdr);
   return result;
 }
 
@@ -702,7 +597,7 @@ export async function resolveDispute(
     return { orderId: order.id };
   });
   listingShown(order);
-  if (refundIdr > 0) await sendClaimedRefund(order, refundIdr);
+  if (refundIdr > 0) await sendRefund(order, refundIdr);
   return result;
 }
 
@@ -792,13 +687,7 @@ export async function runOrderMaintenance(now = new Date()) {
     }
   }
 
-  // Refunds are committed to before they're sent; send any that failed then.
-  // Bank-transfer refunds wait for an admin instead (Admin → Refunds).
-  const unsent = await db.order.findMany({
-    where: { refundIdr: { gt: 0 }, refundedAt: null, OR: [{ paymentMethod: null }, { paymentMethod: { notIn: REFUND_BY_HAND_METHODS } }] },
-    select: { id: true, paymentRef: true, paymentMethod: true, refundIdr: true },
-    take: 200,
-  });
-  for (const o of unsent) await sendClaimedRefund(o, o.refundIdr);
+  // Refunds are claimed before they're sent; send any that failed then.
+  await retryUnsentRefunds();
   return { expired, autoDelivered: longShipped.length };
 }

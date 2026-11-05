@@ -1,6 +1,7 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { setRefundAccount } from "@/lib/orders/refunds";
 import { redirect } from "next/navigation";
 import { localePath } from "@/i18n/locales";
 import type { Dictionary } from "@/i18n/server";
@@ -91,7 +92,7 @@ export async function saveRefundAccountAction(orderId: string, _prev: ActionStat
     const limited = await rateLimit(`refund-account:${user.id}`, 10, 86_400);
     if (!limited.ok) return { error: t.actions.passwordLimit };
     const input = payoutAccountSchema.parse(formToObject(formData));
-    await orders.setRefundAccount(orderId, user.id, input);
+    await setRefundAccount(orderId, user.id, input);
     await audit(user.id, "refund.account_set", "Order", orderId, { bank: input.bank, last4: input.accountNumber.slice(-4) });
     refresh();
     return { ok: true, message: t.actions.refundAccountSaved(input.accountName) };

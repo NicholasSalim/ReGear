@@ -48,8 +48,8 @@ export interface PaymentProvider {
 
 /**
  * Bank transfers (virtual accounts) can't be refunded through the provider:
- * the money goes back by hand to an account the buyer gives (see the order
- * service's setRefundAccount and markRefundSent).
+ * the money goes back by hand to an account the buyer gives (see the Refund
+ * module, src/lib/orders/refunds.ts).
  */
 export const REFUND_BY_HAND_METHODS = ["bank_transfer", "echannel"];
 export const refundsByHand = (method: string | null | undefined) => !!method && REFUND_BY_HAND_METHODS.includes(method);

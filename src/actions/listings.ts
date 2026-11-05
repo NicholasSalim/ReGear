@@ -12,7 +12,7 @@ import { gradeRank } from "@/lib/data/catalog";
 import { slugify } from "@/lib/format";
 import { listingSchema, parseListing, id as idSchema, type ListingInput } from "@/lib/validation";
 import { updateOpenListing } from "@/lib/listings";
-import { DomainError } from "@/lib/orders/service";
+import { DomainError } from "@/lib/errors";
 
 const UNVERIFIED_ACTIVE_LIMIT = 5;
 

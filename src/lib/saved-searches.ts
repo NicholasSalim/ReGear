@@ -7,7 +7,7 @@ import { GRADE_INFO } from "@/lib/constants";
 import { browseWhere } from "@/lib/data/catalog";
 import { enqueueEmail } from "@/lib/email/outbox";
 import { formatMoney } from "@/lib/format";
-import { DomainError } from "@/lib/orders/service";
+import { DomainError } from "@/lib/errors";
 import { browseSchema, type BrowseParams } from "@/lib/validation";
 
 // Saved searches and their email alerts. A search is stored as its canonical

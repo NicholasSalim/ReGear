@@ -98,7 +98,7 @@ export type OrderCapabilities = {
   notReceivedAllowed: boolean;
   /** Whole days left to ask for a return, counted from delivery; 0 before delivery or once it's over. */
   returnDaysLeft: number;
-  /** What the seller is paid for this order: total, less ReGear's fee and any refund. */
+  /** What the seller is paid for this order: total, less ReGear's fee and any refund. Nothing once it's cancelled or refunded. */
   sellerPayoutIdr: number;
 };
 
@@ -153,7 +153,8 @@ export function orderCapabilities(order: OrderFacts, viewer: "BUYER" | "SELLER" 
     steps,
     notReceivedAllowed: s === "PAID" || s === "SHIPPED",
     returnDaysLeft: returnEndsAt === null ? 0 : Math.max(0, Math.ceil((returnEndsAt - now.getTime()) / DAY_MS)),
-    sellerPayoutIdr: sellerPayoutIdr(order),
+    // A cancelled or refunded order pays the seller nothing, and ReGear takes no fee from it.
+    sellerPayoutIdr: s === "CANCELLED" || s === "REFUNDED" ? 0 : sellerPayoutIdr(order),
   };
 }
 

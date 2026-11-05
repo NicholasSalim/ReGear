@@ -98,6 +98,11 @@ describe("order capabilities", () => {
     expect(orderCapabilities(order({ status: "SHIPPED" }), "BUYER").notReceivedAllowed).toBe(true);
     expect(orderCapabilities(order({ status: "DELIVERED", deliveredAt }), "BUYER").notReceivedAllowed).toBe(false);
     expect(orderCapabilities(order({ refundIdr: 20_000 }), "SELLER").sellerPayoutIdr).toBe(75_000);
+    // A partial refund at the end of a dispute still leaves the seller the rest.
+    expect(orderCapabilities(order({ status: "COMPLETED", refundIdr: 20_000 }), "SELLER").sellerPayoutIdr).toBe(75_000);
+    // Cancelled or refunded: nothing is paid, and ReGear takes no fee, so not a negative payout.
+    expect(orderCapabilities(order({ status: "REFUNDED", refundIdr: 100_000 }), "SELLER").sellerPayoutIdr).toBe(0);
+    expect(orderCapabilities(order({ status: "CANCELLED", refundIdr: 100_000 }), "SELLER").sellerPayoutIdr).toBe(0);
   });
 });
 

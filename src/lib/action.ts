@@ -5,7 +5,7 @@ import { resolveEntry } from "@/i18n/messages";
 import { dictionaryFor, getRequestLocale, type Dictionary } from "@/i18n/server";
 import type { Locale } from "@/i18n/locales";
 import { requireUserStrict } from "@/lib/auth/dal";
-import { DomainError } from "@/lib/orders/service";
+import { DomainError } from "@/lib/errors";
 import { InvalidTransitionError } from "@/lib/orders/state";
 import { fieldErrors } from "@/lib/validation";
 import { MidtransError } from "@/lib/midtrans";

@@ -11,6 +11,7 @@ import { requireAdmin } from "@/lib/auth/dal";
 import { snapshotTitle } from "@/lib/admin/display";
 import { DISPUTE_STATUS_LABELS, RETURN_REASON_LABELS, RETURN_STATUS_LABELS } from "@/lib/constants";
 import { formatDateTime, formatMoney } from "@/lib/format";
+import { refundState } from "@/lib/orders/refunds";
 import { OrderStatusBadge } from "@/components/badges";
 import { PageHeader } from "@/components/ui";
 
@@ -54,6 +55,7 @@ export default async function AdminOrderPage({ params }: PageProps<"/[lang]/admi
   }
   const credited = order.balanceEntries.reduce((sum, e) => sum + e.amountIdr, 0);
   const at = (d: Date | null) => (d ? formatDateTime(d, locale) : t.none);
+  const refund = refundState(order);
 
   return (
     <>
@@ -75,7 +77,7 @@ export default async function AdminOrderPage({ params }: PageProps<"/[lang]/admi
             <Row label={t.shipping}>{formatMoney(order.shippingIdr)}</Row>
             <Row label={order.paidAt ? t.total : t.orderTotal}>{formatMoney(order.totalIdr)}</Row>
             <Row label={t.fee}>{formatMoney(order.platformFeeIdr)}</Row>
-            <Row label={t.refunded}>{order.refundIdr ? formatMoney(order.refundIdr) : t.none}</Row>
+            <Row label={t.refunded}>{refund.kind === "none" ? t.none : formatMoney(refund.amountIdr)}</Row>
             <Row label={t.sellerCredit}>{order.balanceEntries.length ? formatMoney(credited) : t.notCredited}</Row>
           </dl>
         </section>
@@ -104,7 +106,7 @@ export default async function AdminOrderPage({ params }: PageProps<"/[lang]/admi
             <Row label={t.paidAt}>{at(order.paidAt)}</Row>
             <Row label={t.paymentRef}><span className="num text-xs">{order.paymentRef ?? t.none}</span></Row>
             <Row label={t.paymentMethod}>{order.paymentMethod ?? t.none}</Row>
-            <Row label={t.refundedAt}>{at(order.refundedAt)}</Row>
+            <Row label={t.refundedAt}>{at(refund.kind === "sent" ? refund.sentAt : null)}</Row>
             <Row label={t.cancelledAt}>{at(order.cancelledAt)}</Row>
           </dl>
         </section>

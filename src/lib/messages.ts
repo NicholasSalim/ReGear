@@ -2,7 +2,7 @@ import "server-only";
 import { isLocale } from "@/i18n/locales";
 import { db } from "@/lib/db";
 import { enqueueEmail } from "@/lib/email/outbox";
-import { DomainError } from "@/lib/orders/service";
+import { DomainError } from "@/lib/errors";
 
 // Buyer–seller messages, one conversation per buyer and listing. Only the two
 // people in a conversation can read or write in it. An email goes out when a

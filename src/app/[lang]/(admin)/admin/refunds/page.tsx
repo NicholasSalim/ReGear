@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Link } from "@/i18n/client";
 import { getDictionary, getLocale } from "@/i18n/server";
 import { requireAdmin } from "@/lib/auth/dal";
-import { getManualRefunds } from "@/lib/data/payouts";
+import { byHandRefunds } from "@/lib/orders/refunds";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { bankName, maskAccount } from "@/lib/payouts/provider";
 import { markRefundSentAction } from "@/actions/admin";
@@ -13,11 +13,11 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getDictionary()).admin.refunds.title };
 }
 
-type Row = Awaited<ReturnType<typeof getManualRefunds>>["toSend"][number];
+type Row = Awaited<ReturnType<typeof byHandRefunds>>["toSend"][number];
 
 export default async function AdminRefundsPage() {
   await requireAdmin();
-  const [locale, dict, d] = await Promise.all([getLocale(), getDictionary(), getManualRefunds()]);
+  const [locale, dict, d] = await Promise.all([getLocale(), getDictionary(), byHandRefunds()]);
   const t = dict.admin.refunds;
 
   const heading = (o: Row) => (

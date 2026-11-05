@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { isLocale } from "@/i18n/locales";
 import { enqueueEmail } from "@/lib/email/outbox";
 import { formatMoney } from "@/lib/format";
-import { DomainError } from "@/lib/orders/service";
+import { DomainError } from "@/lib/errors";
 import { isBanned } from "@/lib/account/ban-state";
 import { BANKS, bankName, maskAccount, PayoutError, payouts } from "@/lib/payouts/provider";
 import type { Prisma } from "@/generated/prisma/client";

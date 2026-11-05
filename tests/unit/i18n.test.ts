@@ -103,7 +103,7 @@ describe("server messages in the visitor's language", () => {
   });
 
   it("keeps domain errors in English for logs but carries a code for the UI", async () => {
-    const { DomainError } = await import("@/lib/orders/service");
+    const { DomainError } = await import("@/lib/errors");
     const { id } = await import("@/i18n/dictionaries/id");
     const { resolveEntry } = await import("@/i18n/messages");
     const err = new DomainError("unverifiedLimit", 5);

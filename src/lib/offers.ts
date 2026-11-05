@@ -3,7 +3,7 @@ import { isLocale } from "@/i18n/locales";
 import { db } from "@/lib/db";
 import { enqueueEmail } from "@/lib/email/outbox";
 import { formatMoney } from "@/lib/format";
-import { DomainError } from "@/lib/orders/service";
+import { DomainError } from "@/lib/errors";
 
 // Make an offer. A buyer offers less than the asking price; the seller accepts
 // or declines; an accepted offer is checked out at its amount (see

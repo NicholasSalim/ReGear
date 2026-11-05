@@ -2,7 +2,7 @@ import "server-only";
 import { isLocale } from "@/i18n/locales";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
-import { TAGS } from "@/lib/cache";
+import { catalogueChanged } from "@/lib/cache";
 import { enqueueEmail } from "@/lib/email/outbox";
 import { cancelOrderByAdmin, DomainError } from "@/lib/orders/service";
 import { isBanned } from "@/lib/account/ban-state";
@@ -23,7 +23,7 @@ const localeOf = (value: string) => (isLocale(value) ? value : "id");
  * Ban an account until `until` (null: permanently), or change how long an
  * existing ban lasts. Signs it out everywhere, hides its listings, and cancels
  * its orders that haven't shipped: a banned seller's are refunded, and a
- * banned buyer's unpaid ones released. Returns cache tags to invalidate.
+ * banned buyer's unpaid ones released.
  */
 export async function banUser(adminId: string, userId: string, input: { until: Date | null; reason: string }, now = new Date()) {
   if (input.until && input.until <= now) throw new DomainError("banEndInPast");
@@ -56,24 +56,22 @@ export async function banUser(adminId: string, userId: string, input: { until: D
     },
     select: { id: true },
   });
-  const tags = new Set<string>([TAGS.listings, TAGS.stats, ...(sellerId ? [TAGS.seller(sellerId)] : [])]);
   let cancelled = 0;
   for (const o of open) {
     try {
-      const result = await cancelOrderByAdmin(o.id, adminId);
-      if (result) {
-        cancelled++;
-        result.tags.forEach((t) => tags.add(t));
-      }
+      if (await cancelOrderByAdmin(o.id, adminId)) cancelled++;
     } catch (err) {
       console.error("[ban] couldn't cancel order", o.id, err);
     }
   }
   // A cancelled order put its item back on sale: hide it too.
-  if (sellerId) await db.listing.updateMany({ where: { sellerId, status: "ACTIVE" }, data: { status: "SUSPENDED" } });
+  if (sellerId) {
+    await db.listing.updateMany({ where: { sellerId, status: "ACTIVE" }, data: { status: "SUSPENDED" } });
+    catalogueChanged({ sellers: [sellerId] });
+  }
 
   await audit(adminId, "user.ban", "User", userId, { until: input.until?.toISOString() ?? "permanent", reason: input.reason, cancelledOrders: cancelled });
-  return { tags: [...tags], cancelled };
+  return { cancelled };
 }
 
 /** End a ban: early by an admin, or by the maintenance job when it runs out (adminId null). */
@@ -88,24 +86,23 @@ export async function unbanUser(adminId: string | null, userId: string) {
     if (sellerId) await tx.listing.updateMany({ where: { sellerId, status: "SUSPENDED" }, data: { status: "ACTIVE" } });
     await enqueueEmail(tx, { userId, locale: localeOf(user.locale) }, { template: "account-unbanned", params: {} });
   });
+  if (sellerId) catalogueChanged({ sellers: [sellerId] });
   await audit(adminId, adminId ? "user.unban" : "user.ban_ended", "User", userId);
-  return { tags: [TAGS.listings, TAGS.stats, ...(sellerId ? [TAGS.seller(sellerId)] : [])] };
 }
 
 /** Lift timed bans whose end has passed. Run by the maintenance job. */
 export async function liftExpiredBans(now = new Date()) {
   const due = await db.user.findMany({ where: { bannedAt: { not: null }, bannedUntil: { lte: now } }, select: { id: true }, take: 200 });
-  const tags = new Set<string>();
   let lifted = 0;
   for (const u of due) {
     try {
-      (await unbanUser(null, u.id)).tags.forEach((t) => tags.add(t));
+      await unbanUser(null, u.id);
       lifted++;
     } catch (err) {
       if (!(err instanceof DomainError && err.code === "notBanned")) console.error("[ban] couldn't lift ban", u.id, err);
     }
   }
-  return { lifted, tags: [...tags] };
+  return { lifted };
 }
 
 /** When a ban chosen in the admin form ends. Custom dates end at the start of that day, Jakarta time. */

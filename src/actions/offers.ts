@@ -1,6 +1,5 @@
 "use server";
 
-import { invalidate } from "@/lib/cache";
 import { actionI18n, runAction, type ActionState, requireTraderStrict } from "@/lib/action";
 import { rateLimit } from "@/lib/security/rate-limit";
 import * as offers from "@/lib/offers";
@@ -24,8 +23,7 @@ export async function makeOfferAction(listingId: string, _prev: ActionState, for
     if (!limited.ok) return { error: t.actions.offerLimitRate };
     const amount = parseAmount(formData.get("amount"));
     if (!amount) return { error: t.actions.offerAmount, fieldErrors: { amount: t.actions.offerAmount } };
-    const res = await offers.makeOffer(user.id, listingId, amount, String(formData.get("message") ?? "").trim());
-    invalidate(res.tags);
+    await offers.makeOffer(user.id, listingId, amount, String(formData.get("message") ?? "").trim());
     return { ok: true, message: t.actions.offerSent };
   });
 }
@@ -35,8 +33,7 @@ export async function withdrawOfferAction(offerId: string, _prev: ActionState, _
     const user = await requireTraderStrict();
     const { t } = await actionI18n();
     idSchema.parse(offerId);
-    const res = await offers.withdrawOffer(user.id, offerId);
-    invalidate(res.tags);
+    await offers.withdrawOffer(user.id, offerId);
     return { ok: true, message: t.actions.offerWithdrawn };
   });
 }
@@ -49,8 +46,7 @@ export async function answerOfferAction(offerId: string, _prev: ActionState, for
     idSchema.parse(offerId);
     const decision = formData.get("decision");
     if (decision !== "accept" && decision !== "decline") return { error: t.domain.genericError };
-    const res = await offers.answerOffer(user.id, offerId, decision === "accept");
-    invalidate(res.tags);
+    await offers.answerOffer(user.id, offerId, decision === "accept");
     return { ok: true, message: decision === "accept" ? t.actions.offerAccepted : t.actions.offerDeclined };
   });
 }

@@ -3,7 +3,7 @@
 import { refresh } from "next/cache";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
-import { invalidate, listingTags, TAGS } from "@/lib/cache";
+import { catalogueChanged } from "@/lib/cache";
 import { en } from "@/i18n/dictionaries/en";
 import { actionI18n, formToObject, runAction, type ActionState } from "@/lib/action";
 import { requireUserStrict } from "@/lib/auth/dal";
@@ -50,7 +50,7 @@ export async function reviewVerificationAction(requestId: string, _prev: ActionS
         approve ? { template: "verification-approved", params: {} } : { template: "verification-rejected", params: { note } },
       );
     });
-    invalidate([TAGS.seller(request.sellerId), TAGS.listings, TAGS.stats]);
+    catalogueChanged({ sellers: [request.sellerId] });
     await audit(admin.id, approve ? "verification.approve" : "verification.reject", "VerificationRequest", requestId, { note });
     return { ok: true, message: approve ? t.actions.sellerVerified : t.actions.verificationRejected };
   });
@@ -79,8 +79,7 @@ export async function resolveDisputeAction(disputeId: string, _prev: ActionState
     const admin = await requireAdminStrict();
     idSchema.parse(disputeId);
     const data = disputeResolutionSchema.parse(formToObject(formData));
-    const res = await resolveDispute(disputeId, admin.id, data.resolution, data.note, data.refundIdr ?? 0);
-    invalidate(res.tags);
+    await resolveDispute(disputeId, admin.id, data.resolution, data.note, data.refundIdr ?? 0);
     await audit(admin.id, "dispute.resolve", "Dispute", disputeId, { resolution: data.resolution, refundIdr: data.refundIdr });
     return { ok: true, message: (await actionI18n()).t.actions.disputeResolved };
   });
@@ -94,8 +93,7 @@ export async function markRefundSentAction(orderId: string, _prev: ActionState, 
     idSchema.parse(orderId);
     const note = text(0, 500).parse(formData.get("note") ?? "");
     if (note.length < 5) return { fieldErrors: { note: t.actions.noteRequired } };
-    const res = await markRefundSent(orderId, admin.id, note);
-    invalidate(res.tags);
+    await markRefundSent(orderId, admin.id, note);
     await audit(admin.id, "refund.mark_sent", "Order", orderId, { note });
     refresh();
     return { ok: true, message: t.actions.refundMarkedSent };
@@ -113,7 +111,7 @@ export async function moderateListingAction(listingId: string, _prev: ActionStat
     // Conditional, so an order placed since the read above keeps its listing.
     const removed = await db.listing.updateMany({ where: { id: listingId, status: { notIn: ["RESERVED", "SOLD"] } }, data: { status: "REMOVED" } });
     if (removed.count !== 1) return { error: t.actions.moderationLocked };
-    invalidate(listingTags(listing));
+    catalogueChanged({ listings: [listing] });
     await audit(admin.id, "listing.moderate_remove", "Listing", listingId, { reason });
     return { ok: true, message: t.actions.listingRemoved };
   });
@@ -134,8 +132,7 @@ export async function banUserAction(userId: string, _prev: ActionState, formData
       return { fieldErrors: { until: t.domain.banEndInPast } };
     }
     if (until && until <= new Date()) return { fieldErrors: { until: t.domain.banEndInPast } };
-    const { tags, cancelled } = await banUser(admin.id, userId, { until, reason });
-    invalidate(tags);
+    const { cancelled } = await banUser(admin.id, userId, { until, reason });
     refresh();
     return { ok: true, message: t.actions.userBanned(cancelled) };
   });
@@ -146,7 +143,7 @@ export async function unbanUserAction(userId: string, _prev?: ActionState, _form
     const admin = await requireAdminStrict();
     const { t } = await actionI18n();
     idSchema.parse(userId);
-    invalidate((await unbanUser(admin.id, userId)).tags);
+    await unbanUser(admin.id, userId);
     refresh();
     return { ok: true, message: t.actions.userUnbanned };
   });

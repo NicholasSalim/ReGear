@@ -5,7 +5,7 @@ import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
-import { invalidate, TAGS } from "@/lib/cache";
+import { catalogueChanged } from "@/lib/cache";
 import { actionI18n, formToObject, runAction, type ActionState, requireTraderStrict } from "@/lib/action";
 import { localePath } from "@/i18n/locales";
 import { getSellerProfile } from "@/lib/auth/dal";
@@ -57,7 +57,7 @@ export async function updateSellerProfileAction(_prev: ActionState, formData: Fo
       return true;
     });
     if (!saved) return { fieldErrors: { displayName: t.actions.shopNameTaken } };
-    invalidate([TAGS.seller(seller.id), TAGS.listings]);
+    catalogueChanged({ sellers: [seller.id] });
     return { ok: true, message: t.actions.shopSaved };
   });
 }

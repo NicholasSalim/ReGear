@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { env } from "@/lib/env";
-import { invalidate } from "@/lib/cache";
 import { verifyMidtransSignature } from "@/lib/midtrans";
 import { syncPayment } from "@/lib/orders/service";
 import { id as idSchema } from "@/lib/validation";
@@ -28,7 +27,7 @@ export async function POST(req: Request) {
   if (!orderId.success) return NextResponse.json({ ok: true });
 
   try {
-    invalidate(await syncPayment(orderId.data), "route");
+    await syncPayment(orderId.data);
   } catch (err) {
     // A 500 makes Midtrans retry; the maintenance job catches up after that.
     console.error("[payments] notification failed", orderId.data, err);

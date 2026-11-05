@@ -8,6 +8,7 @@ const { db } = await import("@/lib/db");
 const orders = await import("@/lib/orders/service");
 const { deleteAccount, getDeletionBlockers } = await import("@/lib/account/delete");
 const storage = await import("@/lib/storage");
+const { revalidateTag } = await import("next/cache");
 
 const address = {
   fullName: "Test Buyer",
@@ -119,9 +120,10 @@ describe("account deletion", () => {
     await db.oAuthAccount.create({ data: { provider: "google", providerAccountId: "g-1", userId: f.buyer.id, email: "b@test.dev" } });
     await db.session.create({ data: { id: "sess-b", userId: f.buyer.id, expiresAt: new Date(Date.now() + 86_400_000) } });
 
-    const deleted = await deleteAccount(f.buyer.id);
-    // The reviewed seller's cached pages show the buyer's name, so they're named for refreshing.
-    expect(deleted.reviewedSellerIds).toEqual([f.seller.id]);
+    vi.mocked(revalidateTag).mockClear();
+    await deleteAccount(f.buyer.id);
+    // The reviewed seller's cached pages show the buyer's name, so they're refreshed.
+    expect(vi.mocked(revalidateTag).mock.calls.map(([tag]) => tag)).toContain(`seller-${f.seller.id}`);
 
     const buyer = await db.user.findUniqueOrThrow({ where: { id: f.buyer.id } });
     expect(buyer.email).toBe(`deleted-${f.buyer.id}@deleted.invalid`);

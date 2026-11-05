@@ -4,7 +4,7 @@ import { resolveEntry, type EventParams, type EventType } from "@/i18n/messages"
 import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
-import { listingTags, TAGS } from "@/lib/cache";
+import { catalogueChanged } from "@/lib/cache";
 import { currencyCode, formatMoney } from "@/lib/format";
 import { paymentKey, payments, REFUND_BY_HAND_METHODS, refundsByHand } from "@/lib/payments";
 import { bankName, BANKS, maskAccount } from "@/lib/payouts/provider";
@@ -53,7 +53,7 @@ export class DomainError<K extends DomainCode = DomainCode> extends Error {
 }
 
 type Tx = Prisma.TransactionClient;
-type Result = { orderId: string; tags: string[] };
+type Result = { orderId: string };
 
 // Events keep their details as params so the timeline can word them in the
 // viewer's language; the English text is stored too, for logs and admins.
@@ -70,8 +70,9 @@ async function setStatus(tx: Tx, orderId: string, from: string, to: OrderStatus,
   if (res.count !== 1) throw new DomainError("concurrentUpdate");
 }
 
-function tagsFor(order: { listingId: string; sellerId: string; buyerId: string }) {
-  return [...listingTags({ id: order.listingId, sellerId: order.sellerId }), `orders-${order.buyerId}`];
+/** The order's listing changed in a way shoppers see (held, released, sold, back to draft): refresh the catalogue. */
+function listingShown(order: { listingId: string; sellerId: string }) {
+  catalogueChanged({ listings: [{ id: order.listingId, sellerId: order.sellerId }] });
 }
 
 async function loadOrder(tx: Tx, orderId: string) {
@@ -127,7 +128,7 @@ export async function createOrder(buyerId: string, listingId: string, address: S
     if (buyer?.role === "ADMIN") throw new DomainError("adminCannotTrade");
     // Checking out the same item twice (a double click, a second tab) gives the same order.
     const open = await tx.order.findFirst({ where: { buyerId, listingId, status: "PENDING_PAYMENT" }, select: { id: true, listingId: true, sellerId: true, buyerId: true } });
-    if (open) return { orderId: open.id, tags: tagsFor(open) };
+    if (open) return { orderId: open.id };
     const unpaid = await tx.order.count({ where: { buyerId, status: "PENDING_PAYMENT" } });
     if (unpaid >= MAX_UNPAID_ORDERS) throw new DomainError("tooManyUnpaidOrders", MAX_UNPAID_ORDERS);
     // Someone who keeps starting payment and letting the hold lapse waits a day.
@@ -174,31 +175,32 @@ export async function createOrder(buyerId: string, listingId: string, address: S
     await addEvent(tx, order.id, "CREATED", { minutes: PAYMENT_HOLD_MINUTES }, buyerId);
     // Bought, so no longer something to buy.
     await tx.cartItem.deleteMany({ where: { userId: buyerId, listingId } });
-    return { orderId: order.id, tags: tagsFor(order) };
+    return { orderId: order.id };
   });
 }
 
 type UnpaidOrder = { id: string; status: string; buyerId: string; sellerId: string; listingId: string; totalIdr: number };
 
-async function markPaid(order: UnpaidOrder, ref: string, method?: string): Promise<string[]> {
+async function markPaid(order: UnpaidOrder, ref: string, method?: string) {
   await db.$transaction(async (tx) => {
     await setStatus(tx, order.id, "PENDING_PAYMENT", "PAID", { paidAt: new Date(), paymentRef: ref, paymentMethod: method ?? null });
     await addEvent(tx, order.id, "PAID", {}, order.buyerId);
   });
-  return tagsFor(order);
+  listingShown(order);
 }
 
-/** Record a payment the provider reports. Returns the tags to invalidate (none if someone else recorded it first). */
-async function confirmPaid(order: UnpaidOrder, paid: { ref: string; amountIdr: number; method?: string }): Promise<string[]> {
+/** Record a payment the provider reports. True if this call recorded it (false if someone else did first, or the amount is wrong). */
+async function confirmPaid(order: UnpaidOrder, paid: { ref: string; amountIdr: number; method?: string }): Promise<boolean> {
   if (paid.amountIdr !== order.totalIdr) {
     console.error(`[payments] order ${order.id} paid ${paid.amountIdr} IDR, expected ${order.totalIdr}; not marking it paid`);
-    return [];
+    return false;
   }
   try {
-    return await markPaid(order, paid.ref, paid.method);
+    await markPaid(order, paid.ref, paid.method);
+    return true;
   } catch (err) {
     // The webhook and the buyer's return from the payment page often arrive together.
-    if (err instanceof DomainError && err.code === "concurrentUpdate") return [];
+    if (err instanceof DomainError && err.code === "concurrentUpdate") return false;
     throw err;
   }
 }
@@ -208,14 +210,14 @@ async function confirmPaid(order: UnpaidOrder, paid: { ref: string; amountIdr: n
  * ever comes from here (or from the simulated provider), never from the
  * buyer's browser or an unverified notification.
  */
-export async function syncPayment(orderId: string): Promise<string[]> {
+export async function syncPayment(orderId: string): Promise<void> {
   const order = await db.order.findUnique({ where: { id: orderId } });
-  if (!order) return [];
+  if (!order) return;
   if (order.status === "PENDING_PAYMENT") {
     const state = await payments.status(orderId);
-    if (state.state === "paid") return confirmPaid(order, state);
-    if (state.state === "failed") return (await expireUnpaidOrder(orderId)) === "expired" ? tagsFor(order) : [];
-    return [];
+    if (state.state === "paid") await confirmPaid(order, state);
+    else if (state.state === "failed") await expireUnpaidOrder(orderId);
+    return;
   }
   // Expiring the payment before cancelling should make this impossible, but if
   // a payment still lands on a cancelled order, the money goes straight back.
@@ -231,7 +233,6 @@ export async function syncPayment(orderId: string): Promise<string[]> {
       if (claimed.count === 1) await sendClaimedRefund({ id: orderId, paymentRef: state.ref, paymentMethod: state.method ?? null }, state.amountIdr);
     }
   }
-  return [];
 }
 
 /** Paid at once (simulated provider) or a page on the provider's site to send the buyer to. */
@@ -262,8 +263,8 @@ async function releaseLapsedHold(listingId: string) {
 }
 
 /** Take the item off sale for this order. Only one order can hold it; anyone else is told it's being paid for. */
-async function holdForPayment(order: { id: string; listingId: string }) {
-  return db.$transaction(async (tx) => {
+async function holdForPayment(order: { id: string; listingId: string; sellerId: string }) {
+  const held = await db.$transaction(async (tx) => {
     const held = await tx.listing.updateMany({ where: { id: order.listingId, status: "ACTIVE" }, data: { status: "RESERVED" } });
     if (held.count !== 1) {
       // A double click: this same order already holds it.
@@ -275,6 +276,8 @@ async function holdForPayment(order: { id: string; listingId: string }) {
     if (claimed.count !== 1) throw new DomainError("concurrentUpdate");
     return tx.order.findUniqueOrThrow({ where: { id: order.id } });
   });
+  listingShown(order);
+  return held;
 }
 
 /** An unpaid order closing: free the item if this order was holding it, and give back the offer it used. */
@@ -295,13 +298,13 @@ export async function payOrder(orderId: string, buyerId: string, locale: Locale 
 
   // A payment page already exists: the buyer may have paid there already.
   if (order.paymentUrl) {
-    const tags = await syncPayment(orderId);
+    await syncPayment(orderId);
     order = await db.order.findUniqueOrThrow({ where: { id: orderId } });
-    if (order.status === "PAID") return { orderId, tags, paid: true };
+    if (order.status === "PAID") return { orderId, paid: true };
     if (order.status !== "PENDING_PAYMENT") throw new DomainError("paymentExpired");
   }
   if (Date.now() > unpaidClosesAt(order)) {
-    if ((await expireUnpaidOrder(order.id)) === "paid") return { orderId, tags: tagsFor(order), paid: true };
+    if ((await expireUnpaidOrder(order.id)) === "paid") return { orderId, paid: true };
     throw new DomainError("paymentExpired");
   }
   // The item is held from here, for this buyer only, while they pay.
@@ -310,7 +313,7 @@ export async function payOrder(orderId: string, buyerId: string, locale: Locale 
     order = await holdForPayment(order);
   }
   const holdEndsAt = new Date(order.reservedAt!.getTime() + PAY_HOLD_MINUTES * 60_000);
-  if (order.paymentUrl) return { orderId, tags: [], redirectUrl: order.paymentUrl };
+  if (order.paymentUrl) return { orderId, redirectUrl: order.paymentUrl };
 
   const started = await payments.checkout({
     idempotencyKey: paymentKey(orderId, "charge"),
@@ -322,11 +325,14 @@ export async function payOrder(orderId: string, buyerId: string, locale: Locale 
     // The provider sends the buyer back here, which checks the payment and shows the order.
     returnUrl: `${env.NEXT_PUBLIC_SITE_URL}/api/payments/return?order=${orderId}&lang=${locale}`,
   });
-  if ("paid" in started) return { orderId, tags: await markPaid(order, started.paid.ref), paid: true };
+  if ("paid" in started) {
+    await markPaid(order, started.paid.ref);
+    return { orderId, paid: true };
+  }
   // Keep the first page (a double click opens two) so the buyer always returns to the same one.
   await db.order.updateMany({ where: { id: orderId, paymentUrl: null }, data: { paymentUrl: started.redirectUrl } });
   const saved = await db.order.findUniqueOrThrow({ where: { id: orderId }, select: { paymentUrl: true } });
-  return { orderId, tags: [], redirectUrl: saved.paymentUrl ?? started.redirectUrl };
+  return { orderId, redirectUrl: saved.paymentUrl ?? started.redirectUrl };
 }
 
 export async function cancelOrder(orderId: string, userId: string, reason: string): Promise<Result> {
@@ -335,7 +341,7 @@ export async function cancelOrder(orderId: string, userId: string, reason: strin
     // Close the payment page first; if the buyer paid in the meantime, this
     // becomes the cancellation of a paid order and the money is refunded.
     const state = await payments.abandon(orderId);
-    if (state.state === "paid" && (await confirmPaid(order, state)).length) order = await db.$transaction((tx) => loadOrder(tx, orderId));
+    if (state.state === "paid" && (await confirmPaid(order, state))) order = await db.$transaction((tx) => loadOrder(tx, orderId));
   }
   const isBuyer = order.buyerId === userId;
   if (!isBuyer && order.seller.userId !== userId) throw new DomainError("orderNotFound");
@@ -351,7 +357,7 @@ export async function cancelOrderByAdmin(orderId: string, adminId: string | null
   let order = await db.$transaction((tx) => loadOrder(tx, orderId));
   if (order.status === "PENDING_PAYMENT") {
     const state = await payments.abandon(orderId);
-    if (state.state === "paid" && (await confirmPaid(order, state)).length) order = await db.$transaction((tx) => loadOrder(tx, orderId));
+    if (state.state === "paid" && (await confirmPaid(order, state))) order = await db.$transaction((tx) => loadOrder(tx, orderId));
   }
   if (order.status !== "PENDING_PAYMENT" && order.status !== "PAID") return null;
   return finishCancel(order, "admin", adminId, "");
@@ -366,8 +372,10 @@ async function finishCancel(order: Awaited<ReturnType<typeof loadOrder>>, by: "b
     if (order.status === "PAID") await tx.listing.updateMany({ where: { id: order.listingId, status: "RESERVED" }, data: { status: "ACTIVE" } });
     else await closeUnpaid(tx, order);
     await addEvent(tx, order.id, "CANCELLED", { by, ...(reason ? { reason } : {}), refunded: refunds }, actorId);
-    return { orderId: order.id, tags: tagsFor(order) };
+    return { orderId: order.id };
   });
+  // A paid or held item went back on sale; an unpaid order nobody was paying for changed nothing shoppers see.
+  if (order.status === "PAID" || order.reservedAt) listingShown(order);
   if (refunds) await sendClaimedRefund(order, order.totalIdr);
   return result;
 }
@@ -428,7 +436,7 @@ export async function setRefundAccount(orderId: string, buyerId: string, input: 
     assertBuyer(order, buyerId);
     await tx.order.update({ where: { id: orderId }, data: { refundBank: input.bank, refundAccountNumber: input.accountNumber, refundAccountName: input.accountName } });
     await addEvent(tx, orderId, "REFUND_ACCOUNT_SET", { bank: bankName(input.bank), account: maskAccount(input.accountNumber) }, buyerId);
-    return { orderId, tags: tagsFor(order) };
+    return { orderId };
   });
 }
 
@@ -447,7 +455,7 @@ export async function markRefundSent(orderId: string, adminId: string, note: str
       { amount: formatMoney(order.refundIdr), bank: bankName(order.refundBank), account: maskAccount(order.refundAccountNumber) },
       adminId,
     );
-    return { orderId, tags: tagsFor(order) };
+    return { orderId };
   });
 }
 
@@ -457,16 +465,19 @@ export async function expireUnpaidOrder(orderId: string): Promise<"expired" | "p
   if (!order || order.status !== "PENDING_PAYMENT") return null;
   // Stop the payment first, so the buyer can't pay for an item that's back on sale.
   const state = await payments.abandon(orderId);
-  if (state.state === "paid") return (await confirmPaid(order, state)).length ? "paid" : null;
+  if (state.state === "paid") return (await confirmPaid(order, state)) ? "paid" : null;
 
-  return db.$transaction(async (tx) => {
+  const released = await db.$transaction(async (tx) => {
     const current = await tx.order.findUnique({ where: { id: orderId } });
     if (!current || current.status !== "PENDING_PAYMENT") return null;
     await setStatus(tx, orderId, "PENDING_PAYMENT", "CANCELLED", { cancelledAt: new Date() });
     await closeUnpaid(tx, current);
     await addEvent(tx, orderId, "EXPIRED", {});
-    return "expired" as const;
+    return current;
   });
+  if (!released) return null;
+  if (released.reservedAt) listingShown(released);
+  return "expired";
 }
 
 // Fulfilment ----------------------------------------------------------------
@@ -478,7 +489,7 @@ export async function shipOrder(orderId: string, sellerUserId: string, carrier: 
     requireStep(order, "SELLER", "ship");
     await setStatus(tx, orderId, "PAID", "SHIPPED", { shippedAt: new Date(), carrier, trackingNumber });
     await addEvent(tx, orderId, "SHIPPED", { carrier, tracking: trackingNumber }, sellerUserId);
-    return { orderId, tags: tagsFor(order) };
+    return { orderId };
   });
 }
 
@@ -494,7 +505,7 @@ export async function confirmDelivery(orderId: string, buyerId: string | null): 
     }
     await setStatus(tx, orderId, "SHIPPED", "DELIVERED", { deliveredAt: new Date() });
     await addEvent(tx, orderId, "DELIVERED", { auto: !buyerId, returnDays: order.returnWindowDays }, buyerId);
-    return { orderId, tags: tagsFor(order) };
+    return { orderId };
   });
 }
 
@@ -512,13 +523,15 @@ async function completeInTx(tx: Tx, order: { id: string; status: string; listing
 }
 
 export async function acceptOrder(orderId: string, buyerId: string): Promise<Result> {
-  return db.$transaction(async (tx) => {
+  const order = await db.$transaction(async (tx) => {
     const order = await loadOrder(tx, orderId);
     assertBuyer(order, buyerId);
     requireStep(order, "BUYER", "accept");
     await completeInTx(tx, order, buyerId, "buyer");
-    return { orderId, tags: [...tagsFor(order), TAGS.seller(order.sellerId)] };
+    return order;
   });
+  listingShown(order);
+  return { orderId };
 }
 
 /**
@@ -545,7 +558,8 @@ export async function autoCompleteOrder(orderId: string, now = new Date()) {
     await completeInTx(tx, o, null, "window");
     return o;
   });
-  return order ? tagsFor(order) : [];
+  if (order) listingShown(order);
+  return order !== null;
 }
 
 // Returns -------------------------------------------------------------------
@@ -558,7 +572,7 @@ export async function requestReturn(orderId: string, buyerId: string, reason: st
     await setStatus(tx, orderId, "DELIVERED", "RETURN_IN_PROGRESS");
     await tx.returnRequest.create({ data: { orderId, reason, details } });
     await addEvent(tx, orderId, "RETURN_REQUESTED", {}, buyerId);
-    return { orderId, tags: tagsFor(order) };
+    return { orderId };
   });
 }
 
@@ -576,7 +590,7 @@ export async function respondToReturn(orderId: string, sellerUserId: string, app
       await setStatus(tx, orderId, "RETURN_IN_PROGRESS", "DELIVERED");
       await addEvent(tx, orderId, "RETURN_REJECTED", { note }, sellerUserId);
     }
-    return { orderId, tags: tagsFor(order) };
+    return { orderId };
   });
 }
 
@@ -590,7 +604,7 @@ export async function shipReturn(orderId: string, buyerId: string, carrier: stri
       data: { status: "SHIPPED_BACK", returnCarrier: carrier, returnTracking: tracking },
     });
     await addEvent(tx, orderId, "RETURN_SHIPPED", { carrier, tracking }, buyerId);
-    return { orderId, tags: tagsFor(order) };
+    return { orderId };
   });
 }
 
@@ -605,8 +619,9 @@ export async function receiveReturn(orderId: string, sellerUserId: string): Prom
     // Item is back with the seller; they must review it before relisting.
     await tx.listing.update({ where: { id: order.listingId }, data: { status: "DRAFT" } });
     await addEvent(tx, orderId, "REFUNDED", {}, sellerUserId);
-    return { orderId, tags: tagsFor(order) };
+    return { orderId };
   });
+  listingShown(order);
   await sendClaimedRefund(order, order.totalIdr);
   return result;
 }
@@ -631,7 +646,7 @@ export async function openDispute(orderId: string, userId: string, reason: strin
       },
     });
     await addEvent(tx, orderId, "DISPUTE_OPENED", { by: role === "BUYER" ? "buyer" : "seller" }, userId);
-    return { orderId, disputeId: dispute.id, tags: tagsFor(order) };
+    return { orderId, disputeId: dispute.id };
   });
 }
 
@@ -684,8 +699,9 @@ export async function resolveDispute(
         adminId,
       );
     }
-    return { orderId: order.id, tags: tagsFor(order) };
+    return { orderId: order.id };
   });
+  listingShown(order);
   if (refundIdr > 0) await sendClaimedRefund(order, refundIdr);
   return result;
 }
@@ -693,7 +709,7 @@ export async function resolveDispute(
 // Reviews -------------------------------------------------------------------
 
 export async function leaveReview(orderId: string, buyerId: string, rating: number, comment: string): Promise<Result> {
-  return db.$transaction(async (tx) => {
+  const sellerId = await db.$transaction(async (tx) => {
     const order = await loadOrder(tx, orderId);
     assertBuyer(order, buyerId);
     requireStep(order, "BUYER", "review");
@@ -703,15 +719,16 @@ export async function leaveReview(orderId: string, buyerId: string, rating: numb
       where: { id: order.sellerId },
       data: { ratingAvg: agg._avg.rating ?? 0, ratingCount: agg._count },
     });
-    return { orderId, tags: [TAGS.seller(order.sellerId), TAGS.listing(order.listingId)] };
+    return order.sellerId;
   });
+  catalogueChanged({ sellers: [sellerId] });
+  return { orderId };
 }
 
 // Maintenance ---------------------------------------------------------------
 
 /** Settle payments we weren't told about, expire unpaid orders, auto-deliver long-shipped orders, auto-complete closed return windows. */
 export async function runOrderMaintenance(now = new Date()) {
-  const tags: string[] = [];
   const checkoutStart = new Date(now.getTime() - PAYMENT_HOLD_MINUTES * 60_000);
   const holdStart = new Date(now.getTime() - PAY_HOLD_MINUTES * 60_000);
 
@@ -723,7 +740,7 @@ export async function runOrderMaintenance(now = new Date()) {
   });
   for (const o of awaiting) {
     try {
-      tags.push(...(await syncPayment(o.id)));
+      await syncPayment(o.id);
     } catch (err) {
       console.error("payment sync failed", o.id, err);
     }
@@ -740,7 +757,6 @@ export async function runOrderMaintenance(now = new Date()) {
     try {
       const outcome = await expireUnpaidOrder(o.id);
       if (outcome === "expired") expired++;
-      if (outcome) tags.push(...tagsFor(o));
     } catch (err) {
       console.error("expire failed", o.id, err);
     }
@@ -753,8 +769,7 @@ export async function runOrderMaintenance(now = new Date()) {
   });
   for (const o of longShipped) {
     try {
-      const r = await confirmDelivery(o.id, null);
-      tags.push(...r.tags);
+      await confirmDelivery(o.id, null);
     } catch (err) {
       console.error("auto-deliver failed", o.id, err);
     }
@@ -770,7 +785,7 @@ export async function runOrderMaintenance(now = new Date()) {
     const due = autoCompleteAt(o);
     if (due !== null && due <= now.getTime()) {
       try {
-        tags.push(...(await autoCompleteOrder(o.id, now)));
+        await autoCompleteOrder(o.id, now);
       } catch (err) {
         console.error("auto-complete failed", o.id, err);
       }
@@ -785,5 +800,5 @@ export async function runOrderMaintenance(now = new Date()) {
     take: 200,
   });
   for (const o of unsent) await sendClaimedRefund(o, o.refundIdr);
-  return { expired, autoDelivered: longShipped.length, tags: [...new Set(tags)] };
+  return { expired, autoDelivered: longShipped.length };
 }

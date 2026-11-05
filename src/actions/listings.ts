@@ -3,7 +3,7 @@
 import { randomBytes } from "node:crypto";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
-import { invalidate, listingTags } from "@/lib/cache";
+import { catalogueChanged } from "@/lib/cache";
 import { actionI18n, runAction, type ActionState, requireTraderStrict } from "@/lib/action";
 import { getSellerProfile } from "@/lib/auth/dal";
 import { categorySearchTerms } from "@/lib/catalog";
@@ -188,7 +188,7 @@ export async function saveListingAction(listingId: string | null, payload: unkno
     if (!listing) return { error: t.actions.listingLocked };
 
     savedId = listing.id;
-    invalidate(listingTags(listing));
+    catalogueChanged({ listings: [listing] });
     await audit(user.id, existing ? "listing.update" : "listing.create", "Listing", listing.id, { status: listing.status });
     return { ok: true, message: data.publish ? t.actions.listingPublished : t.actions.draftSaved };
   });
@@ -221,7 +221,7 @@ export async function setListingStatusAction(listingId: string, status: "ACTIVE"
       ...(status === "ACTIVE" && listing.status !== "ACTIVE" ? { publishedAt: new Date() } : {}),
     });
     if (!updated) return { error: t.actions.listingUnchangeable };
-    invalidate(listingTags(listing));
+    catalogueChanged({ listings: [listing] });
     await audit(user.id, "listing.status", "Listing", listing.id, { from: listing.status, to: status });
     return { ok: true };
   });
@@ -243,7 +243,6 @@ export async function toggleFavoriteAction(listingId: string): Promise<ActionSta
       await db.favorite.create({ data: { userId: user.id, listingId } });
       favorited = true;
     }
-    invalidate([`favorites-${user.id}`]);
   });
   return { ...res, favorited };
 }

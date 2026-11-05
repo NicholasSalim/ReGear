@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { env } from "@/lib/env";
-import { invalidate } from "@/lib/cache";
 import { isLocale, localePath, DEFAULT_LOCALE } from "@/i18n/locales";
 import { syncPayment } from "@/lib/orders/service";
 import { rateLimit } from "@/lib/security/rate-limit";
@@ -20,7 +19,7 @@ export async function GET(req: Request) {
   // Anyone can open this URL, but all it does is ask the provider about the order.
   if (orderId.success && (await rateLimit(`pay-return:${await getClientIp()}`, 60, 3600)).ok) {
     try {
-      invalidate(await syncPayment(orderId.data), "route");
+      await syncPayment(orderId.data);
     } catch (err) {
       console.error("[payments] return sync failed", orderId.data, err);
     }

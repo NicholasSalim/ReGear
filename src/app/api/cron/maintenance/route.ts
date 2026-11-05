@@ -2,7 +2,6 @@ import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
-import { invalidate } from "@/lib/cache";
 import { runOrderMaintenance } from "@/lib/orders/service";
 import { runPayoutMaintenance } from "@/lib/payouts/service";
 import { purgeExpiredRateLimits } from "@/lib/security/rate-limit";
@@ -26,11 +25,9 @@ export async function POST(req: Request) {
   if (!authorized(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const result = await runOrderMaintenance();
-  invalidate(result.tags, "route");
   const withdrawals = await runPayoutMaintenance();
   // Timed bans that have run out: the account's listings go back on sale.
   const bans = await liftExpiredBans();
-  invalidate(bans.tags, "route");
 
   const now = new Date();
   const [sessions] = await Promise.all([

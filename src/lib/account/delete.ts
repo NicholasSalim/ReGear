@@ -1,5 +1,6 @@
 import "server-only";
 import { db } from "@/lib/db";
+import { catalogueChanged } from "@/lib/cache";
 import { DomainError } from "@/lib/orders/service";
 import { deletePrivateDocument, deletePublicImage } from "@/lib/storage";
 import { OPEN_WITHDRAWAL_STATUSES, type OrderStatus } from "@/lib/constants";
@@ -49,7 +50,7 @@ export function isBlocked(b: DeletionBlockers) {
 const REDACTED_ADDRESS = { fullName: "", phone: "", line1: "", line2: "", postalCode: "", note: "", latitude: null, longitude: null };
 
 /**
- * Deletes the account in one transaction and returns what to invalidate.
+ * Deletes the account in one transaction, then refreshes the catalogue pages it showed on.
  * Throws DomainError("accountBusy") if an order is still open, re-checked
  * inside the transaction after listings are taken down and sessions ended,
  * so a checkout racing the deletion either finishes first (and blocks it) or
@@ -152,7 +153,11 @@ export async function deleteAccount(userId: string) {
     };
   });
 
+  // Their listings came down, and their name is cached on the reviews of every seller they reviewed.
+  catalogueChanged({
+    listings: files.sellerId ? files.listingIds.map((id) => ({ id, sellerId: files.sellerId! })) : [],
+    sellers: [...(files.sellerId ? [files.sellerId] : []), ...files.reviewedSellerIds],
+  });
   // Files go only after the database commit, so a rollback never loses one.
   await Promise.all([...files.publicKeys.map(deletePublicImage), ...files.privateKeys.map(deletePrivateDocument)]);
-  return { sellerId: files.sellerId, listingIds: files.listingIds, reviewedSellerIds: files.reviewedSellerIds };
 }

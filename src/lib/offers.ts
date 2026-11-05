@@ -1,7 +1,6 @@
 import "server-only";
 import { isLocale } from "@/i18n/locales";
 import { db } from "@/lib/db";
-import { listingTags } from "@/lib/cache";
 import { enqueueEmail } from "@/lib/email/outbox";
 import { formatMoney } from "@/lib/format";
 import { DomainError } from "@/lib/orders/service";
@@ -62,7 +61,7 @@ export async function makeOffer(buyerId: string, listingId: string, amountIdr: n
       { userId: listing.seller.userId, locale: localeOf(listing.seller.user.locale) },
       { template: "offer-received", params: { title: listing.title, amountIdr, hours: OFFER_ANSWER_HOURS } },
     );
-    return { offerId: offer.id, tags: [...listingTags(listing), `offers-${buyerId}`] };
+    return { offerId: offer.id };
   });
 }
 
@@ -73,7 +72,7 @@ export async function withdrawOffer(buyerId: string, offerId: string) {
   // Only a still-pending offer can be withdrawn; the seller may be answering it right now.
   const res = await db.offer.updateMany({ where: { id: offerId, status: "PENDING" }, data: { status: "WITHDRAWN" } });
   if (res.count !== 1) throw new DomainError("offerClosed");
-  return { tags: [...listingTags(offer.listing), `offers-${buyerId}`] };
+
 }
 
 /** The seller's answer. Accepting gives the buyer OFFER_CHECKOUT_HOURS to check out at the offer's price. */
@@ -112,7 +111,6 @@ export async function answerOffer(sellerUserId: string, offerId: string, accept:
         params: { offerId, listingId: offer.listing.id, slug: offer.listing.slug, title: offer.listing.title, amountIdr: offer.amountIdr, accepted: accept, hours: OFFER_CHECKOUT_HOURS },
       },
     );
-    return { tags: [...listingTags(offer.listing), `offers-${offer.buyerId}`] };
   });
 }
 

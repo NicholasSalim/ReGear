@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 import { localePath } from "@/i18n/locales";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
-import { invalidate, TAGS } from "@/lib/cache";
 import { LEGAL_VERSION } from "@/lib/legal";
 import { issueEmailToken, resetPasswordWithToken } from "@/lib/auth/email-tokens";
 import { clearSignupCookie, confirmSignup, currentSignup, resendSignupCode, setSignupCookie, startSignup } from "@/lib/auth/signup";
@@ -243,16 +242,7 @@ export async function deleteAccountAction(_prev: ActionState, formData: FormData
       if (!ok) return { fieldErrors: { password: t.actions.passwordWrong } };
     }
 
-    const { sellerId, listingIds, reviewedSellerIds } = await deleteAccount(user.id);
-    invalidate([
-      TAGS.listings,
-      TAGS.stats,
-      `favorites-${user.id}`,
-      ...(sellerId ? [TAGS.seller(sellerId)] : []),
-      ...listingIds.map((id) => TAGS.listing(id)),
-      // Their name is cached on the review lists of every seller they reviewed.
-      ...reviewedSellerIds.map((id) => TAGS.seller(id)),
-    ]);
+    await deleteAccount(user.id);
     await audit(user.id, "user.delete", "User", user.id);
     await destroyCurrentSession();
   });

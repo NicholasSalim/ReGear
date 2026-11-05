@@ -207,7 +207,8 @@ export async function OrderDetail({ order, now }: { order: OrderForUser; now: Da
               {(s === "CANCELLED" || s === "REFUNDED") && (
                 <p className="w-full text-sm text-slate-600">
                   {t.closed}
-                  {order.refundIdr ? t.refunded(formatMoney(order.refundIdr)) : ""}.
+                  {/* A by-hand refund is only "refunded" once an admin has sent it. */}
+                  {order.refundIdr ? (order.refundedAt ? t.refunded : t.refundPending)(formatMoney(order.refundIdr)) : ""}.
                 </p>
               )}
               {order.dispute && (
@@ -344,7 +345,7 @@ export async function OrderDetail({ order, now }: { order: OrderForUser; now: Da
                   <Row label={t.payout} value={formatMoney(order.totalIdr - order.platformFeeIdr - order.refundIdr)} strong />
                 </>
               )}
-              {order.refundIdr > 0 && <Row label={t.refundedLabel} value={formatMoney(order.refundIdr)} />}
+              {order.refundIdr > 0 && <Row label={order.refundedAt ? t.refundedLabel : t.refundPendingLabel} value={formatMoney(order.refundIdr)} />}
             </dl>
           </section>
 

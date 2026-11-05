@@ -832,6 +832,7 @@ export const en = {
     youRated: (rating: number) => ` You rated the seller ${rating}★.`,
     closed: "This order is closed",
     refunded: (amount: string) => `, ${amount} refunded`,
+    refundPending: (amount: string) => `. A refund of ${amount} is on its way`,
     viewDispute: (status: string) => `View dispute (${status})`,
     reportProblem: "Report a problem",
     returnRequest: "Return request",
@@ -855,6 +856,7 @@ export const en = {
     fee: "ReGear fee (5%)",
     payout: "Seller payout",
     refundedLabel: "Refunded",
+    refundPendingLabel: "Refund on its way",
     bankTransferNote: (max: string | null) =>
       `${max ? `GoPay, ShopeePay and QRIS take up to ${max}, so pay this order by bank transfer (virtual account). ` : "Pay with GoPay, ShopeePay, QRIS or bank transfer (virtual account). "}A bank transfer is refunded by hand, to an account you give us.`,
     refundTitle: "Your refund",

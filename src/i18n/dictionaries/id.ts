@@ -834,6 +834,7 @@ export const id: typeof en = {
     youRated: (rating: number) => ` Anda memberi penjual ${rating}★.`,
     closed: "Pesanan ini sudah ditutup",
     refunded: (amount: string) => `, ${amount} dikembalikan`,
+    refundPending: (amount: string) => `. Pengembalian dana ${amount} sedang diproses`,
     viewDispute: (status: string) => `Lihat sengketa (${status})`,
     reportProblem: "Laporkan masalah",
     returnRequest: "Pengajuan pengembalian",
@@ -857,6 +858,7 @@ export const id: typeof en = {
     fee: "Biaya ReGear (5%)",
     payout: "Pembayaran ke penjual",
     refundedLabel: "Dikembalikan",
+    refundPendingLabel: "Pengembalian dana diproses",
     bankTransferNote: (max: string | null) =>
       `${max ? `GoPay, ShopeePay, dan QRIS hanya menerima hingga ${max}, jadi bayar pesanan ini via transfer bank (virtual account). ` : "Bayar dengan GoPay, ShopeePay, QRIS, atau transfer bank (virtual account). "}Pengembalian dana untuk transfer bank dikirim manual ke rekening yang Anda berikan.`,
     refundTitle: "Pengembalian dana Anda",

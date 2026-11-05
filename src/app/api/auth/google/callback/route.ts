@@ -6,9 +6,7 @@ import { localePath } from "@/i18n/locales";
 import { getRequestLocale } from "@/i18n/server";
 import { env } from "@/lib/env";
 import { audit } from "@/lib/audit";
-import { createSession } from "@/lib/auth/session";
-import { isBanned } from "@/lib/account/ban-state";
-import { db } from "@/lib/db";
+import { completeSignIn } from "@/lib/auth/sign-in";
 import {
   authReturnPage,
   findOrCreateGoogleUser,
@@ -18,7 +16,7 @@ import {
   isGoogleConfigured,
   parseGoogleClaims,
 } from "@/lib/auth/google";
-import { getClientIp, getUserAgent, safeRedirectPath } from "@/lib/security/request";
+import { safeRedirectPath } from "@/lib/security/request";
 
 // Step 2: Google redirects back here. Verify state, exchange the code (with
 // the PKCE verifier) for tokens over TLS, read the ID token claims, then
@@ -94,21 +92,16 @@ export async function GET(req: Request) {
   try {
     const result = await findOrCreateGoogleUser(claims);
     const { user, created, linked } = result;
-    if (user.lockedUntil && user.lockedUntil > new Date()) return fail("locked", "account locked");
-    if (isBanned(user)) return fail("banned", "account banned");
-
-    await createSession(user.id, { ip: await getClientIp(), userAgent: await getUserAgent() });
-    await db.user.update({ where: { id: user.id }, data: { locale: await getRequestLocale() } });
+    const locale = await getRequestLocale();
     const passwordCleared = "passwordCleared" in result && result.passwordCleared;
-    await audit(
-      user.id,
-      created ? "user.register_google" : linked ? "user.link_google" : "user.login_google",
-      "User",
-      user.id,
-      passwordCleared ? { passwordCleared: true } : undefined,
-    );
+    const signedIn = await completeSignIn(user.id, {
+      method: created ? "google_register" : linked ? "google_link" : "google",
+      locale,
+      auditMeta: passwordCleared ? { passwordCleared: true } : undefined,
+    });
+    if (!signedIn.ok) return signedIn.reason === "locked" ? fail("locked", "account locked") : fail("banned", "account banned");
 
-    return NextResponse.redirect(new URL(next || localePath(user.role === "ADMIN" ? "/admin" : "/account", await getRequestLocale()), env.NEXT_PUBLIC_SITE_URL));
+    return NextResponse.redirect(new URL(next || localePath(signedIn.home, locale), env.NEXT_PUBLIC_SITE_URL));
   } catch (err) {
     if (err instanceof GoogleSignInError) return fail("google_rejected", err.message);
     if (err instanceof MailboxBannedError) return fail("mailbox_banned", err.message);

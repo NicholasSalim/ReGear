@@ -18,7 +18,7 @@ import { createSession, destroyAllSessions, destroyCurrentSession, readSessionTo
 import { getCurrentUser, requireUserStrict } from "@/lib/auth/dal";
 import { rateLimit } from "@/lib/security/rate-limit";
 import { getClientIp, getUserAgent, safeRedirectPath } from "@/lib/security/request";
-import { isBanned } from "@/lib/account/ban-state";
+import { completeSignIn } from "@/lib/auth/sign-in";
 import { formatDateTime } from "@/lib/format";
 import { changePasswordSchema, fieldErrors, forgotPasswordSchema, loginSchema, profileSchema, registerSchema, resetPasswordSchema } from "@/lib/validation";
 
@@ -86,9 +86,10 @@ export async function confirmSignupAction(_prev: ActionState, formData: FormData
   }
 
   await clearSignupCookie();
-  await createSession(result.userId, { ip, userAgent: await getUserAgent() });
-  await audit(result.userId, "user.register", "User", result.userId);
-  redirect(safeRedirectPath(formData.get("next"), localePath("/account", locale)));
+  const signedIn = await completeSignIn(result.userId, { method: "signup", locale });
+  // A brand-new account can't be locked or banned; if a check ever refuses it, it can still sign in later.
+  if (!signedIn.ok) redirect(localePath("/login", locale));
+  redirect(safeRedirectPath(formData.get("next"), localePath(signedIn.home, locale)));
 }
 
 /** Emails a new code for the sign-up in progress. */
@@ -147,22 +148,14 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
     if (failures >= LOCK_AFTER_FAILURES) await audit(user.id, "user.locked", "User", user.id);
     return generic;
   }
-  // Said only after the right password, so it doesn't reveal who is banned.
-  if (isBanned(user)) return { error: t.actions.accountBanned(user.bannedUntil ? formatDateTime(user.bannedUntil, locale) : null) };
-
-  await db.user.update({
-    where: { id: user.id },
-    data: {
-      failedLoginCount: 0,
-      lockedUntil: null,
-      // Emails follow the language the user last signed in with.
-      locale,
-      ...(needsRehash ? { passwordHash: await hashPassword(password) } : {}),
-    },
-  });
-  await createSession(user.id, { ip, userAgent: await getUserAgent() });
-  await audit(user.id, "user.login", "User", user.id);
-  redirect(safeRedirectPath(formData.get("next"), localePath(user.role === "ADMIN" ? "/admin" : "/account", locale)));
+  // Checked only after the right password, so a refusal doesn't reveal who is banned.
+  const signedIn = await completeSignIn(user.id, { method: "password", locale });
+  if (!signedIn.ok) {
+    if (signedIn.reason === "locked") return { error: t.actions.locked };
+    return { error: t.actions.accountBanned(signedIn.bannedUntil ? formatDateTime(signedIn.bannedUntil, locale) : null) };
+  }
+  if (needsRehash) await db.user.update({ where: { id: user.id }, data: { passwordHash: await hashPassword(password) } });
+  redirect(safeRedirectPath(formData.get("next"), localePath(signedIn.home, locale)));
 }
 
 export async function logoutAction() {

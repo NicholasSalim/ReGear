@@ -1,4 +1,5 @@
 import type { Prisma } from "@/generated/prisma/client";
+import { bannedNowWhere } from "@/lib/account/ban-state";
 
 /**
  * The inbox an address delivers to. Most providers ignore anything after a
@@ -27,7 +28,7 @@ type UserClient = Pick<Prisma.TransactionClient, "user">;
 /** Whether an account on the same inbox as `email` is banned right now (deleted accounts don't count). */
 export async function mailboxBanned(client: UserClient, email: string, now = new Date()) {
   const banned = await client.user.findFirst({
-    where: { mailbox: mailboxKey(email), deletedAt: null, bannedAt: { not: null }, OR: [{ bannedUntil: null }, { bannedUntil: { gt: now } }] },
+    where: { mailbox: mailboxKey(email), deletedAt: null, ...bannedNowWhere(now) },
     select: { id: true },
   });
   return banned !== null;

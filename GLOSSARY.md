@@ -12,6 +12,10 @@ Domain terms used in ReGear's code and design discussions. Use these names for t
 
 **Refund state**: where an order's refund stands: none, on its way (through the provider, retried until confirmed), waiting for the buyer's account, waiting for ReGear's transfer, or sent. Worked out from the order's refund columns by `refundState`; every page that shows a refund reads it.
 
+## Accounts
+
+**Sign-in completion**: what happens once someone has proven who they are, the same for every way of signing in (password, Google, the code emailed at sign-up): a locked or banned account is refused; otherwise failed attempts are cleared, the email language is remembered, a session starts and the sign-in is recorded. `completeSignIn` in `src/lib/auth/sign-in.ts`; each way in turns a refusal into its own message.
+
 ## Catalogue
 
 **Catalogue freshness**: keeping the cached public pages (search and browse, listing pages, seller pages, the marketplace numbers) in step with changes to listings and sellers. Whatever changes a listing or a seller in a way shoppers see calls `catalogueChanged` (`src/lib/cache.ts`) once its change has committed; nothing else knows the cache tags. Steps shoppers can't see, such as shipping or a return request, don't refresh anything.

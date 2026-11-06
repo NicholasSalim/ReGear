@@ -47,9 +47,6 @@ export const clientId: typeof clientEn = {
     hidePassword: "Sembunyikan kata sandi",
     codeDigit: (i: number, n: number) => `Angka ${i} dari ${n}`,
     strength: ["Terlalu lemah", "Terlalu lemah", "Lemah", "Cukup", "Bagus", "Kuat"],
-    passwordRules: { length: "Minimal 8 karakter", letter: "Sebuah huruf", number: "Sebuah angka", symbol: "Sebuah simbol, seperti ! atau #" },
-    ruleMet: "(terpenuhi)",
-    ruleNotMet: "(belum)",
   },
   nav: { section: "Bagian" },
   auth: {

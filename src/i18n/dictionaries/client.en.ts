@@ -46,9 +46,6 @@ export const clientEn = {
     hidePassword: "Hide password",
     codeDigit: (i: number, n: number) => `Digit ${i} of ${n}`,
     strength: ["Too weak", "Too weak", "Weak", "Fair", "Good", "Strong"],
-    passwordRules: { length: "At least 8 characters", letter: "A letter", number: "A number", symbol: "A symbol, like ! or #" },
-    ruleMet: "(done)",
-    ruleNotMet: "(still needed)",
   },
   nav: { section: "Section" },
   auth: {

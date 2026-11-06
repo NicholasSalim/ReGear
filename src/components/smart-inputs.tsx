@@ -1,6 +1,5 @@
 "use client";
 
-import { Check } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ComponentProps } from "react";
 import { useT } from "@/i18n/client";
 import { PasswordInput } from "@/components/forms";
@@ -109,7 +108,7 @@ export function passwordScore(p: string) {
 
 const BAR_COLORS = ["bg-rose-500", "bg-rose-500", "bg-amber-500", "bg-amber-500", "bg-emerald-500", "bg-emerald-600"];
 
-/** A new-password field with a strength bar and the rules ticked off as they're met. */
+/** A new-password field with a strength bar. The rules themselves are explained by the field's error if one isn't met. */
 export function NewPasswordInput(props: Omit<ComponentProps<"input">, "type" | "value" | "onChange">) {
   const t = useT().forms;
   const [value, setValue] = useState("");
@@ -118,37 +117,18 @@ export function NewPasswordInput(props: Omit<ComponentProps<"input">, "type" | "
   return (
     <div className="space-y-2">
       <PasswordInput {...props} value={value} onChange={(e) => setValue(e.target.value)} aria-describedby={hintId} />
-      <div id={hintId} className="space-y-2">
-        <div className="flex items-center gap-3">
-          <div className="flex flex-1 gap-1" aria-hidden>
-            {[0, 1, 2, 3].map((i) => (
-              <span
-                key={i}
-                className={`h-1.5 flex-1 rounded-full transition-colors duration-300 motion-reduce:transition-none ${value && i < Math.min(4, Math.max(1, score)) ? BAR_COLORS[score] : "bg-slate-200"}`}
-              />
-            ))}
-          </div>
-          <span className="w-20 text-right text-xs font-medium text-slate-600" aria-live="polite">
-            {value ? t.strength[score] : ""}
-          </span>
+      <div id={hintId} className="flex items-center gap-3">
+        <div className="flex flex-1 gap-1" aria-hidden>
+          {[0, 1, 2, 3].map((i) => (
+            <span
+              key={i}
+              className={`h-1.5 flex-1 rounded-full transition-colors duration-300 motion-reduce:transition-none ${value && i < Math.min(4, Math.max(1, score)) ? BAR_COLORS[score] : "bg-slate-200"}`}
+            />
+          ))}
         </div>
-        <ul className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-          {(Object.keys(PASSWORD_RULES) as (keyof typeof PASSWORD_RULES)[]).map((key) => {
-            const met = PASSWORD_RULES[key](value);
-            return (
-              <li key={key} className={`flex items-center gap-1.5 transition-colors duration-200 ${met ? "text-emerald-700" : "text-slate-500"}`}>
-                <span
-                  className={`flex size-3.5 items-center justify-center rounded-full transition-[background-color,transform] duration-200 motion-reduce:transition-none ${met ? "scale-100 bg-emerald-600 text-white" : "scale-90 bg-slate-200"}`}
-                  aria-hidden
-                >
-                  {met && <Check className="size-2.5" strokeWidth={3.5} />}
-                </span>
-                {t.passwordRules[key]}
-                <span className="sr-only">{met ? t.ruleMet : t.ruleNotMet}</span>
-              </li>
-            );
-          })}
-        </ul>
+        <span className="w-20 text-right text-xs font-medium text-slate-600" aria-live="polite">
+          {value ? t.strength[score] : ""}
+        </span>
       </div>
     </div>
   );

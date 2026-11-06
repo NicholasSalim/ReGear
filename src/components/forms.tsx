@@ -214,7 +214,9 @@ export function useActionForm(action: FormAction, { confirm, resetOnSuccess }: {
     // Read now: which button was pressed is only known during the event.
     const data = new FormData(e.currentTarget, (e.nativeEvent as SubmitEvent).submitter);
     const question = toSpec(typeof confirm === "function" ? confirm(data) : confirm);
-    if (!question) {
+    // Ask only about a form that's filled in: one with a missing field goes straight
+    // through, and the field errors come back instead of a pointless "are you sure?".
+    if (!question || !e.currentTarget.checkValidity()) {
       startTransition(() => dispatch(data));
       return;
     }

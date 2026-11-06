@@ -350,6 +350,7 @@ export const clientEn = {
     blockedTitle: "You can't delete your account yet",
     purchases: (n: number) => `${n} ${n === 1 ? "purchase is" : "purchases are"} still in progress. Wait until ${n === 1 ? "it's" : "they're"} completed, cancelled or refunded.`,
     sales: (n: number) => `${n} ${n === 1 ? "sale is" : "sales are"} still in progress. Ship, complete or resolve ${n === 1 ? "it" : "them"} first.`,
+    refunds: (n: number) => `${n === 1 ? "A refund hasn't" : `${n} refunds haven't`} reached you yet. Wait until ${n === 1 ? "it arrives" : "they arrive"}, so the money isn't lost with your account.`,
     admin: "Admin accounts can't be deleted from here. Ask another admin to remove the role first.",
     deliveredNote: "Delivered orders stay open until the return window closes.",
     viewPurchases: "See purchases",

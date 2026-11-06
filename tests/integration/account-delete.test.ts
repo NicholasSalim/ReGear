@@ -90,7 +90,7 @@ describe("account deletion", () => {
   it("is refused while a purchase is open, and changes nothing", async () => {
     await orders.createOrder(f.buyer.id, f.sold.id, address);
     await db.session.create({ data: { id: "sess-b", userId: f.buyer.id, expiresAt: new Date(Date.now() + 86_400_000) } });
-    expect(await getDeletionBlockers(f.buyer.id)).toEqual({ admin: false, purchases: 1, sales: 0, balance: false });
+    expect(await getDeletionBlockers(f.buyer.id)).toEqual({ admin: false, purchases: 1, sales: 0, refunds: 0, balance: false });
 
     await expect(deleteAccount(f.buyer.id)).rejects.toMatchObject({ code: "accountBusy" });
     const buyer = await db.user.findUniqueOrThrow({ where: { id: f.buyer.id } });
@@ -100,11 +100,33 @@ describe("account deletion", () => {
 
   it("is refused while a sale is open, and the seller's listings stay up", async () => {
     await orders.createOrder(f.buyer.id, f.sold.id, address);
-    expect(await getDeletionBlockers(f.sellerUser.id)).toEqual({ admin: false, purchases: 0, sales: 1, balance: false });
+    expect(await getDeletionBlockers(f.sellerUser.id)).toEqual({ admin: false, purchases: 0, sales: 1, refunds: 0, balance: false });
 
     await expect(deleteAccount(f.sellerUser.id)).rejects.toMatchObject({ code: "accountBusy" });
     expect((await db.listing.findUniqueOrThrow({ where: { id: f.unsold.id } })).status).toBe("ACTIVE");
     expect((await db.sellerProfile.findUniqueOrThrow({ where: { id: f.seller.id } })).displayName).toBe("Sam's Shop");
+  });
+
+  it("waits for a refund still owed to the buyer, then keeps only the bank and last 4 digits", async () => {
+    // Paid by bank transfer, then cancelled: the refund goes by hand and isn't sent yet.
+    const { orderId } = await orders.createOrder(f.buyer.id, f.sold.id, address);
+    await orders.payOrder(orderId, f.buyer.id);
+    await db.order.update({ where: { id: orderId }, data: { status: "CANCELLED", paymentMethod: "bank_transfer", refundIdr: 10_000, refundedAt: null } });
+    expect(await getDeletionBlockers(f.buyer.id)).toEqual({ admin: false, purchases: 0, sales: 0, refunds: 1, balance: false });
+    await expect(deleteAccount(f.buyer.id)).rejects.toMatchObject({ code: "accountBusy" });
+
+    await db.order.update({
+      where: { id: orderId },
+      data: { refundBank: "bca", refundAccountNumber: "1234567890", refundAccountName: "BEA BUYER", refundNote: "TRF-001", refundedAt: new Date() },
+    });
+    await deleteAccount(f.buyer.id);
+
+    expect(await db.order.findUniqueOrThrow({ where: { id: orderId } })).toMatchObject({
+      refundBank: "bca",
+      refundAccountNumber: "•••• 7890",
+      refundAccountName: "",
+      refundNote: "TRF-001",
+    });
   });
 
   it("is refused for admins", async () => {
@@ -193,6 +215,8 @@ describe("account deletion", () => {
     expect(await storage.readPublicImage(unsoldPhoto.key)).toBeNull();
     expect(await storage.readPublicImage(loosePhoto.key)).toBeNull();
     expect(await storage.readPublicImage(soldPhoto.key)).not.toBeNull();
+    // The withdrawal keeps the bank and the last 4 digits, not the holder's name.
+    expect(await db.withdrawal.findUniqueOrThrow({ where: { id: paid.id } })).toMatchObject({ bank: "bca", accountNumber: "•••• 7890", accountName: "" });
     // The buyer's completed order is untouched.
     expect(await db.order.count({ where: { sellerId: f.seller.id, status: "COMPLETED" } })).toBe(1);
   });

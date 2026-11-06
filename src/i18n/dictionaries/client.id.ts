@@ -351,6 +351,7 @@ export const clientId: typeof clientEn = {
     blockedTitle: "Akun Anda belum bisa dihapus",
     purchases: (n: number) => `${n} pembelian masih berjalan. Tunggu sampai selesai, dibatalkan, atau dananya dikembalikan.`,
     sales: (n: number) => `${n} penjualan masih berjalan. Kirim, selesaikan, atau tuntaskan dulu.`,
+    refunds: (n: number) => `${n === 1 ? "Satu pengembalian dana" : `${n} pengembalian dana`} belum sampai ke Anda. Tunggu sampai diterima, agar dananya tidak hilang bersama akun Anda.`,
     admin: "Akun admin tidak bisa dihapus dari sini. Minta admin lain mencabut perannya terlebih dahulu.",
     deliveredNote: "Pesanan yang sudah diterima tetap berjalan sampai batas waktu pengembaliannya habis.",
     viewPurchases: "Lihat pembelian",

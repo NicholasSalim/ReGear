@@ -39,7 +39,7 @@ model User {
   // Which Terms / Privacy Policy version the user agreed to at sign-up, and when.
   termsVersion      String?
   termsAcceptedAt   DateTime?
-  // Null until the owner clicks the link we email them (Google sign-ins count as verified).
+  // When the address was confirmed: by the code emailed at sign-up, or by Google.
   emailVerifiedAt   DateTime?
   // Language for emails: the one the user last signed in with.
   locale            String    @default("id")
@@ -129,7 +129,7 @@ model SignupRequest {
 model EmailToken {
   id        String    @id @default(cuid())
   userId    String
-  purpose   String // VERIFY_EMAIL | RESET_PASSWORD
+  purpose   String // RESET_PASSWORD
   tokenHash String    @unique
   expiresAt DateTime
   usedAt    DateTime?

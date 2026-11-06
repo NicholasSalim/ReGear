@@ -46,6 +46,9 @@ function accountOf(order: RefundFacts): RefundAccount | null {
     : null;
 }
 
+/** Orders whose refund hasn't reached the buyer yet: on its way, or waiting for their account or ReGear's transfer. */
+export const REFUND_NOT_SENT = { refundIdr: { gt: 0 }, refundedAt: null } satisfies Prisma.OrderWhereInput;
+
 export function refundState(order: RefundFacts): RefundState {
   const amountIdr = order.refundIdr;
   if (amountIdr <= 0) return { kind: "none" };

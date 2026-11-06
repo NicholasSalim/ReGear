@@ -4,6 +4,7 @@ import { catalogueChanged } from "@/lib/cache";
 import { DomainError } from "@/lib/errors";
 import { deletePrivateDocument, deletePublicImage } from "@/lib/storage";
 import { OPEN_WITHDRAWAL_STATUSES, type OrderStatus } from "@/lib/constants";
+import { REFUND_NOT_SENT } from "@/lib/orders/refunds";
 
 // Account deletion. The user row is anonymised, not removed: orders, reviews
 // and dispute threads belong to the other party too and stay readable, shown
@@ -13,16 +14,19 @@ import { OPEN_WITHDRAWAL_STATUSES, type OrderStatus } from "@/lib/constants";
 /** Orders in these states still hold money, an item or a claim. */
 export const OPEN_ORDER_STATUSES: OrderStatus[] = ["PENDING_PAYMENT", "PAID", "SHIPPED", "DELIVERED", "RETURN_IN_PROGRESS", "DISPUTED"];
 
-export type DeletionBlockers = { admin: boolean; purchases: number; sales: number; balance: boolean };
+export type DeletionBlockers = { admin: boolean; purchases: number; sales: number; refunds: number; balance: boolean };
 
 type Reader = Pick<typeof db, "order" | "balanceEntry" | "withdrawal">;
 
 async function openOrderCounts(client: Reader, userId: string, sellerId: string | undefined) {
-  const [purchases, sales] = await Promise.all([
+  const [purchases, sales, refunds] = await Promise.all([
     client.order.count({ where: { buyerId: userId, status: { in: OPEN_ORDER_STATUSES } } }),
     sellerId ? client.order.count({ where: { sellerId, status: { in: OPEN_ORDER_STATUSES } } }) : 0,
+    // A cancelled or refunded order can still owe the buyer money; a deleted
+    // account couldn't sign in to give its bank account or see it arrive.
+    client.order.count({ where: { buyerId: userId, status: { notIn: OPEN_ORDER_STATUSES }, ...REFUND_NOT_SENT } }),
   ]);
-  return { purchases, sales };
+  return { purchases, sales, refunds };
 }
 
 /** Money the seller hasn't withdrawn yet would be lost with the account. */
@@ -43,10 +47,13 @@ export async function getDeletionBlockers(userId: string): Promise<DeletionBlock
 }
 
 export function isBlocked(b: DeletionBlockers) {
-  return b.admin || b.purchases > 0 || b.sales > 0 || b.balance;
+  return b.admin || b.purchases > 0 || b.sales > 0 || b.refunds > 0 || b.balance;
 }
 
 /** Address fields that identify the buyer, including the courier note and map pin; the district, city and province stay for records. */
+/** Shown in place of an account number's other digits, as `maskAccount` does. */
+const MASK = "•••• ";
+
 const REDACTED_ADDRESS = { fullName: "", phone: "", line1: "", line2: "", postalCode: "", note: "", latitude: null, longitude: null };
 
 /**
@@ -74,7 +81,7 @@ export async function deleteAccount(userId: string) {
 
     // 2. Nothing may still be in progress.
     const open = await openOrderCounts(tx, userId, sellerId);
-    if (open.purchases > 0 || open.sales > 0) throw new DomainError("accountBusy");
+    if (open.purchases > 0 || open.sales > 0 || open.refunds > 0) throw new DomainError("accountBusy");
     if (sellerId && (await tx.listing.count({ where: { sellerId, status: "RESERVED" } })) > 0) throw new DomainError("accountBusy");
     if (await hasMoney(tx, sellerId)) throw new DomainError("accountHasBalance");
 
@@ -96,6 +103,11 @@ export async function deleteAccount(userId: string) {
     await tx.$executeRaw`
       UPDATE "Order" SET "shippingAddress" = ("shippingAddress"::jsonb || ${JSON.stringify(REDACTED_ADDRESS)}::jsonb)::text
       WHERE "buyerId" = ${userId}`;
+    // Refunds sent to their bank keep the bank, the last 4 digits and ReGear's
+    // transfer reference (to match the transfer later), not the holder's name.
+    await tx.$executeRaw`
+      UPDATE "Order" SET "refundAccountName" = '', "refundAccountNumber" = ${MASK} || right("refundAccountNumber", 4)
+      WHERE "buyerId" = ${userId} AND "refundAccountNumber" IS NOT NULL`;
 
     // 6. Everything else personal.
     await tx.favorite.deleteMany({ where: { userId } });
@@ -112,6 +124,10 @@ export async function deleteAccount(userId: string) {
     await tx.emailOutbox.deleteMany({ where: { userId } });
     await tx.oAuthAccount.deleteMany({ where: { userId } });
     if (sellerId) {
+      // Past withdrawals likewise keep the bank and the last 4 digits only.
+      await tx.$executeRaw`
+        UPDATE "Withdrawal" SET "accountName" = '', "accountNumber" = ${MASK} || right("accountNumber", 4)
+        WHERE "sellerId" = ${sellerId}`;
       await tx.sellerProfile.update({
         where: { id: sellerId },
         data: {

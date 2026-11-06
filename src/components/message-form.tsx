@@ -1,5 +1,6 @@
 "use client";
 
+import { GrowingTextarea } from "@/components/smart-inputs";
 import { useEffect, useId } from "react";
 import type { ActionState } from "@/lib/action";
 import { ActionForm, FormMessage, SubmitButton } from "@/components/forms";
@@ -32,7 +33,7 @@ export function MessageForm({
           <label htmlFor={id} className="sr-only">
             {label}
           </label>
-          <textarea
+          <GrowingTextarea
             id={id}
             name="body"
             rows={3}

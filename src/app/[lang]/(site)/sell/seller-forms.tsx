@@ -1,5 +1,6 @@
 "use client";
 
+import { GrowingTextarea } from "@/components/smart-inputs";
 import { useLocale, useT } from "@/i18n/client";
 import { pick } from "@/i18n/locales";
 import type { ActionState } from "@/lib/action";
@@ -45,7 +46,7 @@ export function SellerProfileForm({
             <input id="location" name="location" defaultValue={initial?.location} maxLength={80} className="input" />
           </Field>
           <Field label={t.about} name="bio" error={s.fieldErrors?.bio} hint={t.aboutHint}>
-            <textarea id="bio" name="bio" rows={4} defaultValue={initial?.bio} maxLength={600} className="input" />
+            <GrowingTextarea id="bio" name="bio" rows={4} defaultValue={initial?.bio} maxLength={600} className="input" />
           </Field>
           <SubmitButton>{submitLabel}</SubmitButton>
         </>
@@ -73,7 +74,7 @@ export function VerificationForm({ action }: { action: FormAction }) {
                 </Field>
                 <div className="sm:col-span-2">
                   <Field label={t.address} name="address" error={s.fieldErrors?.address}>
-                    <textarea id="address" name="address" rows={2} autoComplete="street-address" maxLength={300} className="input" />
+                    <GrowingTextarea id="address" name="address" rows={2} autoComplete="street-address" maxLength={300} className="input" />
                   </Field>
                 </div>
                 <Field label={t.documentType} name="idType" error={s.fieldErrors?.idType}>

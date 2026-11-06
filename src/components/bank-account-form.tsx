@@ -4,6 +4,7 @@ import { useT } from "@/i18n/client";
 import type { ActionState } from "@/lib/action";
 import { ActionForm, FormMessage, SubmitButton } from "@/components/forms";
 import { Field } from "@/components/ui";
+import { GroupedDigitsInput } from "@/components/smart-inputs";
 
 type FormAction = (state: ActionState, formData: FormData) => Promise<ActionState>;
 
@@ -42,7 +43,7 @@ export function BankAccountForm({
               </select>
             </Field>
             <Field label={t.accountNumber} name="accountNumber" error={s.fieldErrors?.accountNumber}>
-              <input id="accountNumber" name="accountNumber" inputMode="numeric" autoComplete="off" maxLength={30} required className="input" />
+              <GroupedDigitsInput id="accountNumber" name="accountNumber" autoComplete="off" maxDigits={20} required className="input" />
             </Field>
           </div>
           <Field label={t.accountName} name="accountName" error={s.fieldErrors?.accountName} hint={t.accountNameHint}>

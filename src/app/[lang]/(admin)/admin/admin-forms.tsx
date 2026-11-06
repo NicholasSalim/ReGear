@@ -1,5 +1,6 @@
 "use client";
 
+import { GrowingTextarea } from "@/components/smart-inputs";
 import { useState } from "react";
 import { useT } from "@/i18n/client";
 import { BAN_LENGTHS } from "@/lib/constants";
@@ -20,7 +21,7 @@ export function VerificationDecisionForm({ action, id }: { action: FormAction; i
           <>
             <FormMessage state={s} />
             <Field label={t.noteToSeller} name={`note-${id}`} error={s.fieldErrors?.note} hint={t.noteHint}>
-              <textarea id={`note-${id}`} name="note" rows={2} maxLength={500} className="input" />
+              <GrowingTextarea id={`note-${id}`} name="note" rows={2} maxLength={500} className="input" />
             </Field>
             <div className="flex gap-2">
               <SubmitButton name="decision" value="approve">{t.approve}</SubmitButton>
@@ -64,7 +65,7 @@ export function WithdrawalReviewForm({ action, id }: { action: FormAction; id: s
           <>
             <FormMessage state={s} />
             <Field label={t.note} name={`note-${id}`} error={s.fieldErrors?.note} hint={t.reviewNoteHint}>
-              <textarea id={`note-${id}`} name="note" rows={2} maxLength={500} className="input" />
+              <GrowingTextarea id={`note-${id}`} name="note" rows={2} maxLength={500} className="input" />
             </Field>
             <div className="flex flex-wrap gap-2">
               <SubmitButton name="step" value="approve">{t.approve}</SubmitButton>
@@ -89,7 +90,7 @@ export function RefundSentForm({ action, id }: { action: FormAction; id: string 
           <>
             <FormMessage state={s} />
             <Field label={t.note} name={`note-${id}`} error={s.fieldErrors?.note} hint={t.refundNoteHint}>
-              <textarea id={`note-${id}`} name="note" rows={2} maxLength={500} required minLength={5} className="input" />
+              <GrowingTextarea id={`note-${id}`} name="note" rows={2} maxLength={500} required minLength={5} className="input" />
             </Field>
             <SubmitButton>{t.markRefunded}</SubmitButton>
           </>
@@ -111,7 +112,7 @@ export function WithdrawalPayForm({ action, id }: { action: FormAction; id: stri
           <>
             <FormMessage state={s} />
             <Field label={t.note} name={`note-${id}`} error={s.fieldErrors?.note} hint={t.attentionNoteHint}>
-              <textarea id={`note-${id}`} name="note" rows={2} maxLength={500} className="input" />
+              <GrowingTextarea id={`note-${id}`} name="note" rows={2} maxLength={500} className="input" />
             </Field>
             <div className="flex flex-wrap gap-2">
               <SubmitButton name="step" value="mark_paid">{t.markPaid}</SubmitButton>
@@ -151,7 +152,7 @@ export function BanForm({ action, banned }: { action: FormAction; banned: boolea
               </Field>
             )}
             <Field label={t.banReason} name="reason" error={s.fieldErrors?.reason} hint={t.banReasonHint}>
-              <textarea id="reason" name="reason" rows={2} required minLength={5} maxLength={500} className="input" />
+              <GrowingTextarea id="reason" name="reason" rows={2} required minLength={5} maxLength={500} className="input" />
             </Field>
             <SubmitButton variant="danger">{banned ? t.banChange : t.ban}</SubmitButton>
           </>

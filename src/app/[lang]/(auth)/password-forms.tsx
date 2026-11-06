@@ -3,6 +3,7 @@
 import { useT } from "@/i18n/client";
 import { requestPasswordResetAction, resetPasswordAction } from "@/actions/auth";
 import { FormMessage, PasswordInput, SubmitButton, useActionForm } from "@/components/forms";
+import { NewPasswordInput } from "@/components/smart-inputs";
 import { Field } from "@/components/ui";
 
 export function ForgotPasswordForm() {
@@ -28,8 +29,8 @@ export function ResetPasswordForm({ token }: { token: string }) {
     <form {...formProps} className="space-y-4">
       <input type="hidden" name="token" value={token} />
       <FormMessage state={state} />
-      <Field label={t.newPassword} name="newPassword" error={state.fieldErrors?.newPassword} hint={t.hint}>
-        <PasswordInput id="newPassword" name="newPassword" autoComplete="new-password" required minLength={8} maxLength={128} aria-invalid={!!state.fieldErrors?.newPassword} />
+      <Field label={t.newPassword} name="newPassword" error={state.fieldErrors?.newPassword}>
+        <NewPasswordInput id="newPassword" name="newPassword" autoComplete="new-password" required minLength={8} maxLength={128} aria-invalid={!!state.fieldErrors?.newPassword} />
       </Field>
       <Field label={t.confirmPassword} name="confirmPassword" error={state.fieldErrors?.confirmPassword}>
         <PasswordInput id="confirmPassword" name="confirmPassword" autoComplete="new-password" required maxLength={128} aria-invalid={!!state.fieldErrors?.confirmPassword} />

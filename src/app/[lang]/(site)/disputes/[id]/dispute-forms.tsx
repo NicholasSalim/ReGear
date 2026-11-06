@@ -1,5 +1,6 @@
 "use client";
 
+import { GrowingTextarea } from "@/components/smart-inputs";
 import { useState } from "react";
 import { useLocale, useT } from "@/i18n/client";
 import { pick } from "@/i18n/locales";
@@ -19,7 +20,7 @@ export function MessageForm({ action }: { action: FormAction }) {
         <>
           <FormMessage state={{ ...s, message: undefined }} />
           <Field label={t.addMessage} name="body" error={s.fieldErrors?.body}>
-            <textarea id="body" name="body" rows={4} maxLength={2000} className="input" />
+            <GrowingTextarea id="body" name="body" rows={4} maxLength={2000} className="input" />
           </Field>
           <SubmitButton>{t.send}</SubmitButton>
         </>
@@ -53,7 +54,7 @@ export function ResolveForm({ action, maxRefundIdr }: { action: FormAction; maxR
             </Field>
           )}
           <Field label={t.decisionNote} name="note" error={s.fieldErrors?.note}>
-            <textarea id="note" name="note" rows={3} maxLength={2000} className="input" />
+            <GrowingTextarea id="note" name="note" rows={3} maxLength={2000} className="input" />
           </Field>
           <SubmitButton variant="danger">{t.resolve}</SubmitButton>
         </>

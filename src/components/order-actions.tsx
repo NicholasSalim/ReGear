@@ -1,5 +1,6 @@
 "use client";
 
+import { GrowingTextarea } from "@/components/smart-inputs";
 import { useState } from "react";
 import { useLocale, useT } from "@/i18n/client";
 import { pick } from "@/i18n/locales";
@@ -103,7 +104,7 @@ export function ReturnRequestForm({ action, daysLeft }: { action: FormAction; da
             </select>
           </Field>
           <Field label={t.details} name="details" error={s.fieldErrors?.details} hint={t.detailsHint}>
-            <textarea id="details" name="details" rows={4} maxLength={2000} className="input" />
+            <GrowingTextarea id="details" name="details" rows={4} maxLength={2000} className="input" />
           </Field>
           <SubmitButton>{t.submitReturn}</SubmitButton>
         </>
@@ -120,7 +121,7 @@ export function ReturnResponseForm({ action }: { action: FormAction }) {
         <>
           <FormMessage state={s} />
           <Field label={t.noteToBuyer} name="note" error={s.fieldErrors?.note} hint={t.noteHint}>
-            <textarea id="note" name="note" rows={3} maxLength={1000} className="input" />
+            <GrowingTextarea id="note" name="note" rows={3} maxLength={1000} className="input" />
           </Field>
           <div className="flex gap-2">
             <SubmitButton name="decision" value="approve">
@@ -160,7 +161,7 @@ export function DisputeForm({ action, allowNotReceived }: { action: FormAction; 
             </select>
           </Field>
           <Field label={t.describe} name="description" error={s.fieldErrors?.description}>
-            <textarea id="description" name="description" rows={5} maxLength={3000} className="input" />
+            <GrowingTextarea id="description" name="description" rows={5} maxLength={3000} className="input" />
           </Field>
           <SubmitButton variant="danger">{t.openDisputeButton}</SubmitButton>
         </>
@@ -190,7 +191,7 @@ export function ReviewForm({ action }: { action: FormAction }) {
             {s.fieldErrors?.rating && <p id="rating-error" className="mt-1 text-sm text-rose-600">{s.fieldErrors.rating}</p>}
           </fieldset>
           <Field label={t.commentOptional} name="comment" error={s.fieldErrors?.comment}>
-            <textarea id="comment" name="comment" rows={3} maxLength={1000} className="input" />
+            <GrowingTextarea id="comment" name="comment" rows={3} maxLength={1000} className="input" />
           </Field>
           <SubmitButton>{t.submitReview}</SubmitButton>
         </>

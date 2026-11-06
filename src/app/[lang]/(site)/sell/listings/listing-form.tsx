@@ -1,5 +1,6 @@
 "use client";
 
+import { GrowingTextarea } from "@/components/smart-inputs";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState, useTransition } from "react";
@@ -289,7 +290,7 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
           </Field>
           <div className="sm:col-span-2">
             <Field label={t.description} name="description" error={err("description")} hint={t.descriptionHint}>
-              <textarea id="description" rows={5} className="input" value={v.description} maxLength={5000} onChange={(e) => set("description", e.target.value)} />
+              <GrowingTextarea id="description" rows={5} className="input" value={v.description} maxLength={5000} onChange={(e) => set("description", e.target.value)} />
             </Field>
           </div>
         </div>
@@ -492,7 +493,7 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
           </div>
           <div className="sm:col-span-2">
             <Field label={t.knownIssues} name="knownIssues" error={err("knownIssues")} hint={t.knownIssuesHint}>
-              <textarea id="knownIssues" rows={3} className="input" value={v.knownIssues} maxLength={1000} onChange={(e) => set("knownIssues", e.target.value)} />
+              <GrowingTextarea id="knownIssues" rows={3} className="input" value={v.knownIssues} maxLength={1000} onChange={(e) => set("knownIssues", e.target.value)} />
             </Field>
           </div>
         </div>
@@ -532,7 +533,7 @@ export function ListingForm({ listingId, initial }: { listingId: string | null; 
           {v.warrantyType !== "NONE" && (
             <div className="sm:col-span-3">
               <Field label={t.warrantyTerms} name="warrantyTerms" error={err("warrantyTerms")} hint={t.warrantyTermsHint}>
-                <textarea id="warrantyTerms" rows={3} className="input" value={v.warrantyTerms} maxLength={1000} onChange={(e) => set("warrantyTerms", e.target.value)} />
+                <GrowingTextarea id="warrantyTerms" rows={3} className="input" value={v.warrantyTerms} maxLength={1000} onChange={(e) => set("warrantyTerms", e.target.value)} />
               </Field>
             </div>
           )}

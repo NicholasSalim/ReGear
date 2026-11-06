@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import { Link, useT } from "@/i18n/client";
 import { confirmSignupAction, loginAction, registerAction, resendSignupCodeAction } from "@/actions/auth";
 import { ActionButton, FormMessage, PasswordInput, SubmitButton, useActionForm } from "@/components/forms";
 import { Field } from "@/components/ui";
+import { CodeInput, NewPasswordInput } from "@/components/smart-inputs";
 import { RichText } from "@/components/rich-text";
 
 export function LoginForm({ next, googleEnabled }: { next?: string; googleEnabled?: boolean }) {
@@ -52,8 +52,8 @@ export function RegisterForm({ next }: { next?: string }) {
       <Field label={t.email} name="email" error={state.fieldErrors?.email}>
         <input id="email" name="email" type="email" autoComplete="email" required className="input" aria-invalid={!!state.fieldErrors?.email} />
       </Field>
-      <Field label={t.password} name="password" error={state.fieldErrors?.password} hint={t.passwordHint}>
-        <PasswordInput id="password" name="password" autoComplete="new-password" required minLength={8} maxLength={128} aria-invalid={!!state.fieldErrors?.password} />
+      <Field label={t.password} name="password" error={state.fieldErrors?.password}>
+        <NewPasswordInput id="password" name="password" autoComplete="new-password" required minLength={8} maxLength={128} aria-invalid={!!state.fieldErrors?.password} />
       </Field>
       <div>
         <label className="flex items-start gap-2 text-sm text-slate-700">
@@ -84,32 +84,14 @@ export function RegisterForm({ next }: { next?: string }) {
 export function ConfirmSignupForm({ next }: { next?: string }) {
   const { state, pending, formProps } = useActionForm(confirmSignupAction);
   const t = useT().auth;
-  // Digits only, at most six. Pasting "123 456" or "Code: 123456" still works.
-  const [code, setCode] = useState("");
   return (
     <div className="space-y-4">
       <form {...formProps} className="space-y-4">
         {next && <input type="hidden" name="next" value={next} />}
         <FormMessage state={state} />
         <Field label={t.code} name="code" error={state.fieldErrors?.code}>
-          <input
-            id="code"
-            name="code"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            value={code}
-            onChange={(e) => {
-              const digits = e.target.value.replace(/\D/g, "").slice(0, 6);
-              setCode(digits);
-              // A partial code is stopped before it's sent, in our words rather than the browser's.
-              e.target.setCustomValidity(digits.length > 0 && digits.length < 6 ? t.codeFormat : "");
-            }}
-            pattern="[0-9]{6}"
-            required
-            autoFocus
-            className="input num text-center text-2xl tracking-[0.4em]"
-            aria-invalid={!!state.fieldErrors?.code}
-          />
+          {/* One box per digit; pasting "123 456" or the phone's suggested code fills them all. */}
+          <CodeInput id="code" name="code" autoFocus invalid={!!state.fieldErrors?.code} />
         </Field>
         <SubmitButton pending={pending} className="w-full" pendingText={t.confirmingCode}>
           {t.confirmCode}

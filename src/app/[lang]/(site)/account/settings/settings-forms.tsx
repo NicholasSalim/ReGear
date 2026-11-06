@@ -4,6 +4,7 @@ import { Link, useT } from "@/i18n/client";
 import { changePasswordAction, deleteAccountAction, updateProfileAction } from "@/actions/auth";
 import type { DeletionBlockers } from "@/lib/account/delete";
 import { ActionForm, FormMessage, PasswordInput, SubmitButton } from "@/components/forms";
+import { NewPasswordInput } from "@/components/smart-inputs";
 import { Field } from "@/components/ui";
 
 export function SettingsForms({ name, email, hasPassword, googleEmail }: { name: string; email: string; hasPassword: boolean; googleEmail?: string }) {
@@ -39,7 +40,7 @@ export function SettingsForms({ name, email, hasPassword, googleEmail }: { name:
               </Field>
             )}
             <Field label={t.newPassword} name="newPassword" error={s.fieldErrors?.newPassword}>
-              <PasswordInput id="newPassword" name="newPassword" autoComplete="new-password" />
+              <NewPasswordInput id="newPassword" name="newPassword" autoComplete="new-password" />
             </Field>
             <Field label={t.confirmPassword} name="confirmPassword" error={s.fieldErrors?.confirmPassword}>
               <PasswordInput id="confirmPassword" name="confirmPassword" autoComplete="new-password" />

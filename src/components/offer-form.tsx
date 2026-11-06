@@ -1,5 +1,6 @@
 "use client";
 
+import { GrowingTextarea } from "@/components/smart-inputs";
 import { useState } from "react";
 import { Tag } from "lucide-react";
 import { useT } from "@/i18n/client";
@@ -36,7 +37,7 @@ export function MakeOfferForm({ action, min, price }: { action: FormAction; min:
                 <input id="offer-amount" name="amount" inputMode="numeric" autoComplete="off" required className="input text-base" autoFocus />
               </Field>
               <Field label={t.message} name="offer-message">
-                <textarea id="offer-message" name="message" rows={2} maxLength={300} className="input" />
+                <GrowingTextarea id="offer-message" name="message" rows={2} maxLength={300} className="input" />
               </Field>
               <p className="text-xs text-slate-500">{t.terms}</p>
               <div className="flex gap-2">

@@ -1,5 +1,6 @@
 "use client";
 
+import { GrowingTextarea } from "@/components/smart-inputs";
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { MapPin } from "lucide-react";
@@ -172,7 +173,7 @@ export function AddressForm({
 
         <div className="sm:col-span-2">
           <Field label={t.street} name="street" error={err.street} hint={t.streetHint}>
-            <textarea id="street" name="street" autoComplete="street-address" rows={2} defaultValue={initial?.street} maxLength={200} className="input" aria-invalid={!!err.street} />
+            <GrowingTextarea id="street" name="street" autoComplete="street-address" rows={2} defaultValue={initial?.street} maxLength={200} className="input" aria-invalid={!!err.street} />
           </Field>
         </div>
         <Field label={t.detail} name="detail" error={err.detail}>

@@ -104,7 +104,7 @@ export function DeleteAccountForm({ email, hasPassword, blockers }: { email: str
           {(blockers.purchases > 0 || blockers.sales > 0) && <p className="mt-2 text-xs">{t.deliveredNote}</p>}
         </div>
       ) : (
-        <ActionForm action={deleteAccountAction} confirm={t.confirmDialog} className="max-w-md space-y-4">
+        <ActionForm action={deleteAccountAction} confirm={{ message: t.confirmDialog, danger: true }} className="max-w-md space-y-4">
           {(s) => (
             <>
               <FormMessage state={s} />

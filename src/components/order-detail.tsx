@@ -180,7 +180,11 @@ export async function OrderDetail({ order, now }: { order: OrderForUser; now: Da
                   <CancelForm action={cancelOrderAction.bind(null, order.id)} />
                 </Reveal>
               )}
-              {can("confirmDelivery") && <ActionButton action={confirmDeliveryAction.bind(null, order.id)}>{t.receivedItem}</ActionButton>}
+              {can("confirmDelivery") && (
+                <ActionButton action={confirmDeliveryAction.bind(null, order.id)} confirm={t.receivedItemConfirm(order.returnWindowDays)}>
+                  {t.receivedItem}
+                </ActionButton>
+              )}
               {isSeller && s === "SHIPPED" && <p className="w-full text-sm text-slate-600">{t.inTransit}</p>}
               {can("accept") && (
                 <>

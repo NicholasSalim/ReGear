@@ -822,6 +822,8 @@ export const id: typeof en = {
     cancelOrder: "Batalkan pesanan",
     waitingForShipment: "Menunggu penjual mengirim barang Anda.",
     receivedItem: "Saya sudah menerima barangnya",
+    receivedItemConfirm: (days: number) =>
+      days > 0 ? `Konfirmasi barang sudah diterima? Masa pengembalian ${days} hari dimulai sekarang.` : "Konfirmasi barang sudah diterima?",
     inTransit: "Dalam pengiriman. Pembeli akan mengonfirmasi penerimaan.",
     inspectIntro: "Cocokkan barang dengan laporan kondisinya. Menerima barang berarti pembayaran diteruskan ke penjual.",
     acceptItem: "Terima barang",

@@ -4,15 +4,17 @@ import { useState, useTransition } from "react";
 import { setListingStatusAction } from "@/actions/listings";
 import { Link, useT } from "@/i18n/client";
 import { buttonClass } from "@/components/ui";
+import { useConfirm } from "@/components/forms";
 
 export function ListingRowActions({ id, status }: { id: string; status: string }) {
   const t = useT().rowActions;
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const { ask, dialog } = useConfirm();
   const editable = status === "DRAFT" || status === "ACTIVE";
 
-  const change = (next: "ACTIVE" | "DRAFT" | "REMOVED", confirmText?: string) => {
-    if (confirmText && !window.confirm(confirmText)) return;
+  const change = async (next: "ACTIVE" | "DRAFT" | "REMOVED", confirmText?: string) => {
+    if (confirmText && !(await ask({ message: confirmText, danger: true }))) return;
     setError(null);
     start(async () => {
       const res = await setListingStatusAction(id, next);
@@ -42,6 +44,7 @@ export function ListingRowActions({ id, status }: { id: string; status: string }
         </button>
       </div>
       {error && <p className="text-xs text-rose-600">{error}</p>}
+      {dialog}
     </div>
   );
 }

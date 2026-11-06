@@ -13,7 +13,7 @@ type FormAction = (state: ActionState, formData: FormData) => Promise<ActionStat
 export function VerificationDecisionForm({ action, id }: { action: FormAction; id: string }) {
   const t = useT().adminForms;
   return (
-    <ActionForm action={action} className="space-y-3">
+    <ActionForm action={action} confirm={(d) => (d.get("decision") === "reject" ? { message: t.confirmVerifyReject, danger: true } : t.confirmVerifyApprove)} className="space-y-3">
       {(s) =>
         s.ok ? (
           <FormMessage state={s} />
@@ -37,7 +37,7 @@ export function VerificationDecisionForm({ action, id }: { action: FormAction; i
 export function ModerateForm({ action }: { action: FormAction }) {
   const t = useT().adminForms;
   return (
-    <ActionForm action={action} confirm={t.confirmRemove} className="flex flex-wrap items-start gap-2">
+    <ActionForm action={action} confirm={{ message: t.confirmRemove, danger: true }} className="flex flex-wrap items-start gap-2">
       {(s) =>
         s.ok ? (
           <FormMessage state={s} />
@@ -57,7 +57,7 @@ export function ModerateForm({ action }: { action: FormAction }) {
 export function WithdrawalReviewForm({ action, id }: { action: FormAction; id: string }) {
   const t = useT().payoutForms;
   return (
-    <ActionForm action={action} className="space-y-3">
+    <ActionForm action={action} confirm={(d) => (d.get("step") === "reject" ? { message: t.confirmWithdrawalReject, danger: true } : t.confirmWithdrawalApprove)} className="space-y-3">
       {(s) =>
         s.ok ? (
           <FormMessage state={s} />
@@ -82,7 +82,7 @@ export function WithdrawalReviewForm({ action, id }: { action: FormAction; id: s
 export function RefundSentForm({ action, id }: { action: FormAction; id: string }) {
   const t = useT().payoutForms;
   return (
-    <ActionForm action={action} className="space-y-3">
+    <ActionForm action={action} confirm={t.confirmRefundSent} className="space-y-3">
       {(s) =>
         s.ok ? (
           <FormMessage state={s} />
@@ -104,7 +104,7 @@ export function RefundSentForm({ action, id }: { action: FormAction; id: string 
 export function WithdrawalPayForm({ action, id }: { action: FormAction; id: string }) {
   const t = useT().payoutForms;
   return (
-    <ActionForm action={action} className="space-y-3">
+    <ActionForm action={action} confirm={(d) => (d.get("step") === "mark_failed" ? { message: t.confirmMarkFailed, danger: true } : t.confirmMarkPaid)} className="space-y-3">
       {(s) =>
         s.ok ? (
           <FormMessage state={s} />
@@ -130,7 +130,7 @@ export function BanForm({ action, banned }: { action: FormAction; banned: boolea
   const t = useT().adminForms;
   const [length, setLength] = useState<string>("7");
   return (
-    <ActionForm action={action} confirm={banned ? undefined : t.banConfirm} className="space-y-3">
+    <ActionForm action={action} confirm={banned ? undefined : { message: t.banConfirm, danger: true }} className="space-y-3">
       {(s) =>
         s.ok ? (
           <FormMessage state={s} />

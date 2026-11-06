@@ -15,6 +15,8 @@ export const clientEn = {
   },
   favorite: { saved: "Watching", save: "Add to Watchlist" },
   offerForm: {
+    confirmAccept: "Accept this offer? The buyer can then buy the item at the offered price for a limited time.",
+    confirmDecline: "Decline this offer? The buyer is told and can make another one.",
     title: "Make an offer",
     amount: "Your offer (Rp)",
     hint: (min: string, price: string) => `From ${min}, below the ${price} asking price.`,
@@ -34,6 +36,9 @@ export const clientEn = {
   language: { label: "Language", switchTo: { id: "Ganti ke Bahasa Indonesia", en: "Switch to English" } },
   theme: { darkMode: "Dark mode" },
   forms: {
+    confirmTitle: "Are you sure?",
+    confirmYes: "Yes, continue",
+    confirmNo: "Cancel",
     working: "Working…",
     choose: "Choose…",
     loading: "Loading…",
@@ -140,6 +145,7 @@ export const clientEn = {
     privacyNote: "After you pay, the recipient name, phone number, address, courier note and map pin are shared with the seller so they can ship. By continuing you agree to the [Terms & Conditions](/terms#buying).",
   },
   orderActions: {
+    confirmRejectReturn: "Reject this return? The buyer is told your reason and can still report a problem to ReGear.",
     carrier: "Carrier",
     tracking: "Tracking number",
     reasonOptional: "Reason (optional)",
@@ -165,6 +171,11 @@ export const clientEn = {
     submitReview: "Submit review",
   },
   disputeForms: {
+    confirmResolve: {
+      REFUND_BUYER: "Refund the buyer in full and close this dispute? This can't be undone.",
+      PARTIAL_REFUND: "Refund the buyer part of the payment, pay the seller the rest, and close this dispute? This can't be undone.",
+      RELEASE_TO_SELLER: "Release the payment to the seller and close this dispute? This can't be undone.",
+    } as Record<string, string>,
     addMessage: "Add a message or evidence description",
     send: "Send",
     resolution: "Resolution",
@@ -280,6 +291,12 @@ export const clientEn = {
     publishNote: "By publishing, you confirm the item is yours, the condition report is accurate, and the listing follows the [Terms & Conditions](/terms#selling), including the [prohibited items](/terms#prohibited).",
   },
   payoutForms: {
+    confirmWithdrawalApprove: "Approve this withdrawal? The money is sent to the seller's bank account.",
+    confirmWithdrawalReject: "Reject this withdrawal? The amount goes back to the seller's balance and they're emailed your note.",
+    confirmRefundSent: "Mark this refund as sent? Only do this once the bank transfer has gone through. It can't be undone.",
+    confirmMarkPaid: "Mark this withdrawal as paid? Only do this once the money has reached the seller's account.",
+    confirmMarkFailed: "Mark this withdrawal as failed? The amount goes back to the seller's balance.",
+    confirmReplaceAccount: "Use this new bank account? From now on the money goes there, and we'll email you about the change.",
     bank: "Bank",
     accountNumber: "Account number",
     accountName: "Account holder name",
@@ -303,6 +320,8 @@ export const clientEn = {
     markRefunded: "Mark refunded",
   },
   adminForms: {
+    confirmVerifyApprove: "Approve this seller? Their shop gets the Verified badge and they're emailed.",
+    confirmVerifyReject: "Reject this verification? The seller is emailed your note and can apply again.",
     noteToSeller: "Note to seller",
     noteHint: "Required when rejecting.",
     approve: "Approve",

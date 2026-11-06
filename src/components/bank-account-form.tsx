@@ -25,7 +25,7 @@ export function BankAccountForm({
   const dict = useT();
   const t = dict.payoutForms;
   return (
-    <ActionForm action={action} className="space-y-4">
+    <ActionForm action={action} confirm={replacing ? t.confirmReplaceAccount : undefined} className="space-y-4">
       {(s) => (
         <>
           <FormMessage state={s} />

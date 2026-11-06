@@ -58,8 +58,9 @@ export function MakeOfferForm({ action, min, price }: { action: FormAction; min:
 
 /** The seller's Accept / Decline buttons for one offer. */
 export function AnswerOfferForm({ action, accept, decline }: { action: FormAction; accept: string; decline: string }) {
+  const t = useT().offerForm;
   return (
-    <ActionForm action={action} className="space-y-2">
+    <ActionForm action={action} confirm={(d) => (d.get("decision") === "decline" ? { message: t.confirmDecline, danger: true } : t.confirmAccept)} className="space-y-2">
       {(s) => (
         <>
           <FormMessage state={s} />

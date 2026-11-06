@@ -116,7 +116,8 @@ export function ReturnRequestForm({ action, daysLeft }: { action: FormAction; da
 export function ReturnResponseForm({ action }: { action: FormAction }) {
   const t = useT().orderActions;
   return (
-    <ActionForm action={action} className="space-y-3">
+    // Approving goes straight through; rejecting is asked first.
+    <ActionForm action={action} confirm={(d) => (d.get("decision") === "reject" ? { message: t.confirmRejectReturn, danger: true } : undefined)} className="space-y-3">
       {(s) => (
         <>
           <FormMessage state={s} />

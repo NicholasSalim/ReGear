@@ -1,11 +1,101 @@
 "use client";
 
-import { createContext, startTransition, useActionState, useContext, useEffect, useRef, useState, type ComponentProps, type FormEvent, type ReactNode } from "react";
+import { createContext, startTransition, useActionState, useCallback, useContext, useEffect, useRef, useState, type ComponentProps, type FormEvent, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
-import { CheckCircle2, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { CheckCircle2, AlertCircle, AlertTriangle, Eye, EyeOff } from "lucide-react";
 import { useT } from "@/i18n/client";
 import type { ActionState } from "@/lib/action";
 import { buttonClass, type ButtonVariant } from "@/components/ui";
+
+/* ------------------------------------------------------------------------ */
+/* Asking before a sensitive action                                           */
+/* ------------------------------------------------------------------------ */
+
+/** What to ask before an action goes ahead. `danger`: it deletes, removes or can't be undone. */
+export type ConfirmSpec = { message: string; title?: string; confirmLabel?: string; danger?: boolean };
+/** A question, or one chosen from what's being submitted (e.g. which decision button was pressed); undefined asks nothing. */
+export type ConfirmQuestion = string | ConfirmSpec | ((data: FormData) => string | ConfirmSpec | undefined);
+
+const toSpec = (q: string | ConfirmSpec | undefined): ConfirmSpec | undefined => (typeof q === "string" ? { message: q } : q);
+
+/**
+ * ReGear's own "are you sure?" dialog, in place of the browser's
+ * (`window.confirm`, which shows the site's address and can't be styled).
+ * `ask` resolves true when confirmed; render `dialog` once, anywhere.
+ */
+export function useConfirm() {
+  const [spec, setSpec] = useState<ConfirmSpec | null>(null);
+  const answer = useRef<((ok: boolean) => void) | null>(null);
+  const ask = useCallback(
+    (s: ConfirmSpec) =>
+      new Promise<boolean>((resolve) => {
+        answer.current = resolve;
+        setSpec(s);
+      }),
+    [],
+  );
+  const close = useCallback((ok: boolean) => {
+    answer.current?.(ok);
+    answer.current = null;
+    setSpec(null);
+  }, []);
+  return { ask, dialog: <ConfirmDialog spec={spec} onClose={close} /> };
+}
+
+function ConfirmDialog({ spec, onClose }: { spec: ConfirmSpec | null; onClose: (ok: boolean) => void }) {
+  const t = useT().forms;
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = ref.current;
+    if (!dialog) return;
+    if (spec && !dialog.open) dialog.showModal();
+    if (!spec && dialog.open) dialog.close();
+  }, [spec]);
+  const danger = spec?.danger;
+  return (
+    <dialog
+      ref={ref}
+      // Esc, and a click on the dimmed backdrop, cancel.
+      onCancel={(e) => {
+        e.preventDefault();
+        onClose(false);
+      }}
+      onClick={(e) => {
+        if (e.target === ref.current) onClose(false);
+      }}
+      aria-labelledby="confirm-title"
+      aria-describedby="confirm-message"
+      className="confirm-dialog m-auto w-[calc(100%-2rem)] max-w-md rounded-2xl border border-rule bg-surface p-0 text-ink shadow-xl backdrop:bg-slate-950/45"
+    >
+      {spec && (
+        <div className="p-6">
+          <div className="flex items-start gap-3">
+            <span className={`flex size-10 shrink-0 items-center justify-center rounded-full ${danger ? "bg-rose-50 text-rose-600" : "bg-brand-50 text-brand-700"}`} aria-hidden>
+              <AlertTriangle className="size-5" />
+            </span>
+            <div className="min-w-0">
+              <h2 id="confirm-title" className="text-lg font-bold">
+                {spec.title ?? t.confirmTitle}
+              </h2>
+              <p id="confirm-message" className="mt-1 text-sm text-slate-600">
+                {spec.message}
+              </p>
+            </div>
+          </div>
+          <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            {/* Cancel gets the focus, so Enter on a stray key press doesn't confirm. */}
+            <button type="button" autoFocus onClick={() => onClose(false)} className={buttonClass("secondary", "px-4 py-2")}>
+              {t.confirmNo}
+            </button>
+            <button type="button" onClick={() => onClose(true)} className={buttonClass(danger ? "danger" : "primary", "px-4 py-2")}>
+              {spec.confirmLabel ?? t.confirmYes}
+            </button>
+          </div>
+        </div>
+      )}
+    </dialog>
+  );
+}
 
 // Pending state of an ActionForm, which useFormStatus does not see (see useActionForm).
 const PendingContext = createContext(false);
@@ -105,10 +195,11 @@ const SUCCESS_MESSAGE_MS = 6000;
  * A success message goes away after a few seconds or once the form is edited
  * again, since the page itself doesn't reload.
  */
-export function useActionForm(action: FormAction, { confirm, resetOnSuccess }: { confirm?: string; resetOnSuccess?: boolean } = {}) {
+export function useActionForm(action: FormAction, { confirm, resetOnSuccess }: { confirm?: ConfirmQuestion; resetOnSuccess?: boolean } = {}) {
   const [state, dispatch, pending] = useActionState(action, {});
   const ref = useRef<HTMLFormElement>(null);
   const [dismissed, setDismissed] = useState<ActionState | null>(null);
+  const { ask, dialog } = useConfirm();
   useEffect(() => {
     if (resetOnSuccess && state.ok) ref.current?.reset();
   }, [state, resetOnSuccess]);
@@ -120,15 +211,22 @@ export function useActionForm(action: FormAction, { confirm, resetOnSuccess }: {
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (confirm && !window.confirm(confirm)) return;
+    // Read now: which button was pressed is only known during the event.
     const data = new FormData(e.currentTarget, (e.nativeEvent as SubmitEvent).submitter);
-    startTransition(() => dispatch(data));
+    const question = toSpec(typeof confirm === "function" ? confirm(data) : confirm);
+    if (!question) {
+      startTransition(() => dispatch(data));
+      return;
+    }
+    void ask(question).then((ok) => {
+      if (ok) startTransition(() => dispatch(data));
+    });
   }
   function onInput() {
     if (state.ok && state.message) setDismissed(state);
   }
   const shown = dismissed === state ? { ...state, message: undefined } : state;
-  return { state: shown, pending, formProps: { ref, action: dispatch, onSubmit, onInput, noValidate: true } };
+  return { state: shown, pending, formProps: { ref, action: dispatch, onSubmit, onInput, noValidate: true }, confirmDialog: dialog };
 }
 
 /**
@@ -148,12 +246,13 @@ export function ActionForm({
   className?: string;
   resetOnSuccess?: boolean;
   /** Asks the user before submitting. */
-  confirm?: string;
+  confirm?: ConfirmQuestion;
 }) {
-  const { state, pending, formProps } = useActionForm(action, { confirm, resetOnSuccess });
+  const { state, pending, formProps, confirmDialog } = useActionForm(action, { confirm, resetOnSuccess });
   return (
     <form {...formProps} className={className}>
       <PendingContext value={pending}>{children(state)}</PendingContext>
+      {confirmDialog}
     </form>
   );
 }
@@ -173,16 +272,17 @@ export function ActionButton({
   action: FormAction;
   children: ReactNode;
   variant?: ButtonVariant;
-  confirm?: string;
+  confirm?: ConfirmQuestion;
   className?: string;
 }) {
-  const { state, pending, formProps } = useActionForm(action, { confirm });
+  const { state, pending, formProps, confirmDialog } = useActionForm(action, { confirm });
   return (
     <form {...formProps} className="space-y-2">
       <SubmitButton variant={variant} className={className} pending={pending}>
         {children}
       </SubmitButton>
       <FormMessage state={state} />
+      {confirmDialog}
     </form>
   );
 }

@@ -33,7 +33,7 @@ export function AddressBook({ addresses, defaultName, limit }: { addresses: Book
                   {t.setDefault}
                 </ActionButton>
               )}
-              <ActionButton action={deleteAddressAction.bind(null, a.id)} variant="ghost" confirm={t.confirmDelete} className="px-3 py-1.5 text-rose-700">
+              <ActionButton action={deleteAddressAction.bind(null, a.id)} variant="ghost" confirm={{ message: t.confirmDelete, danger: true }} className="px-3 py-1.5 text-rose-700">
                 {t.delete}
               </ActionButton>
             </div>

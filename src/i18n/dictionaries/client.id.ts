@@ -16,6 +16,8 @@ export const clientId: typeof clientEn = {
   },
   favorite: { saved: "Dipantau", save: "Tambah ke pantauan" },
   offerForm: {
+    confirmAccept: "Terima tawaran ini? Pembeli lalu bisa membeli barang dengan harga tawaran untuk waktu terbatas.",
+    confirmDecline: "Tolak tawaran ini? Pembeli diberi tahu dan bisa membuat tawaran lain.",
     title: "Ajukan tawaran",
     amount: "Tawaran Anda (Rp)",
     hint: (min: string, price: string) => `Mulai dari ${min}, di bawah harga ${price}.`,
@@ -35,6 +37,9 @@ export const clientId: typeof clientEn = {
   language: { label: "Bahasa", switchTo: { id: "Ganti ke Bahasa Indonesia", en: "Switch to English" } },
   theme: { darkMode: "Mode gelap" },
   forms: {
+    confirmTitle: "Anda yakin?",
+    confirmYes: "Ya, lanjutkan",
+    confirmNo: "Batal",
     working: "Memproses…",
     choose: "Pilih…",
     loading: "Memuat…",
@@ -141,6 +146,7 @@ export const clientId: typeof clientEn = {
     privacyNote: "Setelah Anda membayar, nama penerima, nomor telepon, alamat, catatan kurir, dan pin peta ini dibagikan ke penjual untuk pengiriman. Dengan melanjutkan, Anda menyetujui [Syarat & Ketentuan](/terms#buying).",
   },
   orderActions: {
+    confirmRejectReturn: "Tolak pengembalian ini? Pembeli diberi tahu alasan Anda dan masih bisa melaporkan masalah ke ReGear.",
     carrier: "Kurir",
     tracking: "Nomor resi",
     reasonOptional: "Alasan (opsional)",
@@ -166,6 +172,11 @@ export const clientId: typeof clientEn = {
     submitReview: "Kirim ulasan",
   },
   disputeForms: {
+    confirmResolve: {
+      REFUND_BUYER: "Kembalikan seluruh dana ke pembeli dan tutup sengketa ini? Tidak bisa dibatalkan.",
+      PARTIAL_REFUND: "Kembalikan sebagian dana ke pembeli, bayar sisanya ke penjual, dan tutup sengketa ini? Tidak bisa dibatalkan.",
+      RELEASE_TO_SELLER: "Teruskan pembayaran ke penjual dan tutup sengketa ini? Tidak bisa dibatalkan.",
+    } as Record<string, string>,
     addMessage: "Tambahkan pesan atau penjelasan bukti",
     send: "Kirim",
     resolution: "Keputusan",
@@ -281,6 +292,12 @@ export const clientId: typeof clientEn = {
     publishNote: "Dengan menerbitkan, Anda menyatakan barang ini milik Anda, laporan kondisinya akurat, dan iklan ini mematuhi [Syarat & Ketentuan](/terms#selling), termasuk [barang yang dilarang](/terms#prohibited).",
   },
   payoutForms: {
+    confirmWithdrawalApprove: "Setujui penarikan ini? Uang dikirim ke rekening bank penjual.",
+    confirmWithdrawalReject: "Tolak penarikan ini? Jumlahnya kembali ke saldo penjual dan penjual dikirimi catatan Anda.",
+    confirmRefundSent: "Tandai pengembalian dana ini sudah dikirim? Lakukan hanya setelah transfer bank berhasil. Tidak bisa dibatalkan.",
+    confirmMarkPaid: "Tandai penarikan ini sudah dibayar? Lakukan hanya setelah uang masuk ke rekening penjual.",
+    confirmMarkFailed: "Tandai penarikan ini gagal? Jumlahnya kembali ke saldo penjual.",
+    confirmReplaceAccount: "Pakai rekening bank baru ini? Mulai sekarang uang dikirim ke sana, dan kami akan mengirim email tentang perubahan ini.",
     bank: "Bank",
     accountNumber: "Nomor rekening",
     accountName: "Nama pemilik rekening",
@@ -304,6 +321,8 @@ export const clientId: typeof clientEn = {
     markRefunded: "Tandai sudah dikembalikan",
   },
   adminForms: {
+    confirmVerifyApprove: "Setujui penjual ini? Tokonya mendapat lencana Terverifikasi dan penjual dikirimi email.",
+    confirmVerifyReject: "Tolak verifikasi ini? Penjual dikirimi catatan Anda dan bisa mengajukan lagi.",
     noteToSeller: "Catatan untuk penjual",
     noteHint: "Wajib diisi jika menolak.",
     approve: "Setujui",

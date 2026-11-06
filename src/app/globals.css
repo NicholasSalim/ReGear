@@ -292,6 +292,31 @@ details[open] > .panel-enter {
   animation: panel-in 150ms var(--ease-out);
 }
 
+/* The "are you sure?" dialog (components/forms.tsx): it rises in over a fading backdrop. */
+@keyframes confirm-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+}
+@keyframes backdrop-in {
+  from {
+    opacity: 0;
+  }
+}
+dialog.confirm-dialog[open] {
+  animation: confirm-in 180ms var(--ease-out);
+}
+dialog.confirm-dialog[open]::backdrop {
+  animation: backdrop-in 180ms var(--ease-out);
+}
+@media (prefers-reduced-motion: reduce) {
+  dialog.confirm-dialog[open],
+  dialog.confirm-dialog[open]::backdrop {
+    animation: none;
+  }
+}
+
 /* app/global-not-found.tsx holds both languages; its inline script marks the page English for /en/... addresses. */
 html:not([data-lang="en"]) [data-locale-block="en"],
 html[data-lang="en"] [data-locale-block="id"] {

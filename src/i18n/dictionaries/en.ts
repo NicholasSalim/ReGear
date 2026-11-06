@@ -820,6 +820,8 @@ export const en = {
     cancelOrder: "Cancel order",
     waitingForShipment: "Waiting for the seller to ship your item.",
     receivedItem: "I received the item",
+    receivedItemConfirm: (days: number) =>
+      days > 0 ? `Confirm you've received the item? Your ${days}-day return window starts now.` : "Confirm you've received the item?",
     inTransit: "In transit. The buyer will confirm delivery.",
     inspectIntro: "Check the item against its condition report. Accepting releases payment to the seller.",
     acceptItem: "Accept item",

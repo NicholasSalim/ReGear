@@ -35,7 +35,7 @@ export function ResolveForm({ action, maxRefundIdr }: { action: FormAction; maxR
   const t = useT().disputeForms;
   const [resolution, setResolution] = useState<string>("REFUND_BUYER");
   return (
-    <ActionForm action={action} className="space-y-3">
+    <ActionForm action={action} confirm={(d) => ({ message: t.confirmResolve[String(d.get("resolution"))] ?? t.confirmResolve.REFUND_BUYER, danger: true })} className="space-y-3">
       {(s) => (
         <>
           <FormMessage state={s} />

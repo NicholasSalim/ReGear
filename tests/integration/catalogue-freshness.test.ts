@@ -38,9 +38,9 @@ async function fixture() {
     db.auditLog.deleteMany(),
     db.user.deleteMany(),
   ]);
-  const admin = await db.user.create({ data: { email: "a@test.dev", name: "Admin", role: "ADMIN", passwordHash: "x" } });
-  const sellerUser = await db.user.create({ data: { email: "s@test.dev", name: "Seller", passwordHash: "x" } });
-  const buyer = await db.user.create({ data: { email: "b@test.dev", name: "Buyer", passwordHash: "x" } });
+  const admin = await db.user.create({ data: { email: "a@test.dev", name: "Admin", role: "ADMIN", passwordHash: "x", emailVerifiedAt: new Date() } });
+  const sellerUser = await db.user.create({ data: { email: "s@test.dev", name: "Seller", passwordHash: "x", emailVerifiedAt: new Date() } });
+  const buyer = await db.user.create({ data: { email: "b@test.dev", name: "Buyer", passwordHash: "x", emailVerifiedAt: new Date() } });
   const seller = await db.sellerProfile.create({ data: { userId: sellerUser.id, slug: "s", displayName: "S" } });
   const listing = await db.listing.create({
     data: {

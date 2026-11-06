@@ -13,7 +13,7 @@ import { PAY_HOLD_MINUTES } from "@/lib/constants";
 import { formatMoney } from "@/lib/format";
 import { mediaUrl } from "@/lib/media";
 import { payments } from "@/lib/payments";
-import { offerStatus } from "@/lib/offers";
+import { checkoutEligibility } from "@/lib/orders/service";
 import { checkoutAction } from "@/actions/orders";
 import { GradeBadge } from "@/components/badges";
 import { ButtonLink, EmptyState, PageSkeleton } from "@/components/ui";
@@ -45,67 +45,53 @@ async function Checkout({
   const [{ listingId }, query] = await Promise.all([params, searchParams]);
   const user = await requireTrader(`/checkout/${listingId}`);
   if (!/^[a-z0-9]{20,32}$/i.test(listingId)) notFound();
-  const t = (await getDictionary()).checkout;
+  const dict = await getDictionary();
+  const t = dict.checkout;
 
-  const listing = await db.listing.findUnique({
-    where: { id: listingId },
-    select: {
-      id: true,
-      slug: true,
-      title: true,
-      status: true,
-      priceIdr: true,
-      shippingIdr: true,
-      conditionGrade: true,
-      returnWindowDays: true,
-      location: true,
-      images: { select: { key: true }, orderBy: { position: "asc" }, take: 1 },
-      seller: { select: { userId: true, displayName: true } },
-    },
-  });
-  if (!listing) notFound();
-  if (listing.seller.userId === user.id) {
-    return <EmptyState title={t.ownListing} action={<ButtonLink href="/sell/listings">{t.manageListings}</ButtonLink>} />;
-  }
-  if (listing.status !== "ACTIVE") {
-    const own = await db.order.findFirst({
-      where: { listingId, buyerId: user.id, status: { not: "CANCELLED" } },
-      orderBy: { createdAt: "desc" },
-      select: { id: true, status: true },
-    });
-    if (own) {
-      const unpaid = own.status === "PENDING_PAYMENT";
-      return (
-        <EmptyState
-          title={unpaid ? t.reservedByYou : t.boughtByYou}
-          description={unpaid ? t.reservedByYouHint : undefined}
-          action={<ButtonLink href={`/account/orders/${own.id}`}>{unpaid ? t.finishPayment : t.viewYourOrder}</ButtonLink>}
-        />
-      );
-    }
-    return <EmptyState title={t.unavailable} description={t.unavailableHint} action={<ButtonLink href="/listings">{t.keepBrowsing}</ButtonLink>} />;
-  }
-  if (!user.emailVerified) {
-    return <EmptyState title={t.verifyFirst} description={t.verifyFirstHint(user.email)} />;
-  }
-
-  // "?offer=" checks out an accepted offer at its price. It's checked again when the order is placed.
+  // "?offer=" checks out an accepted offer at its price. Placing the order runs the same check again.
   const offerParam = typeof query.offer === "string" && /^[a-z0-9]{20,32}$/i.test(query.offer) ? query.offer : null;
-  const offer = offerParam
-    ? await db.offer.findFirst({ where: { id: offerParam, buyerId: user.id, listingId }, select: { id: true, amountIdr: true, status: true, expiresAt: true } })
-    : null;
-  if (offerParam && (!offer || offerStatus(offer) !== "ACCEPTED")) {
-    return (
-      <EmptyState
-        title={t.offerUnavailable}
-        description={t.offerUnavailableHint}
-        action={<ButtonLink href={`/listings/${listing.slug}`}>{t.viewListing}</ButtonLink>}
-      />
-    );
+  const check = await checkoutEligibility(user.id, listingId, offerParam);
+  if (!check.ok) {
+    switch (check.reason) {
+      case "notFound":
+        notFound();
+      case "ownListing":
+        return <EmptyState title={t.ownListing} action={<ButtonLink href="/sell/listings">{t.manageListings}</ButtonLink>} />;
+      case "yourOrder":
+        return (
+          <EmptyState
+            title={check.unpaid ? t.reservedByYou : t.boughtByYou}
+            description={check.unpaid ? t.reservedByYouHint : undefined}
+            action={<ButtonLink href={`/account/orders/${check.orderId}`}>{check.unpaid ? t.finishPayment : t.viewYourOrder}</ButtonLink>}
+          />
+        );
+      case "verifyEmail":
+        return <EmptyState title={t.verifyFirst} description={t.verifyFirstHint(user.email)} />;
+      case "offerUnavailable": {
+        const listing = await db.listing.findUnique({ where: { id: listingId }, select: { slug: true } });
+        return (
+          <EmptyState
+            title={t.offerUnavailable}
+            description={t.offerUnavailableHint}
+            action={listing && <ButtonLink href={`/listings/${listing.slug}`}>{t.viewListing}</ButtonLink>}
+          />
+        );
+      }
+      // Said before the buyer fills anything in, rather than after they press Continue.
+      case "tooManyUnpaid":
+        return <EmptyState title={dict.domain.tooManyUnpaidOrders(check.limit)} action={<ButtonLink href="/account/orders">{dict.account.nav.purchases}</ButtonLink>} />;
+      case "tryLater":
+        return <EmptyState title={dict.domain.checkoutAgainLater} action={<ButtonLink href="/listings">{t.keepBrowsing}</ButtonLink>} />;
+      // An admin can't reach checkout (it's for traders), so it reads as unavailable.
+      case "adminCannotTrade":
+      case "unavailable":
+        return <EmptyState title={t.unavailable} description={t.unavailableHint} action={<ButtonLink href="/listings">{t.keepBrowsing}</ButtonLink>} />;
+    }
   }
+  const { listing, offer } = check;
 
-  const [addresses, dict] = await Promise.all([listAddresses(user.id), getDictionary()]);
-  const price = offer ? offer.amountIdr : listing.priceIdr;
+  const addresses = await listAddresses(user.id);
+  const price = check.priceIdr;
   const total = price + listing.shippingIdr;
 
   const review = (

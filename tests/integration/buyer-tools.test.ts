@@ -38,9 +38,9 @@ async function fixture() {
     db.sellerProfile.deleteMany(),
     db.user.deleteMany(),
   ]);
-  const sellerUser = await db.user.create({ data: { email: "s@test.dev", name: "Seller", passwordHash: "x" } });
-  const buyer = await db.user.create({ data: { email: "b@test.dev", name: "Buyer", passwordHash: "x" } });
-  const other = await db.user.create({ data: { email: "o@test.dev", name: "Other", passwordHash: "x" } });
+  const sellerUser = await db.user.create({ data: { email: "s@test.dev", name: "Seller", passwordHash: "x", emailVerifiedAt: new Date() } });
+  const buyer = await db.user.create({ data: { email: "b@test.dev", name: "Buyer", passwordHash: "x", emailVerifiedAt: new Date() } });
+  const other = await db.user.create({ data: { email: "o@test.dev", name: "Other", passwordHash: "x", emailVerifiedAt: new Date() } });
   const seller = await db.sellerProfile.create({ data: { userId: sellerUser.id, slug: "s", displayName: "S" } });
   const listing = await db.listing.create({
     data: {

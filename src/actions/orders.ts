@@ -31,7 +31,6 @@ export async function checkoutAction(listingId: string, _prev: ActionState, form
   const result = await runAction(async () => {
     const user = await requireTraderStrict();
     const { t } = await actionI18n();
-    if (!user.emailVerified) return { error: t.domain.emailUnverified };
     idSchema.parse(listingId);
     const limited = await rateLimit(`checkout:${user.id}`, 20, 3600);
     if (!limited.ok) return { error: t.actions.checkoutLimit };

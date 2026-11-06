@@ -8,6 +8,7 @@ import { catalogueChanged } from "@/lib/cache";
 import { currencyCode } from "@/lib/format";
 import { paymentKey, payments } from "@/lib/payments";
 import { DomainError } from "@/lib/errors";
+import { offerStatus } from "@/lib/offers";
 import { addEvent, type Tx } from "@/lib/orders/events";
 import { retryUnsentRefunds, sendRefund } from "@/lib/orders/refunds";
 import type { Order, Prisma } from "@/generated/prisma/client";
@@ -76,61 +77,156 @@ function assertSeller(order: { seller: { userId: string } }, userId: string) {
 
 // Checkout -----------------------------------------------------------------
 
+/** Why a buyer can't check out a listing right now. */
+export type CheckoutRefusal =
+  | { ok: false; reason: "notFound" }
+  | { ok: false; reason: "ownListing" }
+  | { ok: false; reason: "adminCannotTrade" }
+  /** They already ordered it: waiting for their payment, or bought. `beingPaid`: someone is holding it to pay right now. */
+  | { ok: false; reason: "yourOrder"; orderId: string; unpaid: boolean; beingPaid: boolean }
+  /** Someone else is paying for it (`beingPaid`), or it's sold or off sale. */
+  | { ok: false; reason: "unavailable"; beingPaid: boolean }
+  | { ok: false; reason: "verifyEmail" }
+  /** The offer isn't theirs or for this listing (`missing`), or isn't accepted any more. */
+  | { ok: false; reason: "offerUnavailable"; missing: boolean }
+  | { ok: false; reason: "tooManyUnpaid"; limit: number }
+  | { ok: false; reason: "tryLater" };
+
+async function checkoutListing(tx: Tx, listingId: string) {
+  return tx.listing.findUnique({
+    where: { id: listingId },
+    include: {
+      seller: { select: { userId: true, displayName: true } },
+      images: { select: { key: true }, orderBy: { position: "asc" }, take: 1 },
+    },
+  });
+}
+
+export type CheckoutEligibility =
+  | {
+      ok: true;
+      listing: NonNullable<Awaited<ReturnType<typeof checkoutListing>>>;
+      /** The accepted offer it's bought at, if any. */
+      offer: { id: string; amountIdr: number } | null;
+      priceIdr: number;
+      /** Their unpaid order for this item, if they already checked it out: checking out again gives the same order. */
+      openOrderId: string | null;
+    }
+  | CheckoutRefusal;
+
+async function eligibilityIn(tx: Tx, buyerId: string, listingId: string, offerId: string | null): Promise<CheckoutEligibility> {
+  const listing = await checkoutListing(tx, listingId);
+  if (!listing) return { ok: false, reason: "notFound" };
+  if (listing.seller.userId === buyerId) return { ok: false, reason: "ownListing" };
+  const buyer = await tx.user.findUnique({ where: { id: buyerId }, select: { role: true, emailVerifiedAt: true } });
+  if (!buyer) return { ok: false, reason: "notFound" };
+  // Admins decide disputes, so they can't be a party to an order.
+  if (buyer.role === "ADMIN") return { ok: false, reason: "adminCannotTrade" };
+  // A payment hold that has run out doesn't count: nobody is paying any more. (Placing the order releases it.)
+  const liveHold = { listingId, status: "PENDING_PAYMENT", reservedAt: { gte: new Date(Date.now() - PAY_HOLD_MINUTES * 60_000) } };
+  const beingPaid = (await tx.order.count({ where: liveHold })) > 0;
+  const lapsedHoldOnly =
+    listing.status === "RESERVED" &&
+    !beingPaid &&
+    (await tx.order.count({ where: { listingId, status: { notIn: ["PENDING_PAYMENT", "CANCELLED"] } } })) === 0;
+  if (listing.status !== "ACTIVE" && !lapsedHoldOnly) {
+    const own = await tx.order.findFirst({
+      where: { listingId, buyerId, status: { not: "CANCELLED" } },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, status: true },
+    });
+    if (own) return { ok: false, reason: "yourOrder", orderId: own.id, unpaid: own.status === "PENDING_PAYMENT", beingPaid };
+    return { ok: false, reason: "unavailable", beingPaid };
+  }
+  if (!buyer.emailVerifiedAt) return { ok: false, reason: "verifyEmail" };
+
+  // Checking out the same item twice (a double click, a second tab) gives the same order.
+  const open = await tx.order.findFirst({ where: { buyerId, listingId, status: "PENDING_PAYMENT" }, select: { id: true } });
+  if (open) return { ok: true, listing, offer: null, priceIdr: listing.priceIdr, openOrderId: open.id };
+
+  let offer: { id: string; amountIdr: number } | null = null;
+  if (offerId) {
+    const found = await tx.offer.findUnique({ where: { id: offerId }, select: { id: true, buyerId: true, listingId: true, amountIdr: true, status: true, expiresAt: true } });
+    if (!found || found.buyerId !== buyerId || found.listingId !== listingId) return { ok: false, reason: "offerUnavailable", missing: true };
+    // Only an accepted offer that hasn't expired can be used, and only once.
+    if (offerStatus(found) !== "ACCEPTED") return { ok: false, reason: "offerUnavailable", missing: false };
+    offer = { id: found.id, amountIdr: found.amountIdr };
+  }
+  const unpaid = await tx.order.count({ where: { buyerId, status: "PENDING_PAYMENT" } });
+  if (unpaid >= MAX_UNPAID_ORDERS) return { ok: false, reason: "tooManyUnpaid", limit: MAX_UNPAID_ORDERS };
+  // Someone who keeps starting payment and letting the hold lapse waits a day.
+  const abandoned = await tx.order.count({
+    where: { buyerId, listingId, status: "CANCELLED", paidAt: null, reservedAt: { not: null }, cancelledAt: { gte: new Date(Date.now() - 86_400_000) } },
+  });
+  if (abandoned >= MAX_ABANDONED_CHECKOUTS) return { ok: false, reason: "tryLater" };
+  return { ok: true, listing, offer, priceIdr: offer?.amountIdr ?? listing.priceIdr, openOrderId: null };
+}
+
+/**
+ * Checkout eligibility: can this buyer check out this listing (at this
+ * accepted offer) right now, and at what price, or why not. It only reads, so
+ * pages can ask it: an item whose payment hold has run out counts as on sale
+ * (placing the order releases the hold). The checkout page shows the answer,
+ * and createOrder refuses on the same answer.
+ */
+export async function checkoutEligibility(buyerId: string, listingId: string, offerId: string | null = null): Promise<CheckoutEligibility> {
+  return db.$transaction((tx) => eligibilityIn(tx, buyerId, listingId, offerId));
+}
+
+/** The error createOrder refuses with: the same messages as before the check was shared. */
+function refusalError(refusal: CheckoutRefusal): DomainError {
+  switch (refusal.reason) {
+    case "notFound":
+      return new DomainError("itemUnavailable");
+    case "ownListing":
+      return new DomainError("ownListing");
+    case "adminCannotTrade":
+      return new DomainError("adminCannotTrade");
+    case "yourOrder":
+    case "unavailable":
+      return new DomainError(refusal.beingPaid ? "beingPaid" : "itemUnavailable");
+    case "verifyEmail":
+      return new DomainError("emailUnverified");
+    case "offerUnavailable":
+      return new DomainError(refusal.missing ? "offerNotFound" : "offerClosed");
+    case "tooManyUnpaid":
+      return new DomainError("tooManyUnpaidOrders", refusal.limit);
+    case "tryLater":
+      return new DomainError("checkoutAgainLater");
+  }
+}
+
 /**
  * Open an order awaiting payment. The item stays on sale: it's held only once
  * the buyer presses Pay (see payOrder), so an order nobody pays for blocks no
- * one. With `offerId`, the item is priced at that offer, which must be this
- * buyer's, for this listing, accepted and not expired; it's used up in the
- * same transaction (and given back if the order is cancelled unpaid).
+ * one. With `offerId`, the item is priced at that accepted offer, which is
+ * used up in the same transaction (and given back if the order is cancelled
+ * unpaid). Refuses exactly what checkoutEligibility refuses.
  */
 export async function createOrder(buyerId: string, listingId: string, address: ShippingAddress, offerId?: string): Promise<Result> {
   await releaseLapsedHold(listingId);
   return db.$transaction(async (tx) => {
-    const listing = await tx.listing.findUnique({
-      where: { id: listingId },
-      include: {
-        seller: { select: { userId: true } },
-        images: { select: { key: true }, orderBy: { position: "asc" }, take: 1 },
-      },
-    });
-    if (!listing) throw new DomainError("itemUnavailable");
-    if (listing.status !== "ACTIVE") throw await unavailable(tx, listingId);
-    if (listing.seller.userId === buyerId) throw new DomainError("ownListing");
+    // Locking the buyer's row makes the limits hold against parallel checkouts.
+    await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${buyerId} FOR UPDATE`;
+    const check = await eligibilityIn(tx, buyerId, listingId, offerId ?? null);
+    if (!check.ok) throw refusalError(check);
+    if (check.openOrderId) return { orderId: check.openOrderId };
+    const { listing } = check;
 
-    // Locking the buyer's row makes the checks below hold against parallel checkouts.
-    const [buyer] = await tx.$queryRaw<{ role: string }[]>`SELECT "role" FROM "User" WHERE "id" = ${buyerId} FOR UPDATE`;
-    // Admins decide disputes, so they can't be a party to an order.
-    if (buyer?.role === "ADMIN") throw new DomainError("adminCannotTrade");
-    // Checking out the same item twice (a double click, a second tab) gives the same order.
-    const open = await tx.order.findFirst({ where: { buyerId, listingId, status: "PENDING_PAYMENT" }, select: { id: true, listingId: true, sellerId: true, buyerId: true } });
-    if (open) return { orderId: open.id };
-    const unpaid = await tx.order.count({ where: { buyerId, status: "PENDING_PAYMENT" } });
-    if (unpaid >= MAX_UNPAID_ORDERS) throw new DomainError("tooManyUnpaidOrders", MAX_UNPAID_ORDERS);
-    // Someone who keeps starting payment and letting the hold lapse waits a day.
-    const abandoned = await tx.order.count({
-      where: { buyerId, listingId, status: "CANCELLED", paidAt: null, reservedAt: { not: null }, cancelledAt: { gte: new Date(Date.now() - 86_400_000) } },
-    });
-    if (abandoned >= MAX_ABANDONED_CHECKOUTS) throw new DomainError("checkoutAgainLater");
-
-    let priceIdr = listing.priceIdr;
-    if (offerId) {
-      const offer = await tx.offer.findUnique({ where: { id: offerId }, select: { buyerId: true, listingId: true, amountIdr: true } });
-      if (!offer || offer.buyerId !== buyerId || offer.listingId !== listingId) throw new DomainError("offerNotFound");
-      // Only an accepted, unexpired offer can be used, and only once.
-      const used = await tx.offer.updateMany({ where: { id: offerId, status: "ACCEPTED", expiresAt: { gt: new Date() } }, data: { status: "USED" } });
+    if (check.offer) {
+      const used = await tx.offer.updateMany({ where: { id: check.offer.id, status: "ACCEPTED", expiresAt: { gt: new Date() } }, data: { status: "USED" } });
       if (used.count !== 1) throw new DomainError("offerClosed");
-      priceIdr = offer.amountIdr;
     }
 
-    const fees = calculateFees(priceIdr, listing.shippingIdr, PLATFORM_FEE_BPS);
+    const fees = calculateFees(check.priceIdr, listing.shippingIdr, PLATFORM_FEE_BPS);
     const order = await tx.order.create({
       data: {
         number: generateOrderNumber(),
         buyerId,
         sellerId: listing.sellerId,
         listingId,
-        offerId: offerId ?? null,
-        priceIdr,
+        offerId: check.offer?.id ?? null,
+        priceIdr: check.priceIdr,
         shippingIdr: listing.shippingIdr,
         platformFeeIdr: fees.platformFeeIdr,
         totalIdr: fees.totalIdr,

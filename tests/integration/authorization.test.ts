@@ -30,10 +30,10 @@ async function fixture() {
     db.session.deleteMany(),
     db.user.deleteMany(),
   ]);
-  const sellerUser = await db.user.create({ data: { email: "s@test.dev", name: "Seller", passwordHash: "x" } });
-  const buyer = await db.user.create({ data: { email: "b@test.dev", name: "Buyer", passwordHash: "x" } });
+  const sellerUser = await db.user.create({ data: { email: "s@test.dev", name: "Seller", passwordHash: "x", emailVerifiedAt: new Date() } });
+  const buyer = await db.user.create({ data: { email: "b@test.dev", name: "Buyer", passwordHash: "x", emailVerifiedAt: new Date() } });
   // A stranger who is also a seller, so seller-side checks are exercised too.
-  const strangerUser = await db.user.create({ data: { email: "x@test.dev", name: "Stranger", passwordHash: "x" } });
+  const strangerUser = await db.user.create({ data: { email: "x@test.dev", name: "Stranger", passwordHash: "x", emailVerifiedAt: new Date() } });
   await db.sellerProfile.create({ data: { userId: strangerUser.id, slug: "x", displayName: "X" } });
   const seller = await db.sellerProfile.create({ data: { userId: sellerUser.id, slug: "s", displayName: "S" } });
   const listing = await db.listing.create({

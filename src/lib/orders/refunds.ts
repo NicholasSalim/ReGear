@@ -1,5 +1,6 @@
 import "server-only";
 import { db } from "@/lib/db";
+import { audit } from "@/lib/audit";
 import { DomainError } from "@/lib/errors";
 import { formatMoney } from "@/lib/format";
 import { REFUND_BY_HAND_DAYS } from "@/lib/constants";
@@ -116,18 +117,20 @@ async function refundOwedByHand(tx: Tx, orderId: string) {
 /** Where the buyer wants a bank-transfer refund sent. They can change it until it's sent, and are emailed each time. */
 export async function setRefundAccount(orderId: string, buyerId: string, input: RefundAccount) {
   if (!BANKS.some((b) => b.code === input.bank)) throw new DomainError("bankNotSupported");
-  return db.$transaction(async (tx) => {
+  const result = await db.$transaction(async (tx) => {
     const { order } = await refundOwedByHand(tx, orderId);
     if (order.buyerId !== buyerId) throw new DomainError("orderNotFound");
     await tx.order.update({ where: { id: orderId }, data: { refundBank: input.bank, refundAccountNumber: input.accountNumber, refundAccountName: input.accountName } });
     await addEvent(tx, orderId, "REFUND_ACCOUNT_SET", { bank: bankName(input.bank), account: maskAccount(input.accountNumber) }, buyerId);
     return { orderId };
   });
+  await audit(buyerId, "refund.account_set", "Order", orderId, { bank: input.bank, last4: input.accountNumber.slice(-4) });
+  return result;
 }
 
 /** An admin sent a bank-transfer refund to the account the buyer gave. */
 export async function markRefundSent(orderId: string, adminId: string, note: string) {
-  return db.$transaction(async (tx) => {
+  const result = await db.$transaction(async (tx) => {
     const { state } = await refundOwedByHand(tx, orderId);
     if (state.kind !== "awaitingTransfer") throw new DomainError("refundAccountMissing");
     // Compare-and-swap: two admins marking it at once record it once.
@@ -142,6 +145,8 @@ export async function markRefundSent(orderId: string, adminId: string, note: str
     );
     return { orderId };
   });
+  await audit(adminId, "refund.mark_sent", "Order", orderId, { note });
+  return result;
 }
 
 /** The admin's Refunds page: bank-transfer refunds to send (with an account), still waiting for one, and recently sent. */

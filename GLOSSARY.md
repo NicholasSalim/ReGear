@@ -8,6 +8,8 @@ Domain terms used in ReGear's code and design discussions. Use these names for t
 
 **Order capabilities**: which steps the buyer or seller looking at an order may take right now, and the reason for each one they may not. It also gives the figures those steps depend on (days left to request a return, the seller's payout). The order page offers only the steps it allows, and the order service refuses any step it doesn't, so the two always agree. Lives in `src/lib/orders/state.ts` (`orderCapabilities`).
 
+**Dispute**: a problem the buyer or seller reports on an order, settled by ReGear. Opening one and resolving it are order steps (they change the order's status, and resolving may refund the buyer or credit the seller), so they live in the order service; the conversation in between (who may write, when it closes, who is emailed, an admin taking it up for review) lives in the Dispute module, `src/lib/orders/disputes.ts`.
+
 **Refund**: money an order gives back to its buyer. The order step that causes it (a cancellation after payment, a received return, a dispute, a payment that landed on a cancelled order) decides the amount and claims it; the Refund module (`src/lib/orders/refunds.ts`) sends it. It goes back through the payment provider, or, for a bank transfer, by hand: the buyer gives an account and an admin sends the money.
 
 **Refund state**: where an order's refund stands: none, on its way (through the provider, retried until confirmed), waiting for the buyer's account, waiting for ReGear's transfer, or sent. Worked out from the order's refund columns by `refundState`; every page that shows a refund reads it.

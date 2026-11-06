@@ -4,13 +4,12 @@ import { refresh } from "next/cache";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { catalogueChanged } from "@/lib/cache";
-import { en } from "@/i18n/dictionaries/en";
 import { actionI18n, formToObject, runAction, type ActionState } from "@/lib/action";
 import { requireUserStrict } from "@/lib/auth/dal";
 import { resolveDispute } from "@/lib/orders/service";
 import { markRefundSent } from "@/lib/orders/refunds";
 import { enqueueEmail } from "@/lib/email/outbox";
-import { enqueueDisputeMessageEmails } from "@/lib/email/notify";
+import { markDisputeUnderReview } from "@/lib/orders/disputes";
 import { isLocale } from "@/i18n/locales";
 import { banSchema, disputeResolutionSchema, id as idSchema, text } from "@/lib/validation";
 import { forbidden } from "next/navigation";
@@ -61,15 +60,7 @@ export async function markDisputeUnderReviewAction(disputeId: string, _prev?: Ac
   return runAction(async () => {
     const admin = await requireAdminStrict();
     idSchema.parse(disputeId);
-    const updated = await db.$transaction(async (tx) => {
-      const res = await tx.dispute.updateMany({ where: { id: disputeId, status: "OPEN" }, data: { status: "UNDER_REVIEW" } });
-      if (res.count === 0) return false;
-      await tx.disputeMessage.create({ data: { disputeId, authorId: admin.id, authorRole: "ADMIN", body: en.disputes.system.reviewing } });
-      await enqueueDisputeMessageEmails(tx, disputeId, "ADMIN");
-      return true;
-    });
-    if (!updated) return { error: (await actionI18n()).t.actions.disputeNotOpen };
-    await audit(admin.id, "dispute.review", "Dispute", disputeId);
+    if (!(await markDisputeUnderReview(disputeId, admin.id))) return { error: (await actionI18n()).t.actions.disputeNotOpen };
     refresh();
     return { ok: true };
   });
@@ -81,7 +72,6 @@ export async function resolveDisputeAction(disputeId: string, _prev: ActionState
     idSchema.parse(disputeId);
     const data = disputeResolutionSchema.parse(formToObject(formData));
     await resolveDispute(disputeId, admin.id, data.resolution, data.note, data.refundIdr ?? 0);
-    await audit(admin.id, "dispute.resolve", "Dispute", disputeId, { resolution: data.resolution, refundIdr: data.refundIdr });
     return { ok: true, message: (await actionI18n()).t.actions.disputeResolved };
   });
 }
@@ -95,7 +85,6 @@ export async function markRefundSentAction(orderId: string, _prev: ActionState, 
     const note = text(0, 500).parse(formData.get("note") ?? "");
     if (note.length < 5) return { fieldErrors: { note: t.actions.noteRequired } };
     await markRefundSent(orderId, admin.id, note);
-    await audit(admin.id, "refund.mark_sent", "Order", orderId, { note });
     refresh();
     return { ok: true, message: t.actions.refundMarkedSent };
   });

@@ -2,6 +2,7 @@ import "server-only";
 import { en } from "@/i18n/dictionaries/en";
 import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
 import { db } from "@/lib/db";
+import { audit } from "@/lib/audit";
 import { env } from "@/lib/env";
 import { catalogueChanged } from "@/lib/cache";
 import { currencyCode } from "@/lib/format";
@@ -524,7 +525,7 @@ export async function receiveReturn(orderId: string, sellerUserId: string): Prom
 // Disputes ------------------------------------------------------------------
 
 export async function openDispute(orderId: string, userId: string, reason: string, description: string): Promise<Result & { disputeId: string }> {
-  return db.$transaction(async (tx) => {
+  const opened = await db.$transaction(async (tx) => {
     const order = await loadOrder(tx, orderId);
     const role = order.buyerId === userId ? "BUYER" : order.seller.userId === userId ? "SELLER" : null;
     if (!role) throw new DomainError("orderNotFound");
@@ -543,6 +544,8 @@ export async function openDispute(orderId: string, userId: string, reason: strin
     await addEvent(tx, orderId, "DISPUTE_OPENED", { by: role === "BUYER" ? "buyer" : "seller" }, userId);
     return { orderId, disputeId: dispute.id };
   });
+  await audit(userId, "dispute.open", "Dispute", opened.disputeId, { orderId, reason });
+  return opened;
 }
 
 export async function resolveDispute(
@@ -597,6 +600,7 @@ export async function resolveDispute(
     return { orderId: order.id };
   });
   listingShown(order);
+  await audit(adminId, "dispute.resolve", "Dispute", disputeId, { resolution, refundIdr: resolution === "PARTIAL_REFUND" ? partialIdr : undefined });
   if (refundIdr > 0) await sendRefund(order, refundIdr);
   return result;
 }

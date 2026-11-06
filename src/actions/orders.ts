@@ -5,14 +5,12 @@ import { setRefundAccount } from "@/lib/orders/refunds";
 import { redirect } from "next/navigation";
 import { localePath } from "@/i18n/locales";
 import type { Dictionary } from "@/i18n/server";
-import { db } from "@/lib/db";
-import { audit } from "@/lib/audit";
 import { actionI18n, formToObject, runAction, type ActionState, requireTraderStrict } from "@/lib/action";
 import { requireUserStrict } from "@/lib/auth/dal";
 import { getAddress, shippingSnapshot } from "@/lib/addresses";
 import { rateLimit } from "@/lib/security/rate-limit";
 import * as orders from "@/lib/orders/service";
-import { enqueueDisputeMessageEmails } from "@/lib/email/notify";
+import { postDisputeMessage } from "@/lib/orders/disputes";
 import {
   disputeMessageSchema,
   disputeSchema,
@@ -93,7 +91,6 @@ export async function saveRefundAccountAction(orderId: string, _prev: ActionStat
     if (!limited.ok) return { error: t.actions.passwordLimit };
     const input = payoutAccountSchema.parse(formToObject(formData));
     await setRefundAccount(orderId, user.id, input);
-    await audit(user.id, "refund.account_set", "Order", orderId, { bank: input.bank, last4: input.accountNumber.slice(-4) });
     refresh();
     return { ok: true, message: t.actions.refundAccountSaved(input.accountName) };
   });
@@ -162,9 +159,7 @@ export async function openDisputeAction(orderId: string, _prev: ActionState, for
     const user = await requireTraderStrict();
     idSchema.parse(orderId);
     const { reason, description } = disputeSchema.parse(formToObject(formData));
-    const res = await orders.openDispute(orderId, user.id, reason, description);
-    disputeId = res.disputeId;
-    await audit(user.id, "dispute.open", "Dispute", res.disputeId, { orderId, reason });
+    disputeId = (await orders.openDispute(orderId, user.id, reason, description)).disputeId;
   });
   if (disputeId) redirect(localePath(`/disputes/${disputeId}`, (await actionI18n()).locale));
   return result;
@@ -179,27 +174,8 @@ export async function postDisputeMessageAction(disputeId: string, _prev: ActionS
     if (!limited.ok) return { error: t.actions.messagesTooFast };
     const { body } = disputeMessageSchema.parse(formToObject(formData));
 
-    const dispute = await db.dispute.findUnique({
-      where: { id: disputeId },
-      select: { id: true, status: true, order: { select: { buyerId: true, seller: { select: { userId: true } } } } },
-    });
-    if (!dispute) return { error: t.actions.disputeNotFound };
-    const role =
-      user.role === "ADMIN"
-        ? "ADMIN"
-        : dispute.order.buyerId === user.id
-          ? "BUYER"
-          : dispute.order.seller.userId === user.id
-            ? "SELLER"
-            : null;
-    if (!role) return { error: t.actions.disputeNotFound };
-    if (dispute.status === "RESOLVED") return { error: t.actions.disputeClosed };
-
-    await db.$transaction(async (tx) => {
-      await tx.disputeMessage.create({ data: { disputeId, authorId: user.id, authorRole: role, body } });
-      await tx.dispute.update({ where: { id: disputeId }, data: { updatedAt: new Date() } });
-      await enqueueDisputeMessageEmails(tx, disputeId, role);
-    });
+    const posted = await postDisputeMessage(disputeId, user, body);
+    if (!posted.ok) return { error: posted.reason === "closed" ? t.actions.disputeClosed : t.actions.disputeNotFound };
     // The dispute page reads uncached; re-render it with the new message.
     refresh();
     return { ok: true };

@@ -1,11 +1,10 @@
 import { Suspense } from "react";
-import { ChevronDown, Heart } from "lucide-react";
+import { Heart } from "lucide-react";
 import { Link } from "@/i18n/client";
 import { LanguageSwitcher } from "@/i18n/language-switcher";
 import { pick } from "@/i18n/locales";
 import { getDictionary, getLocale } from "@/i18n/server";
 import { CATEGORIES } from "@/lib/catalog";
-import { AccountMenu } from "@/components/account-menu";
 import { PhoneCategories } from "@/components/phone-categories";
 import { CartLink, ForTraders, Greeting, MessagesLink, MyRegearMenu, UserMenu } from "@/components/user-menu";
 import { SiteSearch } from "@/components/site-search";
@@ -66,47 +65,25 @@ export async function SiteHeader() {
                 </Link>
               </ForTraders>
             </Suspense>
+            <Suspense fallback={null}>
+              <CartLink className="-my-1.5" />
+            </Suspense>
+            <Suspense fallback={null}>
+              <LanguageSwitcher />
+            </Suspense>
+            <ThemeToggle className="-m-1.5 p-1.5 text-slate-600 hover:bg-slate-100 hover:text-ink" />
+            {/* The account menu sits at the far right, where people look for it. */}
             <nav aria-label={t.nav.accountNav}>
               <Suspense fallback={<Skeleton className="h-3 w-16" />}>
                 <MyRegearMenu />
               </Suspense>
             </nav>
-            <Suspense fallback={null}>
-              <LanguageSwitcher />
-            </Suspense>
-            <ThemeToggle className="-m-1.5 p-1.5 text-slate-600 hover:bg-slate-100 hover:text-ink" />
-            <Suspense fallback={null}>
-              <CartLink className="-my-1.5" />
-            </Suspense>
           </div>
         </div>
       </div>
 
       <div className="container-page flex flex-wrap items-center gap-x-4 gap-y-3 py-3 lg:gap-x-6 lg:py-4">
         <Logo />
-        <div className="max-lg:hidden">
-          <AccountMenu
-            summaryClassName="gap-1 rounded-lg px-1 py-1 text-xs leading-tight text-slate-600 hover:text-ink"
-            panelClassName="left-0 w-60 origin-top-left"
-            summary={
-              <>
-                <span>
-                  {t.nav.shopByCategoryShort[0]}
-                  <br />
-                  {t.nav.shopByCategoryShort[1]}
-                </span>
-                <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden />
-              </>
-            }
-          >
-            <p className="px-3 pt-1.5 pb-1 text-xs font-semibold text-slate-500">{t.nav.shopByCategory}</p>
-            {categories.map((c) => (
-              <Link key={c.slug} href={`/c/${c.slug}`} className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-100">
-                {c.name}
-              </Link>
-            ))}
-          </AccountMenu>
-        </div>
         {/* On phones the search takes a row of its own under the logo. */}
         <div className="order-last w-full md:order-none md:w-auto md:flex-1">
           <SiteSearch

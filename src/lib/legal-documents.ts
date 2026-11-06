@@ -1,5 +1,5 @@
 import type { Locale } from "@/i18n/locales";
-import { AUDIT_RETENTION_DAYS, EMAIL_LOG_RETENTION_DAYS } from "@/lib/legal";
+import { AUDIT_RETENTION_DAYS, EMAIL_LOG_RETENTION_DAYS, ORPHAN_UPLOAD_DAYS } from "@/lib/legal";
 import { PAY_HOLD_MINUTES, PAYMENT_HOLD_MINUTES, PLATFORM_FEE_BPS, AUTO_COMPLETE_DAYS_AFTER_DELIVERY_BUFFER, QRIS_MAX_IDR, REFUND_BY_HAND_DAYS } from "@/lib/constants";
 import { formatMoney } from "@/lib/format";
 
@@ -107,7 +107,7 @@ const privacy: Record<Locale, LegalDocument> = {
               "Data akun, toko, dan iklan: selama akun Anda ada.",
               "Sesi login: berakhir setelah 30 hari tidak aktif, saat Anda keluar, atau saat Anda mengubah kata sandi (sesi di perangkat lain ikut berakhir).",
               `Pesanan yang tidak dibayar dalam ${PAYMENT_HOLD_MINUTES} menit dibatalkan otomatis.`,
-              "Foto yang diunggah tetapi tidak dipakai di iklan dihapus setelah 1 hari.",
+              `Foto yang diunggah tetapi tidak dipakai di iklan dihapus setelah ${ORPHAN_UPLOAD_DAYS} hari.`,
               "Penghitung percobaan dihapus otomatis setelah masa berlakunya habis.",
               `Tautan konfirmasi email berlaku 24 jam dan tautan atur ulang kata sandi 1 jam; keduanya hanya bisa dipakai sekali. Catatan email yang dikirim dihapus setelah ${EMAIL_LOG_RETENTION_DAYS} hari.`,
               `Catatan keamanan disimpan selama ${AUDIT_YEARS} tahun, lalu dihapus otomatis.`,
@@ -251,7 +251,7 @@ const privacy: Record<Locale, LegalDocument> = {
               "Account, shop and listing data: for as long as your account exists.",
               "Sign-in sessions: end after 30 days of inactivity, when you sign out, or when you change your password (sessions on other devices end too).",
               `Orders not paid within ${PAYMENT_HOLD_MINUTES} minutes are cancelled automatically.`,
-              "Photos uploaded but never used in a listing are deleted after 1 day.",
+              `Photos uploaded but never used in a listing are deleted after ${ORPHAN_UPLOAD_DAYS} day${ORPHAN_UPLOAD_DAYS === 1 ? "" : "s"}.`,
               "Attempt counters are deleted automatically once they expire.",
               `Email confirmation links work for 24 hours and password reset links for 1 hour, once each. The record of sent emails is deleted after ${EMAIL_LOG_RETENTION_DAYS} days.`,
               `Security records are kept for ${AUDIT_YEARS} years, then deleted automatically.`,

@@ -18,6 +18,8 @@ export const LEGAL_DETAILS_MISSING = Object.values(LEGAL_DETAILS).some((v) => v.
 
 /** The record of sent emails is kept this long, then deleted by the maintenance job. */
 export const EMAIL_LOG_RETENTION_DAYS = 30;
+/** Photos uploaded but never attached to a listing are deleted after this many days. */
+export const ORPHAN_UPLOAD_DAYS = 1;
 
 /** Security logs are kept this long, then deleted by the maintenance job. */
 export const AUDIT_RETENTION_DAYS = 730;

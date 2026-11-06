@@ -109,8 +109,15 @@ export async function readPrivateDocument(key: string): Promise<Buffer | null> {
 }
 
 // Deleting is clean-up: a file that can't be removed now is logged, not an error for the caller.
-export async function deletePublicImage(key: string) {
-  await store.remove("public", key).catch((err) => console.error("could not delete image", key, err));
+/** True once the file is gone (or was already); false if storage couldn't be reached. */
+export async function deletePublicImage(key: string): Promise<boolean> {
+  try {
+    await store.remove("public", key);
+    return true;
+  } catch (err) {
+    console.error("could not delete image", key, err);
+    return false;
+  }
 }
 
 export async function deletePrivateDocument(key: string) {

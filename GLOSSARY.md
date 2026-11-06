@@ -23,3 +23,9 @@ Domain terms used in ReGear's code and design discussions. Use these names for t
 ## Catalogue
 
 **Catalogue freshness**: keeping the cached public pages (search and browse, listing pages, seller pages, the marketplace numbers) in step with changes to listings and sellers. Whatever changes a listing or a seller in a way shoppers see calls `catalogueChanged` (`src/lib/cache.ts`) once its change has committed; nothing else knows the cache tags. Steps shoppers can't see, such as shipping or a return request, don't refresh anything.
+
+## Running ReGear
+
+**Housekeeping**: deleting what ReGear no longer needs, on the schedule the Privacy Policy promises: ended sign-ins and attempt counters, photos never used in a listing, old security records, the record of sent emails, used or expired one-time links, and sign-ups never finished. The periods are in `src/lib/legal.ts`, which the policy text reads too. A photo storage couldn't delete is kept and tried again next run. `runHousekeeping` in `src/lib/housekeeping.ts`.
+
+**Maintenance job**: the scheduled call (`/api/cron/maintenance`, with the cron secret) that moves time-based things along: expiring unpaid orders and auto-completing delivered ones, payouts, lifting timed bans, saved-search alerts, sending emails, and housekeeping. Each part runs on its own; one that fails is logged and named in the reply, the rest still run, and the run as a whole reports failure.

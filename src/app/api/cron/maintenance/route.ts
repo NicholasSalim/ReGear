@@ -1,15 +1,12 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { runOrderMaintenance } from "@/lib/orders/service";
 import { runPayoutMaintenance } from "@/lib/payouts/service";
-import { purgeExpiredRateLimits } from "@/lib/security/rate-limit";
-import { deletePublicImage } from "@/lib/storage";
-import { AUDIT_RETENTION_DAYS, EMAIL_LOG_RETENTION_DAYS } from "@/lib/legal";
 import { deliverPendingEmails } from "@/lib/email/outbox";
 import { runSavedSearchAlerts } from "@/lib/saved-searches";
 import { liftExpiredBans } from "@/lib/account/ban";
+import { runHousekeeping } from "@/lib/housekeeping";
 
 // Periodic maintenance. Call from a scheduler (cron, systemd timer, platform
 // cron) every ~5 minutes:  curl -X POST -H "Authorization: Bearer $CRON_SECRET" .../api/cron/maintenance
@@ -24,47 +21,42 @@ function authorized(req: Request) {
 export async function POST(req: Request) {
   if (!authorized(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const result = await runOrderMaintenance();
-  const withdrawals = await runPayoutMaintenance();
-  // Timed bans that have run out: the account's listings go back on sale.
-  const bans = await liftExpiredBans();
-
   const now = new Date();
-  const [sessions] = await Promise.all([
-    db.session.deleteMany({ where: { expiresAt: { lt: now } } }),
-    purgeExpiredRateLimits(),
-  ]);
-  // Photos uploaded but never attached to a listing are dropped after a day.
-  const orphanRows = await db.upload.findMany({
-    where: { listingId: null, createdAt: { lt: new Date(now.getTime() - 86_400_000) } },
-    select: { id: true, key: true },
-    take: 1000,
-  });
-  await Promise.all(orphanRows.map((o) => deletePublicImage(o.key)));
-  const orphans = await db.upload.deleteMany({ where: { id: { in: orphanRows.map((o) => o.id) } } });
-  // Security logs are kept as long as the Privacy Policy says, then dropped.
-  const oldLogs = await db.auditLog.deleteMany({ where: { createdAt: { lt: new Date(now.getTime() - AUDIT_RETENTION_DAYS * 86_400_000) } } });
-  // New listings for saved searches, queued before the send below.
-  const searchAlerts = await runSavedSearchAlerts(now);
-  // Emails: send what's due (including retries), then drop finished rows and old links.
-  const emails = await deliverPendingEmails(200);
-  const oldEmails = await db.emailOutbox.deleteMany({
-    where: { status: { in: ["SENT", "SKIPPED", "FAILED"] }, createdAt: { lt: new Date(now.getTime() - EMAIL_LOG_RETENTION_DAYS * 86_400_000) } },
-  });
-  await db.emailToken.deleteMany({ where: { OR: [{ expiresAt: { lt: now } }, { usedAt: { not: null } }] } });
-  // Sign-ups whose code was never entered (they hold a name, email and password hash).
-  await db.signupRequest.deleteMany({ where: { expiresAt: { lt: now } } });
+  // Each job runs on its own: one that fails is logged and reported, and the
+  // rest still run (a stuck order mustn't hold back everyone's emails).
+  const failed: string[] = [];
+  async function job<T>(name: string, run: () => Promise<T>): Promise<T | null> {
+    try {
+      return await run();
+    } catch (err) {
+      console.error(`[maintenance] ${name} failed`, err);
+      failed.push(name);
+      return null;
+    }
+  }
 
-  return NextResponse.json({
-    expiredOrders: result.expired,
-    autoDelivered: result.autoDelivered,
-    bansLifted: bans.lifted,
-    ...withdrawals,
-    purgedSessions: sessions.count,
-    purgedOrphanUploads: orphans.count,
-    purgedAuditLogs: oldLogs.count,
-    searchAlerts,
-    emailsSent: emails.sent,
-    purgedEmails: oldEmails.count,
-  });
+  const orders = await job("orders", () => runOrderMaintenance(now));
+  const withdrawals = await job("payouts", () => runPayoutMaintenance(now));
+  // Timed bans that have run out: the account's listings go back on sale.
+  const bans = await job("bans", () => liftExpiredBans(now));
+  // New listings for saved searches, queued before the send below.
+  const searchAlerts = await job("searchAlerts", () => runSavedSearchAlerts(now));
+  // Emails: send what's due, including retries.
+  const emails = await job("emails", () => deliverPendingEmails(200));
+  const housekeeping = await job("housekeeping", () => runHousekeeping(now));
+
+  return NextResponse.json(
+    {
+      expiredOrders: orders?.expired,
+      autoDelivered: orders?.autoDelivered,
+      bansLifted: bans?.lifted,
+      ...withdrawals,
+      searchAlerts,
+      emailsSent: emails?.sent,
+      housekeeping,
+      ...(failed.length ? { failed } : {}),
+    },
+    // A failed job makes the run fail, so the scheduler's log shows it.
+    { status: failed.length ? 500 : 200 },
+  );
 }

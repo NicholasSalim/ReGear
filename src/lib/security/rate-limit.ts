@@ -25,7 +25,3 @@ export async function rateLimit(key: string, limit: number, windowSec: number): 
     retryAfterSec: Math.max(1, Math.ceil((row.resetAt.getTime() - now.getTime()) / 1000)),
   };
 }
-
-export async function purgeExpiredRateLimits() {
-  await db.rateLimit.deleteMany({ where: { resetAt: { lt: new Date() } } });
-}

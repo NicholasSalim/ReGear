@@ -4,7 +4,7 @@ import { DashboardNav, DashboardShell } from "@/components/dashboard-nav";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = (await getDictionary()).sell;
-  return { title: { default: t.metaTitle, template: t.metaTemplate }, robots: { index: false } };
+  return { title: { default: t.metaTitle, template: "%s | ReGear" }, robots: { index: false } };
 }
 
 export default async function SellLayout({ children }: { children: React.ReactNode }) {

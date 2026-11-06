@@ -21,7 +21,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const [locale, t] = await Promise.all([getLocale(), getDictionary()]);
   return {
     metadataBase: new URL(siteUrl),
-    title: { default: t.meta.siteTitle, template: "%s · ReGear" },
+    title: { default: t.meta.siteTitle, template: "%s | ReGear" },
     description: t.meta.siteDescription,
     applicationName: "ReGear",
     keywords: t.meta.keywords,

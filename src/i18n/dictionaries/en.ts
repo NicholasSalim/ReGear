@@ -6,7 +6,7 @@ const sentence = (s: string) => (/[.!?…]$/.test(s.trim()) ? s.trim() : `${s.tr
 
 export const en = {
   meta: {
-    siteTitle: "ReGear — Pre-owned electronics with honest condition reports",
+    siteTitle: "Buy & Sell Used Electronics | ReGear",
     siteDescription:
       "Buy and sell used phones, laptops, cameras and PC components with structured condition reports, verified sellers, warranties and buyer protection.",
     keywords: ["used electronics", "second hand phones", "refurbished laptops", "used cameras", "used GPU", "marketplace"],
@@ -85,7 +85,7 @@ export const en = {
   },
   offers: {
     status: { PENDING: "Waiting", ACCEPTED: "Accepted", DECLINED: "Declined", WITHDRAWN: "Withdrawn", USED: "Bought", EXPIRED: "Expired" },
-    sellerTitle: "Offers",
+    sellerTitle: "Offers received",
     sellerIntro: "Buyers' offers on your listings. Answer within 48 hours; an accepted offer gives the buyer 24 hours to check out at that price.",
     waiting: "Waiting for your answer",
     earlier: "Earlier offers",
@@ -258,7 +258,7 @@ export const en = {
   },
   category: {
     heading: (name: string) => `Used ${name}`,
-    metaTitle: (name: string) => `Used ${name} — condition-graded`,
+    metaTitle: (name: string) => `Used ${name}`,
     ogTitle: (name: string) => `Used ${name} on ReGear`,
     breadcrumb: "Breadcrumb",
   },
@@ -326,7 +326,7 @@ export const en = {
   },
   seller: {
     notFoundTitle: "Seller not found",
-    metaTitle: (name: string) => `${name} — seller on ReGear`,
+    metaTitle: (name: string) => name,
     metaDescription: (name: string) => `Used electronics from ${name}.`,
     salesCount: (n: number) => `${n} ${n === 1 ? "sale" : "sales"}`,
     memberSince: (date: string) => `Member since ${date}`,
@@ -365,7 +365,7 @@ export const en = {
     noReturns: "No returns",
   },
   how: {
-    metaTitle: "How it works — grading, verification & buyer protection",
+    metaTitle: "How it works",
     metaDescription: "How ReGear grades pre-owned electronics, verifies sellers, protects payments with escrow and handles returns and disputes.",
     heading: "How ReGear works",
     intro:
@@ -766,7 +766,7 @@ export const en = {
     verifyFirstHint: (email: string) => `We sent a confirmation link to ${email}. Click it, then come back to this item. You can send the link again from the banner at the top of the page.`,
   },
   account: {
-    metaTitle: "My ReGear",
+    metaTitle: "My account",
     title: "My ReGear",
     nav: { overview: "Summary", purchases: "Purchases", offers: "Offers", messages: "Messages", saved: "Watchlist", searches: "Saved searches", recent: "Recently viewed", addresses: "Addresses", settings: "Settings", sellerDashboard: "Selling" },
     memberSince: (date: string) => `Member since ${date}`,
@@ -910,7 +910,6 @@ export const en = {
   },
   sell: {
     metaTitle: "Seller Hub",
-    metaTemplate: "%s · Seller · ReGear",
     title: "Seller Hub",
     nav: { dashboard: "Overview", listings: "Listings", offers: "Offers", sales: "Orders", payouts: "Payouts", profile: "Shop profile" },
     hub: {
@@ -980,7 +979,7 @@ export const en = {
     noSales: "No sales here yet",
     saleMetaTitle: "Sale details",
     allSales: "All sales",
-    listingsMetaTitle: "Listings",
+    listingsMetaTitle: "My listings",
     listingsTitle: "Your listings",
     noListings: "No listings yet",
     noListingsHint: "Create your first listing with a structured condition report.",
@@ -1085,7 +1084,7 @@ export const en = {
   },
   admin: {
     metaTitle: "Admin",
-    metaTemplate: "%s · Admin · ReGear",
+    metaTemplate: "%s | ReGear Admin",
     title: "Admin",
     frame: {
       homeAria: "ReGear admin home",

@@ -42,7 +42,7 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/listings/[
   const image = listing.images[0];
   const alternates = alternatesFor(`/listings/${listing.slug}`, locale);
   return {
-    title: `${listing.title} — ${grade}`,
+    title: listing.title,
     description,
     alternates,
     openGraph: {

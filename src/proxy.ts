@@ -50,7 +50,7 @@ function clientIp(request: NextRequest) {
 function tooManySearches(locale: Locale, retryAfterSec: number) {
   const t = (locale === "en" ? en : id).errors;
   // A bare page: it's served before (and instead of) the app. Every string in it is ours.
-  const html = `<!doctype html><html lang="${locale}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${t.tooManySearches} · ReGear</title></head><body style="margin:15vh auto;max-width:32rem;padding:0 16px;font-family:system-ui,sans-serif;color:#1a2233;text-align:center"><h1 style="font-size:1.5rem">${t.tooManySearches}</h1><p>${t.tooManySearchesBody(retryAfterSec)}</p><p><a href="${localePath("/listings", locale)}" style="color:#2340d9">${t.backToListings}</a></p></body></html>`;
+  const html = `<!doctype html><html lang="${locale}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${t.tooManySearches} | ReGear</title></head><body style="margin:15vh auto;max-width:32rem;padding:0 16px;font-family:system-ui,sans-serif;color:#1a2233;text-align:center"><h1 style="font-size:1.5rem">${t.tooManySearches}</h1><p>${t.tooManySearchesBody(retryAfterSec)}</p><p><a href="${localePath("/listings", locale)}" style="color:#2340d9">${t.backToListings}</a></p></body></html>`;
   return new NextResponse(html, {
     status: 429,
     headers: { "Content-Type": "text/html; charset=utf-8", "Retry-After": String(retryAfterSec), "Cache-Control": "no-store" },

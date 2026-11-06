@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 33 33">
+  <!-- ReGear's mark (LogoMark in src/components/condition-strip.tsx): a condition strip, four checks passed and one minor. -->
+  <style>
+    .pass { fill: #17885c; }
+    .minor { fill: #c98a00; }
+    @media (prefers-color-scheme: dark) {
+      .pass { fill: #2fb981; }
+      .minor { fill: #e0a526; }
+    }
+  </style>
+  <rect class="pass" x="0" y="3" width="5" height="27" rx="1.5" />
+  <rect class="pass" x="7" y="3" width="5" height="27" rx="1.5" />
+  <rect class="pass" x="14" y="3" width="5" height="27" rx="1.5" />
+  <rect class="minor" x="21" y="3" width="5" height="27" rx="1.5" />
+  <rect class="pass" x="28" y="3" width="5" height="27" rx="1.5" />
+</svg>

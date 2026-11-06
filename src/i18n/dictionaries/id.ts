@@ -7,7 +7,7 @@ const sentence = (s: string) => (/[.!?…]$/.test(s.trim()) ? s.trim() : `${s.tr
 
 export const id: typeof en = {
   meta: {
-    siteTitle: "ReGear — Elektronik bekas dengan laporan kondisi yang jujur",
+    siteTitle: "Jual Beli Elektronik Bekas | ReGear",
     siteDescription:
       "Jual beli ponsel, laptop, kamera, dan komponen PC bekas dengan laporan kondisi terstruktur, penjual terverifikasi, garansi, dan perlindungan pembeli.",
     keywords: ["elektronik bekas", "hp bekas", "laptop bekas", "kamera bekas", "GPU bekas", "marketplace"],
@@ -86,7 +86,7 @@ export const id: typeof en = {
   },
   offers: {
     status: { PENDING: "Menunggu", ACCEPTED: "Diterima", DECLINED: "Ditolak", WITHDRAWN: "Ditarik", USED: "Dibeli", EXPIRED: "Kedaluwarsa" },
-    sellerTitle: "Tawaran",
+    sellerTitle: "Tawaran masuk",
     sellerIntro: "Tawaran pembeli untuk iklan Anda. Jawab dalam 48 jam; tawaran yang diterima memberi pembeli 24 jam untuk membeli dengan harga itu.",
     waiting: "Menunggu jawaban Anda",
     earlier: "Tawaran sebelumnya",
@@ -259,7 +259,7 @@ export const id: typeof en = {
   },
   category: {
     heading: (name: string) => `${name} Bekas`,
-    metaTitle: (name: string) => `${name} Bekas — dengan penilaian kondisi`,
+    metaTitle: (name: string) => `${name} Bekas`,
     ogTitle: (name: string) => `${name} Bekas di ReGear`,
     breadcrumb: "Navigasi",
   },
@@ -327,7 +327,7 @@ export const id: typeof en = {
   },
   seller: {
     notFoundTitle: "Penjual tidak ditemukan",
-    metaTitle: (name: string) => `${name} — penjual di ReGear`,
+    metaTitle: (name: string) => name,
     metaDescription: (name: string) => `Elektronik bekas dari ${name}.`,
     salesCount: (n: number) => `${n} penjualan`,
     memberSince: (date: string) => `Bergabung sejak ${date}`,
@@ -366,7 +366,7 @@ export const id: typeof en = {
     noReturns: "Tidak bisa dikembalikan",
   },
   how: {
-    metaTitle: "Cara kerja — penilaian, verifikasi & perlindungan pembeli",
+    metaTitle: "Cara kerja",
     metaDescription:
       "Cara ReGear menilai elektronik bekas, memverifikasi penjual, melindungi pembayaran dengan rekening bersama, serta menangani pengembalian dan sengketa.",
     heading: "Cara kerja ReGear",
@@ -768,7 +768,7 @@ export const id: typeof en = {
     verifyFirstHint: (email: string) => `Kami sudah mengirim tautan konfirmasi ke ${email}. Klik tautannya, lalu kembali ke barang ini. Anda bisa mengirim ulang tautan dari banner di bagian atas halaman.`,
   },
   account: {
-    metaTitle: "ReGear saya",
+    metaTitle: "Akun saya",
     title: "ReGear saya",
     nav: { overview: "Ringkasan", purchases: "Pembelian", offers: "Tawaran", messages: "Pesan", saved: "Pantauan", searches: "Pencarian tersimpan", recent: "Terakhir dilihat", addresses: "Alamat", settings: "Pengaturan", sellerDashboard: "Penjualan" },
     memberSince: (date: string) => `Anggota sejak ${date}`,
@@ -912,7 +912,6 @@ export const id: typeof en = {
   },
   sell: {
     metaTitle: "Pusat Penjual",
-    metaTemplate: "%s · Penjual · ReGear",
     title: "Pusat Penjual",
     nav: { dashboard: "Ringkasan", listings: "Iklan", offers: "Tawaran", sales: "Pesanan", payouts: "Penarikan", profile: "Profil toko" },
     hub: {
@@ -982,7 +981,7 @@ export const id: typeof en = {
     noSales: "Belum ada penjualan di sini",
     saleMetaTitle: "Detail penjualan",
     allSales: "Semua penjualan",
-    listingsMetaTitle: "Iklan",
+    listingsMetaTitle: "Iklan saya",
     listingsTitle: "Iklan Anda",
     noListings: "Belum ada iklan",
     noListingsHint: "Buat iklan pertama Anda dengan laporan kondisi terstruktur.",
@@ -1087,7 +1086,7 @@ export const id: typeof en = {
   },
   admin: {
     metaTitle: "Admin",
-    metaTemplate: "%s · Admin · ReGear",
+    metaTemplate: "%s | ReGear Admin",
     title: "Admin",
     frame: {
       homeAria: "Beranda admin ReGear",

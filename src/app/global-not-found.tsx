@@ -15,7 +15,7 @@ import "./globals.css";
 // Without JavaScript the Indonesian version shows.
 const archivo = Archivo({ variable: "--font-archivo", subsets: ["latin"], axes: ["wdth"], display: "swap" });
 
-export const metadata: Metadata = { title: "404 · ReGear", robots: { index: false } };
+export const metadata: Metadata = { title: "Page not found | ReGear", robots: { index: false } };
 
 const PICK_LANGUAGE = `(function(){var p=location.pathname;if(p==="/en"||p.indexOf("/en/")===0){var d=document.documentElement;d.lang="en";d.dataset.lang="en";}})();`;
 

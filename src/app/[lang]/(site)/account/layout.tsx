@@ -6,7 +6,7 @@ import { logoutAction } from "@/actions/auth";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getDictionary();
-  return { title: { default: t.account.metaTitle, template: "%s · ReGear" }, robots: { index: false } };
+  return { title: { default: t.account.metaTitle, template: "%s | ReGear" }, robots: { index: false } };
 }
 
 export default async function AccountLayout({ children }: { children: React.ReactNode }) {

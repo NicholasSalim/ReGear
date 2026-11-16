@@ -51,3 +51,9 @@ next-env.d.ts
 /prisma/dev.db
 /.agents
 /skills-lock.json
+
+# working notes and tooling output: README.md is the only Markdown file in the repo
+*.md
+!/README.md
+/plans/
+/graphify-out/
